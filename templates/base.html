@@ -638,7 +638,7 @@
                     {% if user.is_authenticated %}
                         <a href="{% url 'chat_room_list' %}" class="nav-link d-none d-md-inline-block"><i class="bi bi-chat-dots me-1"></i>{{ LANG|tr:"nav_chat" }}{% if unread_total > 0 %} <span class="badge bg-danger rounded-pill ms-1" style="font-size: 0.65rem;">{{ unread_total }}</span>{% endif %}</a>
                         <a href="{% url 'my_page' %}" class="nav-link d-none d-md-inline-block"><strong>{{ user.username }}</strong>님</a>
-                        <a href="{% url 'logout' %}" class="btn btn-outline-light btn-sm">{{ LANG|tr:"nav_logout" }}</a>
+                        <a href="{% url 'logout' %}" class="btn btn-accent btn-sm">{{ LANG|tr:"nav_logout" }}</a>
                     {% else %}
                         <a href="{% url 'login' %}" class="btn btn-outline-light btn-sm">{{ LANG|tr:"nav_login" }}</a>
                         <a href="{% url 'join_choice' %}" class="btn btn-accent btn-sm">{{ LANG|tr:"nav_signup" }}</a>

@@ -439,7 +439,7 @@
                 <a href="tel:{{ shop.contact|cut:'-'|cut:' ' }}" class="text-decoration-none fw-bold text-dark gn-rail-text">
                   <i class="bi bi-telephone me-1"></i>{{ shop.contact }}
                 </a>
-                <a href="https://map.naver.com/v5/search/{{ shop.name|add:' '|add:shop.address|urlencode }}" target="_blank" rel="noopener noreferrer" class="btn btn-sm btn-outline-primary py-0 px-2 gn-rail-btn-outline">
+                <a href="https://map.kakao.com/?q={{ shop.address|default:shop.name|urlencode }}" target="_blank" rel="noopener noreferrer" class="btn btn-sm btn-outline-primary py-0 px-2 gn-rail-btn-outline">
                   지도
                 </a>
               </div>

@@ -35,15 +35,25 @@
   }
   @media (max-width: 991.98px) { .gn-fin-grid { grid-template-columns: 1fr; } }
   .gn-fin-action-btn {
-    background: #2563eb;
-    border-color: #2563eb;
-    color: #fff;
+    background: #F5A623;
+    border-color: #F5A623;
+    color: #1f2937;
     font-weight: 800;
+    box-shadow: 0 6px 16px rgba(245, 166, 35, 0.26);
+    transition: background-color .2s ease, border-color .2s ease, box-shadow .2s ease, transform .2s ease;
   }
   .gn-fin-action-btn:hover {
-    background: #1d4ed8;
-    border-color: #1d4ed8;
-    color: #fff;
+    background: #e79512;
+    border-color: #e79512;
+    color: #111827;
+    box-shadow: 0 8px 20px rgba(231, 149, 18, 0.32);
+    transform: translateY(-1px);
+  }
+  .gn-fin-action-btn:focus-visible {
+    background: #e79512;
+    border-color: #e79512;
+    color: #111827;
+    box-shadow: 0 0 0 .22rem rgba(245, 166, 35, 0.25), 0 8px 20px rgba(231, 149, 18, 0.28);
   }
 </style>
 {% endblock %}

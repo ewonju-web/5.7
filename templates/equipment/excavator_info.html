@@ -32,6 +32,85 @@
   .info-meta { display: flex; flex-wrap: wrap; gap: 0.35rem; margin-top: 0.4rem; }
   .info-badge { border-radius: 999px; font-size: 0.72rem; font-weight: 700; padding: 0.14rem 0.48rem; background: #f1f5f9; color: #334155; }
   .info-empty { border: 1px dashed #d1d5db; border-radius: 12px; background: #fafafa; color: #6b7280; text-align: center; padding: 2rem 1rem; }
+  .video-modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(15, 23, 42, 0.8);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 1080;
+    padding: 1rem;
+  }
+  .video-modal-overlay.open { display: flex; }
+  .video-modal-dialog {
+    width: min(1152px, 100%);
+    background: #0f172a;
+    border-radius: 14px;
+    box-shadow: 0 24px 60px rgba(15, 23, 42, 0.45);
+    overflow: hidden;
+    color: #e5e7eb;
+  }
+  .video-modal-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    padding: 0.8rem 1rem;
+    border-bottom: 1px solid rgba(148, 163, 184, 0.3);
+  }
+  .video-modal-title {
+    margin: 0;
+    font-size: 1rem;
+    font-weight: 800;
+    color: #f8fafc;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .video-modal-close {
+    border: 0;
+    border-radius: 8px;
+    width: 2rem;
+    height: 2rem;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    color: #e2e8f0;
+    background: rgba(148, 163, 184, 0.2);
+    font-size: 1.2rem;
+    line-height: 1;
+    cursor: pointer;
+  }
+  .video-modal-close:hover { background: rgba(148, 163, 184, 0.35); }
+  .video-modal-body { padding: 0; }
+  .video-frame-wrap {
+    width: 100%;
+    aspect-ratio: 16 / 9;
+    background: #000;
+  }
+  .video-frame-wrap iframe {
+    width: 100%;
+    height: 100%;
+    border: 0;
+  }
+  @media (max-width: 767.98px) {
+    .video-modal-overlay { padding: 0; }
+    .video-modal-dialog {
+      width: 100vw;
+      max-width: 100vw;
+      border-radius: 0;
+      min-height: 100vh;
+    }
+  }
+  .video-open-btn {
+    border: 0;
+    background: transparent;
+    padding: 0;
+    width: 100%;
+    text-align: left;
+    cursor: pointer;
+  }
 </style>
 <div class="container py-4">
     <div class="info-shell">
@@ -61,21 +140,39 @@
         {% for item in video_items %}
         <article class="info-card">
           <div class="info-card-body">
-            <a href="{{ item.youtube_url }}" target="_blank" rel="noopener" class="info-thumb-wrap mb-2">
+            <button
+              type="button"
+              class="video-open-btn js-video-open"
+              data-youtube-url="{{ item.youtube_url }}"
+              data-video-title="{{ item.title|escape }}"
+              aria-label="{{ item.title }} 재생"
+            >
+            <span class="info-thumb-wrap mb-2">
               {% if item.thumbnail_url %}
               <img src="{{ item.thumbnail_url }}" class="info-thumb" alt="{{ item.title }}">
               {% else %}
               <img src="https://i.ytimg.com/vi/0/hqdefault.jpg" class="info-thumb" alt="{{ item.title }}">
               {% endif %}
-            </a>
-            <a href="{{ item.youtube_url }}" target="_blank" rel="noopener" class="info-title-link">
+            </span>
+            </button>
+            <button
+              type="button"
+              class="video-open-btn js-video-open info-title-link"
+              data-youtube-url="{{ item.youtube_url }}"
+              data-video-title="{{ item.title|escape }}"
+            >
               <h6 class="fw-bold mb-1">{{ item.title }}</h6>
-            </a>
+            </button>
             <div class="info-channel">{{ item.channel_title|default:"YouTube" }}</div>
             <div class="info-meta">
               <span class="info-badge">{{ item.equipment_label }}</span>
               <span class="info-badge">{{ item.purpose_label }}</span>
-              <a href="{{ item.youtube_url }}" target="_blank" rel="noopener" class="info-badge text-decoration-none">유튜브 보기</a>
+              <button
+                type="button"
+                class="info-badge text-decoration-none video-open-btn js-video-open"
+                data-youtube-url="{{ item.youtube_url }}"
+                data-video-title="{{ item.title|escape }}"
+              >유튜브 보기</button>
             </div>
           </div>
         </article>
@@ -88,4 +185,95 @@
       {% endif %}
     </div>
 </div>
+
+<div id="videoModalOverlay" class="video-modal-overlay" aria-hidden="true">
+  <div class="video-modal-dialog" role="dialog" aria-modal="true" aria-labelledby="videoModalTitle">
+    <div class="video-modal-head">
+      <h3 id="videoModalTitle" class="video-modal-title">영상 재생</h3>
+      <button type="button" id="videoModalClose" class="video-modal-close" aria-label="닫기">X</button>
+    </div>
+    <div class="video-modal-body">
+      <div class="video-frame-wrap">
+        <iframe
+          id="videoModalFrame"
+          src=""
+          title="유튜브 영상"
+          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+          allowfullscreen
+          referrerpolicy="strict-origin-when-cross-origin"
+        ></iframe>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  (function () {
+    const openButtons = document.querySelectorAll(".js-video-open");
+    const overlay = document.getElementById("videoModalOverlay");
+    const closeBtn = document.getElementById("videoModalClose");
+    const frame = document.getElementById("videoModalFrame");
+    const title = document.getElementById("videoModalTitle");
+    const body = document.body;
+
+    if (!openButtons.length || !overlay || !closeBtn || !frame || !title) {
+      return;
+    }
+
+    function extractVideoId(urlString) {
+      if (!urlString) return "";
+      try {
+        const url = new URL(urlString);
+        if (url.hostname.includes("youtu.be")) {
+          return url.pathname.replace("/", "");
+        }
+        if (url.searchParams.get("v")) {
+          return url.searchParams.get("v");
+        }
+        const embedParts = url.pathname.split("/embed/");
+        if (embedParts.length > 1) {
+          return embedParts[1].split("/")[0];
+        }
+      } catch (error) {
+        return "";
+      }
+      return "";
+    }
+
+    function closeModal() {
+      overlay.classList.remove("open");
+      overlay.setAttribute("aria-hidden", "true");
+      frame.src = "";
+      body.style.overflow = "";
+    }
+
+    function openModal(youtubeUrl, videoTitle) {
+      const videoId = extractVideoId(youtubeUrl);
+      if (!videoId) return;
+      title.textContent = videoTitle || "영상 재생";
+      frame.src = "https://www.youtube.com/embed/" + encodeURIComponent(videoId) + "?autoplay=1&rel=0";
+      overlay.classList.add("open");
+      overlay.setAttribute("aria-hidden", "false");
+      body.style.overflow = "hidden";
+    }
+
+    openButtons.forEach(function (button) {
+      button.addEventListener("click", function () {
+        openModal(button.dataset.youtubeUrl, button.dataset.videoTitle);
+      });
+    });
+
+    closeBtn.addEventListener("click", closeModal);
+    overlay.addEventListener("click", function (event) {
+      if (event.target === overlay) {
+        closeModal();
+      }
+    });
+    document.addEventListener("keydown", function (event) {
+      if (event.key === "Escape" && overlay.classList.contains("open")) {
+        closeModal();
+      }
+    });
+  })();
+</script>
 {% endblock %}
