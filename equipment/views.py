@@ -414,6 +414,7 @@ def index(request):
     premium_sidebar_slots = pad_premium_sidebar_slots(
         premium_sidebar_list, PREMIUM_SIDEBAR_INDEX_TOTAL
     )
+    right_ads = [slot for slot in premium_sidebar_slots[10:20] if slot][:3]
     premium_sidebar_expert_title = PREMIUM_SIDEBAR_EXPERT_TITLE_BY_CATEGORY.get(
         filter_category, ""
     )
@@ -454,6 +455,7 @@ def index(request):
         'premium_rotation_chunks': premium_rotation_chunks,
         'premium_sidebar_list': premium_sidebar_list,
         'premium_sidebar_slots': premium_sidebar_slots,
+        'right_ads': right_ads,
         'premium_sidebar_expert_title': premium_sidebar_expert_title,
         'premium_author_ids': premium_author_ids,
         # 상세 검색 상태 유지용
@@ -2121,6 +2123,13 @@ def equipment_detail(request, pk):
     if not nearby_parts_shops:
         nearby_parts_shops = list(shops_qs[:6])
 
+    right_premium_slots = premium_sidebar_slots[10:20] if premium_sidebar_slots else []
+    has_right_ads = bool(
+        any(right_premium_slots)
+        or left_specialist_cards
+        or nearby_parts_shops
+    )
+
     # 끌어올리기: 본인 매물 + 유료회원 + 최근 7일 기준 최대 3회 제한
     can_bump = False
     next_bump_at = None
@@ -2156,6 +2165,8 @@ def equipment_detail(request, pk):
         'left_specialist_cards': left_specialist_cards,
         'premium_sidebar_list': premium_sidebar_list,
         'premium_sidebar_slots': premium_sidebar_slots,
+        'right_premium_slots': right_premium_slots,
+        'has_right_ads': has_right_ads,
         'premium_sidebar_expert_title': premium_sidebar_expert_title,
         'author_other_listings': author_other_listings,
         'nearby_parts_shops': nearby_parts_shops,

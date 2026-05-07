@@ -3,6 +3,7 @@
 {% block body_class %}gn-page-index{% endblock %}
 {% block content %}
 <div class="container gn-index-container py-2 py-md-4">
+    <div class="gn-index-content-grid">
     <!-- PC: 검색바 맨 위 → 그 아래 카테고리(모바일과 동일) -->
     <div class="d-none d-md-block">
         <div class="row justify-content-center gn-pc-search-row">
@@ -947,94 +948,49 @@
         {% endif %}
     </div>
 
-    {% if premium_sidebar_expert_title %}
     <div class="d-none d-xl-block gn-premium-side-wrap{% if filter_category == 'excavator' %} gn-premium-side--detail-rail-font{% endif %}">
-      <aside class="gn-premium-side gn-premium-side-left" aria-label="좌측 {{ premium_sidebar_expert_title }}">
+      <aside class="gn-premium-side gn-premium-side-right" aria-label="우측 광고">
         <div class="card gn-premium-card-shell border-0 shadow-sm overflow-hidden">
           <div class="card-header py-2 px-2 small fw-bold gn-premium-card-head d-flex align-items-center justify-content-between gap-2">
             <div class="d-flex align-items-center gap-1 min-width-0 gn-premium-head-main">
-              <i class="bi bi-person-badge text-warning me-1"></i><span class="gn-premium-expert-title">{{ premium_sidebar_expert_title }}</span>
+              <i class="bi bi-megaphone-fill text-warning me-1"></i><span class="gn-premium-expert-title">{{ premium_sidebar_expert_title|default:"광고 영역" }}</span>
             </div>
             <a href="{% url 'billing_upgrade' %}" class="btn btn-sm btn-outline-primary py-1 px-2 gn-rail-btn-outline text-nowrap flex-shrink-0">등록안내</a>
           </div>
           <div class="card-body p-2 gn-premium-side-body">
-            {% for slot in premium_sidebar_slots|slice:":10" %}
-            {% if slot %}
-            <a href="{% if slot.author_id %}{% url 'author_listings' slot.author_id %}{% if filter_category %}?category={{ filter_category }}{% endif %}{% else %}{% url 'equipment_detail' slot.pk %}{% endif %}" class="d-block text-decoration-none border-bottom mb-1 pb-1 gn-premium-side-row gn-premium-bizcard {% if forloop.last %}border-0 mb-0 pb-0{% endif %}">
+            {% for ad in right_ads %}
+            <a href="{% if ad.author_id %}{% url 'author_listings' ad.author_id %}{% if filter_category %}?category={{ filter_category }}{% endif %}{% else %}{% url 'equipment_detail' ad.pk %}{% endif %}" class="d-block text-decoration-none border-bottom mb-1 pb-1 gn-premium-side-row gn-premium-bizcard {% if forloop.last %}border-0 mb-0 pb-0{% endif %}">
               <div class="d-flex gap-2 align-items-center">
                 <div class="flex-shrink-0 rounded overflow-hidden gn-premium-side-thumb">
-                  {% if slot.images.first %}
-                  <img src="{{ slot.images.first.image.url }}" class="w-100 h-100" style="object-fit: cover;" alt="">
+                  {% if ad.images.first %}
+                  <img src="{{ ad.images.first.image.url }}" class="w-100 h-100" style="object-fit: cover;" alt="">
                   {% else %}
                   <div class="w-100 h-100 d-flex align-items-center justify-content-center text-muted" style="font-size: 0.65rem;">—</div>
                   {% endif %}
                 </div>
                 <div class="min-width-0 flex-grow-1">
-                  <div class="fw-bold text-truncate gn-premium-side-title" style="color: var(--gn-text);">{{ slot.model_name|default:"-" }}</div>
-                  <div class="text-danger fw-bold gn-premium-side-phone">{{ slot|equipment_row_contact|default:"문의" }}</div>
+                  <div class="fw-bold text-truncate gn-premium-side-title" style="color: var(--gn-text);">{{ ad.model_name|default:"-" }}</div>
+                  <div class="text-danger fw-bold gn-premium-side-phone">{{ ad|equipment_row_contact|default:"문의" }}</div>
                 </div>
               </div>
             </a>
-            {% else %}
-            <div class="border-bottom mb-1 pb-1 gn-premium-side-row gn-premium-bizcard gn-premium-bizcard--dummy {% if forloop.last %}border-0 mb-0 pb-0{% endif %}" aria-hidden="true">
-              <div class="d-flex gap-2 align-items-center">
-                <div class="flex-shrink-0 rounded gn-premium-side-thumb gn-premium-dummy-photo"></div>
-                <div class="min-width-0 flex-grow-1">
-                  <div class="gn-premium-dummy-line mb-1"></div>
-                  <div class="gn-premium-dummy-line gn-premium-dummy-line--short"></div>
-                </div>
+            {% empty %}
+            {% for _ in "123" %}
+            <div style="border: 2px dashed #E5A000; border-radius: 12px; padding: 20px; text-align: center; margin-bottom: 12px;">
+              <div style="font-size: 40px; margin-bottom: 8px;">🏗️</div>
+              <div style="font-size: 14px; font-weight: 500; color: #1A1A1A;">광고 문의</div>
+              <div style="font-size: 12px; color: #888; margin-top: 4px; line-height: 1.6;">
+                이 자리에 업체 광고를<br>등록하실 수 있습니다
               </div>
-              <div class="text-muted text-center mt-1" style="font-size:0.62rem;">가상 노출 자리</div>
+              <a href="/contact/" style="display:block; margin-top: 12px; background: #F5A623; color: #fff; border-radius: 8px; padding: 8px; font-size: 13px; text-decoration: none;">등록 문의하기</a>
             </div>
-            {% endif %}
             {% endfor %}
-          </div>
-        </div>
-      </aside>
-      <aside class="gn-premium-side gn-premium-side-right" aria-label="우측 {{ premium_sidebar_expert_title }}">
-        <div class="card gn-premium-card-shell border-0 shadow-sm overflow-hidden">
-          <div class="card-header py-2 px-2 small fw-bold gn-premium-card-head d-flex align-items-center justify-content-between gap-2">
-            <div class="d-flex align-items-center gap-1 min-width-0 gn-premium-head-main">
-              <i class="bi bi-person-badge text-warning me-1"></i><span class="gn-premium-expert-title">{{ premium_sidebar_expert_title }}</span>
-            </div>
-            <a href="{% url 'billing_upgrade' %}" class="btn btn-sm btn-outline-primary py-1 px-2 gn-rail-btn-outline text-nowrap flex-shrink-0">등록안내</a>
-          </div>
-          <div class="card-body p-2 gn-premium-side-body">
-            {% for slot in premium_sidebar_slots|slice:"10:20" %}
-            {% if slot %}
-            <a href="{% if slot.author_id %}{% url 'author_listings' slot.author_id %}{% if filter_category %}?category={{ filter_category }}{% endif %}{% else %}{% url 'equipment_detail' slot.pk %}{% endif %}" class="d-block text-decoration-none border-bottom mb-1 pb-1 gn-premium-side-row gn-premium-bizcard {% if forloop.last %}border-0 mb-0 pb-0{% endif %}">
-              <div class="d-flex gap-2 align-items-center">
-                <div class="flex-shrink-0 rounded overflow-hidden gn-premium-side-thumb">
-                  {% if slot.images.first %}
-                  <img src="{{ slot.images.first.image.url }}" class="w-100 h-100" style="object-fit: cover;" alt="">
-                  {% else %}
-                  <div class="w-100 h-100 d-flex align-items-center justify-content-center text-muted" style="font-size: 0.65rem;">—</div>
-                  {% endif %}
-                </div>
-                <div class="min-width-0 flex-grow-1">
-                  <div class="fw-bold text-truncate gn-premium-side-title" style="color: var(--gn-text);">{{ slot.model_name|default:"-" }}</div>
-                  <div class="text-danger fw-bold gn-premium-side-phone">{{ slot|equipment_row_contact|default:"문의" }}</div>
-                </div>
-              </div>
-            </a>
-            {% else %}
-            <div class="border-bottom mb-1 pb-1 gn-premium-side-row gn-premium-bizcard gn-premium-bizcard--dummy {% if forloop.last %}border-0 mb-0 pb-0{% endif %}" aria-hidden="true">
-              <div class="d-flex gap-2 align-items-center">
-                <div class="flex-shrink-0 rounded gn-premium-side-thumb gn-premium-dummy-photo"></div>
-                <div class="min-width-0 flex-grow-1">
-                  <div class="gn-premium-dummy-line mb-1"></div>
-                  <div class="gn-premium-dummy-line gn-premium-dummy-line--short"></div>
-                </div>
-              </div>
-              <div class="text-muted text-center mt-1" style="font-size:0.62rem;">가상 노출 자리</div>
-            </div>
-            {% endif %}
             {% endfor %}
           </div>
         </div>
       </aside>
     </div>
-    {% endif %}
+    </div>
 
 <!-- 모바일 글쓰기 FAB (당근 스타일) -->
 {% if user.is_authenticated %}
@@ -1144,22 +1100,26 @@
     min-height: 0;
     background: #eef2f7;
   }
-  /* 유료 명함: 뷰포트 양끝이 아니라 .gn-index-container(최대 1200px) 바깥에 붙임 — 매물 그리드와 겹치지 않게 */
+  .gn-index-content-grid {
+    display: block;
+  }
+  @media (min-width: 1200px) {
+    .gn-index-content-grid {
+      display: grid;
+      grid-template-columns: 1fr 200px;
+      gap: 12px;
+      align-items: start;
+    }
+  }
+  /* 우측 광고 1열 */
   .gn-premium-side {
-    position: fixed;
-    /* 상단 네비 아래에서 시작(등록안내 헤더 가림 방지) */
+    position: sticky;
     top: 80px;
     width: 200px;
-    z-index: 1015;
-    --gn-premium-gap: 12px;
-    --gn-premium-main-half: 600px; /* max-width 1200px / 2, .gn-index-container 와 동일 */
-  }
-  /* 메인 컨테이너(최대 1200px) 바깥, 추천매물 열 바로 옆에 배치 */
-  .gn-premium-side-left {
-    left: max(0.5rem, calc(50vw - var(--gn-premium-main-half) - 200px - var(--gn-premium-gap)));
+    z-index: 5;
   }
   .gn-premium-side-right {
-    right: max(0.5rem, calc(50vw - var(--gn-premium-main-half) - 200px - var(--gn-premium-gap)));
+    right: auto;
   }
   /* 많은 명함: 한 열 안에서만 스크롤, 페이지 전체 길이는 제한 */
   .gn-premium-side-body {
