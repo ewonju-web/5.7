@@ -971,13 +971,13 @@
             </a>
             {% empty %}
             {% for _ in "123" %}
-            <div style="border: 2px dashed #E5A000; border-radius: 12px; padding: 20px; text-align: center; margin-bottom: 12px;">
-              <div style="font-size: 40px; margin-bottom: 8px;">🏗️</div>
-              <div style="font-size: 14px; font-weight: 500; color: #1A1A1A;">광고 문의</div>
-              <div style="font-size: 12px; color: #888; margin-top: 4px; line-height: 1.6;">
+            <div class="gn-ad-placeholder-card">
+              <div class="gn-ad-placeholder-icon">🏗️</div>
+              <div class="gn-ad-placeholder-title">광고 문의</div>
+              <div class="gn-ad-placeholder-desc">
                 이 자리에 업체 광고를<br>등록하실 수 있습니다
               </div>
-              <a href="/contact/" style="display:block; margin-top: 12px; background: #F5A623; color: #fff; border-radius: 8px; padding: 8px; font-size: 13px; text-decoration: none;">등록 문의하기</a>
+              <a href="/contact/" class="gn-ad-placeholder-link">등록 문의하기</a>
             </div>
             {% endfor %}
             {% endfor %}
@@ -1146,6 +1146,45 @@
   }
   .gn-premium-side-right {
     right: auto;
+  }
+  .gn-ad-placeholder-card {
+    border: 2px dashed #E5A000;
+    border-radius: 12px;
+    padding: 20px;
+    text-align: center;
+    margin-bottom: 12px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+  }
+  .gn-ad-placeholder-icon {
+    font-size: 40px;
+    margin-bottom: 8px;
+  }
+  .gn-ad-placeholder-title {
+    font-size: 14px;
+    font-weight: 500;
+    color: #1A1A1A;
+  }
+  .gn-ad-placeholder-desc {
+    font-size: 12px;
+    color: #888;
+    margin-top: 4px;
+    line-height: 1.6;
+  }
+  .gn-ad-placeholder-link {
+    display: block;
+    margin-top: 12px;
+    background: #F5A623;
+    color: #fff;
+    border-radius: 8px;
+    padding: 8px;
+    font-size: 13px;
+    text-decoration: none;
+  }
+  .gn-ad-placeholder-link:hover {
+    background: #D4860A;
+    color: #fff;
   }
   /* 많은 명함: 한 열 안에서만 스크롤, 페이지 전체 길이는 제한 */
   .gn-premium-side-body {
@@ -1446,9 +1485,9 @@
       margin-top: 1.65rem !important;
     }
     .gn-pc-advanced-filters {
-      margin-left: -1.8cm;
-      margin-right: -1.8cm;
-      width: calc(100% + 3.6cm);
+      margin-left: -3.6cm;
+      margin-right: -3.6cm;
+      width: calc(100% + 7.2cm);
       margin-top: 1.65rem !important;
       padding-left: 1.1rem;
       padding-right: 1.1rem;
@@ -1459,9 +1498,9 @@
     }
     /* 지게차 선택 시 필터 항목 수가 많아 보이므로 박스 폭을 살짝 더 확장 */
     .gn-pc-advanced-filters.gn-pc-advanced-filters-forklift {
-      margin-left: -2.1cm;
-      margin-right: -2.1cm;
-      width: calc(100% + 4.2cm);
+      margin-left: -4.0cm;
+      margin-right: -4.0cm;
+      width: calc(100% + 8.0cm);
     }
     .gn-pc-advanced-filters-row {
       flex-wrap: nowrap !important;
@@ -1962,6 +2001,21 @@
     // PC / 모바일 둘 다 적용
     wireWeightFilter('gn-pc-sub-type', 'gn-pc-weight-class');
     wireWeightFilter('gn-mo-sub-type', 'gn-mo-weight-class');
+  })();
+
+  // 우측 광고 플레이스홀더 높이 = 매물 카드 높이 동기화(PC)
+  (function() {
+    function syncAdPlaceholderHeight() {
+      if (window.innerWidth < 768) return;
+      var productCard = document.querySelector('.gn-index-pc-initial .gn-pc-card');
+      var placeholders = document.querySelectorAll('.gn-ad-placeholder-card');
+      if (!productCard || !placeholders.length) return;
+      var h = Math.round(productCard.getBoundingClientRect().height);
+      placeholders.forEach(function(el) { el.style.minHeight = h + 'px'; });
+    }
+    window.addEventListener('load', syncAdPlaceholderHeight);
+    window.addEventListener('resize', syncAdPlaceholderHeight);
+    syncAdPlaceholderHeight();
   })();
 
 </script>
