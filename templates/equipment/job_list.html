@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 {% load static i18n_extras %}
 {% block extra_css %}
-<link rel="stylesheet" href="{% static 'css/jobs.css' %}?v=20260409">
+<link rel="stylesheet" href="{% static 'css/jobs.css' %}?v=20260507a">
 <style>
   .job-table-v2 .job-row,
   .job-table-v2 .job-row > td {
@@ -34,32 +34,32 @@
                 <input type="hidden" name="type" value="{{ filter_type|default:'HIRING' }}">
                 <div class="job-filter-grid">
                     <div class="job-filter-fields-row">
-                    <div class="job-filter-field job-filter-field-equip">
-                        <label class="form-label small mb-1" style="color:#334155;font-weight:800;">기종 선택</label>
-                        <select name="equipment" id="job-equipment" class="form-select form-select-sm job-select-rounded">
-                            {% for val, label in job_equipment_choices %}
-                            <option value="{{ val }}" {% if filter_equipment == val %}selected{% endif %}>{{ label }}</option>
-                            {% endfor %}
-                        </select>
-                    </div>
-                    <div class="job-filter-field">
-                        <label class="form-label small mb-1" style="color:#334155;font-weight:800;">시/도</label>
-                        <select name="region_sido" id="job-search-sido" class="form-select form-select-sm job-select-rounded">
-                            {% for val, label in sido_choices %}
-                            <option value="{{ val }}" {% if filter_region_sido == val %}selected{% endif %}>{{ label }}</option>
-                            {% endfor %}
-                        </select>
-                    </div>
-                    <div class="job-filter-field">
-                        <label class="form-label small mb-1" style="color:#334155;font-weight:800;">시/군/구</label>
-                        <select name="region_sigungu" id="job-search-sigungu" class="form-select form-select-sm job-select-rounded">
-                            <option value="">시/군/구 선택</option>
-                        </select>
-                    </div>
-                    </div>
-                    <div class="job-filter-actions">
-                        <button type="submit" class="job-btn-search-light"><i class="bi bi-search me-1 d-none d-sm-inline" aria-hidden="true"></i>검색</button>
-                        <a href="{% url 'job_list' %}?type={{ filter_type|default:'HIRING' }}" class="job-btn-reset-light">초기화</a>
+                        <div class="job-filter-field job-filter-field-equip">
+                            <label class="form-label small mb-1" style="color:#334155;font-weight:800;">기종 선택</label>
+                            <select name="equipment" id="job-equipment" class="form-select form-select-sm job-select-rounded">
+                                {% for val, label in job_equipment_choices %}
+                                <option value="{{ val }}" {% if filter_equipment == val %}selected{% endif %}>{{ label }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="job-filter-field">
+                            <label class="form-label small mb-1" style="color:#334155;font-weight:800;">시/도</label>
+                            <select name="region_sido" id="job-search-sido" class="form-select form-select-sm job-select-rounded">
+                                {% for val, label in sido_choices %}
+                                <option value="{{ val }}" {% if filter_region_sido == val %}selected{% endif %}>{{ label }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="job-filter-field">
+                            <label class="form-label small mb-1" style="color:#334155;font-weight:800;">시/군/구</label>
+                            <select name="region_sigungu" id="job-search-sigungu" class="form-select form-select-sm job-select-rounded">
+                                <option value="">시/군/구 선택</option>
+                            </select>
+                        </div>
+                        <div class="job-filter-actions">
+                            <button type="submit" class="job-btn-search-light"><i class="bi bi-search me-1 d-none d-sm-inline" aria-hidden="true"></i>검색</button>
+                            <a href="{% url 'job_list' %}?type={{ filter_type|default:'HIRING' }}" class="job-btn-reset-light">초기화</a>
+                        </div>
                     </div>
                 </div>
             </form>
@@ -81,7 +81,9 @@
                     <thead>
                         <tr class="job-table-head">
                             <th class="text-center py-3" style="width: 100px;">구분</th>
+                            {% if show_pay_column %}
                             <th class="py-3">급여</th>
+                            {% endif %}
                             <th class="py-3">제목 / 구인내용</th>
                             <th class="py-3 d-none d-md-table-cell" style="min-width: 120px;">지역</th>
                             <th class="text-center py-3 d-none d-lg-table-cell" style="width: 110px;">등록일</th>
@@ -98,9 +100,11 @@
                                 <span class="job-cat-badge job-cat-badge-seeking">일자리구함</span>
                                 {% endif %}
                             </td>
+                            {% if show_pay_column %}
                             <td class="job-td-mobile-order-3 d-none d-md-table-cell" data-label="급여">
-                                <span class="job-pay-cell">{% if job.pay %}{{ job.pay }}{% else %}협의{% endif %}</span>
+                                <span class="job-pay-cell">{% if job.pay %}{{ job.pay }}{% else %}-{% endif %}</span>
                             </td>
+                            {% endif %}
                             <td class="job-td-mobile-order-1 job-td-mobile-title" data-label="제목 / 구인내용">
                                 <a href="{% url 'job_detail' job.pk %}" class="btn btn-sm job-btn-view job-mobile-view-btn d-md-none" onclick="event.stopPropagation();">보기</a>
                                 <div class="d-flex align-items-start flex-wrap gap-2">
@@ -118,27 +122,21 @@
                                             {% else %}
                                             <span class="job-cat-badge job-cat-badge-seeking">일자리구함</span>
                                             {% endif %}
-                                            <span class="job-mobile-pay-badge">{% if job.pay %}{{ job.pay }}{% else %}협의{% endif %}</span>
+                                            {% if show_pay_column %}
+                                            <span class="job-mobile-pay-badge">{% if job.pay %}{{ job.pay }}{% else %}-{% endif %}</span>
+                                            {% endif %}
                                         </div>
-                                        {% with clean_experience=job.experience|hide_code_text clean_equipment=job.equipment_type|hide_code_text %}
-                                        {% if clean_experience or clean_equipment %}
-                                        <div class="job-subline text-muted small mt-1 d-none d-md-block">
-                                            {% if clean_experience %}{{ clean_experience }}{% endif %}{% if clean_experience and clean_equipment %} · {% endif %}{% if clean_equipment %}{{ clean_equipment }}{% endif %}
-                                        </div>
-                                        {% endif %}
-                                        {% endwith %}
                                     </div>
                                 </div>
                                 <div class="d-md-none text-muted small job-mobile-meta-line">
                                     <i class="bi bi-geo-alt text-danger"></i>
-                                    {% if job.region_sido or job.region_sigungu %}{{ job.region_sido|default:'' }} {{ job.region_sigungu|default:'' }}{% endif %}{% if job.location %} {{ job.location }}{% endif %}
+                                    {{ job.region_line }}
                                     · {{ job.created_at|date:"Y-m-d" }}
                                 </div>
                             </td>
                             <td class="d-none d-md-table-cell text-muted small">
                                 <i class="bi bi-geo-alt text-danger"></i>
-                                {% if job.region_sido or job.region_sigungu %}<span class="text-dark">{{ job.region_sido|default:'' }} {{ job.region_sigungu|default:'' }}</span>{% endif %}
-                                {% if job.location %}<br><span>{{ job.location }}</span>{% elif not job.region_sido and not job.region_sigungu %}<span class="text-muted">—</span>{% endif %}
+                                <span class="text-dark">{{ job.region_line }}</span>
                             </td>
                             <td class="text-center text-muted small d-none d-lg-table-cell">{{ job.created_at|date:"Y-m-d" }}</td>
                             <td class="text-end align-middle job-td-actions job-td-mobile-order-4 d-none d-md-table-cell" onclick="event.stopPropagation();">
@@ -155,7 +153,7 @@
                         </tr>
                         {% empty %}
                         <tr class="job-empty-row">
-                            <td colspan="6" class="text-center py-5 text-muted">등록된 구인구직 공고가 없습니다.</td>
+                            <td colspan="{% if show_pay_column %}6{% else %}5{% endif %}" class="text-center py-5 text-muted">등록된 구인구직 공고가 없습니다.</td>
                         </tr>
                         {% endfor %}
                     </tbody>

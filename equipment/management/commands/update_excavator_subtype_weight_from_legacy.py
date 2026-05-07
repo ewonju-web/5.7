@@ -41,7 +41,7 @@ class Command(BaseCommand):
         EXC_CR_LE_6_5 = "EXC_CR_LE_6_5"  # 5~6 ton 02급
         EXC_CR_LE_16 = "EXC_CR_LE_16"  # 12~16 ton 06급
         EXC_CR_EQ_20 = "EXC_CR_EQ_20"  # 20~22 ton 08급
-        EXC_CR_GE_30 = "EXC_CR_GE_30"  # 30~40 ton 10급
+        EXC_CR_GE_30 = "EXC_CR_GE_30"  # 30~50 ton 10급 이상
 
         # direct_nara 이관 커맨드가 사용하는 alias
         direct_alias = "direct_nara"

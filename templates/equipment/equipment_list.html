@@ -127,7 +127,7 @@
                                     <option value="EXC_CR_LE_6_5" {% if filter_weight_class == 'EXC_CR_LE_6_5' %}selected{% endif %}>5~6 ton 02급</option>
                                     <option value="EXC_CR_LE_16" {% if filter_weight_class == 'EXC_CR_LE_16' %}selected{% endif %}>12~16 ton 06급</option>
                                     <option value="EXC_CR_EQ_20" {% if filter_weight_class == 'EXC_CR_EQ_20' %}selected{% endif %}>20~22 ton 08급</option>
-                                    <option value="EXC_CR_GE_30" {% if filter_weight_class == 'EXC_CR_GE_30' %}selected{% endif %}>30~40 ton 10급</option>
+                                    <option value="EXC_CR_GE_30" {% if filter_weight_class == 'EXC_CR_GE_30' %}selected{% endif %}>30~50 ton 10급 이상</option>
                                     <!-- 어테치먼트 -->
                                     <option value="EXC_ATT_LT_1" {% if filter_weight_class == 'EXC_ATT_LT_1' %}selected{% endif %}>1톤 미만 (어테치)</option>
                                     <option value="EXC_ATT_LE_2" {% if filter_weight_class == 'EXC_ATT_LE_2' %}selected{% endif %}>2톤 이하 (어테치)</option>
@@ -430,7 +430,7 @@
                             <option value="EXC_CR_LE_6_5" {% if filter_weight_class == 'EXC_CR_LE_6_5' %}selected{% endif %}>5~6 ton 02급</option>
                             <option value="EXC_CR_LE_16" {% if filter_weight_class == 'EXC_CR_LE_16' %}selected{% endif %}>12~16 ton 06급</option>
                             <option value="EXC_CR_EQ_20" {% if filter_weight_class == 'EXC_CR_EQ_20' %}selected{% endif %}>20~22 ton 08급</option>
-                            <option value="EXC_CR_GE_30" {% if filter_weight_class == 'EXC_CR_GE_30' %}selected{% endif %}>30~40 ton 10급</option>
+                            <option value="EXC_CR_GE_30" {% if filter_weight_class == 'EXC_CR_GE_30' %}selected{% endif %}>30~50 ton 10급 이상</option>
                             <option value="EXC_ATT_LT_1" {% if filter_weight_class == 'EXC_ATT_LT_1' %}selected{% endif %}>1톤 미만 (어테치)</option>
                             <option value="EXC_ATT_LE_2" {% if filter_weight_class == 'EXC_ATT_LE_2' %}selected{% endif %}>2톤 이하 (어테치)</option>
                             <option value="EXC_ATT_LE_3_5" {% if filter_weight_class == 'EXC_ATT_LE_3_5' %}selected{% endif %}>3.5톤 이하 (어테치)</option>
@@ -1922,7 +1922,7 @@
       { value: 'EXC_CR_LE_6_5', text: '5~6 ton 02급' },
       { value: 'EXC_CR_LE_16', text: '12~16 ton 06급' },
       { value: 'EXC_CR_EQ_20', text: '20~22 ton 08급' },
-      { value: 'EXC_CR_GE_30', text: '30~40 ton 10급' }
+      { value: 'EXC_CR_GE_30', text: '30~50 ton 10급 이상' }
     ];
 
     var ATTACH_OPTIONS = [

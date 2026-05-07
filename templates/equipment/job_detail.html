@@ -1,16 +1,16 @@
 {% extends "base.html" %}
 {% load static i18n_extras %}
 {% block extra_css %}
-<link rel="stylesheet" href="{% static 'css/jobs.css' %}?v=5">
+<link rel="stylesheet" href="{% static 'css/jobs.css' %}?v=6">
 {% endblock %}
 {% block content %}
 <div class="container py-5 pb-5 pb-md-4 gn-job-detail-page">
     <div class="max-auto" style="max-width: 720px; margin: 0 auto;">
         <header class="gn-job-hero">
-            <h1 class="gn-job-title">{{ job.title }}</h1>
+            <h1 class="gn-job-title job-title">{{ job.title }}</h1>
             <p class="gn-job-meta-line">
-                <span class="badge {% if job.job_type == 'HIRING' %}bg-primary{% else %}bg-success{% endif %} gn-job-badge">{{ job.get_job_type_display }}</span>
-                <span class="ms-2">등록일 {{ job.created_at|date:"Y-m-d" }}</span>
+                <span class="badge {% if job.job_type == 'SEEKING' %}gn-job-badge-seeking{% else %}gn-job-badge-hiring{% endif %} gn-job-badge">{{ job.get_job_type_display }}</span>
+                <span class="ms-2 gn-job-meta-date">등록일 {{ job.created_at|date:"Y-m-d" }}</span>
                 {% if job.region_sido or job.region_sigungu or job.location %}
                 <span class="mx-2">·</span>
                 <a href="https://map.naver.com/v5/search/{% if job.region_sido %}{{ job.region_sido }}{% endif %}{% if job.region_sigungu %} {{ job.region_sigungu }}{% endif %}{% if job.location %} {{ job.location }}{% endif %}" target="_blank" rel="noopener" class="text-decoration-none"><i class="bi bi-geo-alt"></i> 지도</a>
@@ -21,25 +21,25 @@
         <!-- 단순화: 사람구함 / 일자리구함 블록 -->
         <div class="card border-0 gn-job-light-card gn-job-simple-block">
             <div class="card-body">
+                <h2 class="gn-job-card-title">기본 정보</h2>
                 {% if job.job_type == 'HIRING' %}
                 <div class="gn-job-simple-list">
-                    <div class="gn-job-simple-row"><span class="gn-job-dt gn-job-label-bg">회사명</span><span class="gn-job-dd"> : {{ job.company_name|default:"—" }}</span></div>
-                    <div class="gn-job-simple-row"><span class="gn-job-dt gn-job-label-bg">근무지역</span><span class="gn-job-dd"> : {% if job.region_sido or job.region_sigungu %}{{ job.region_sido|default:'' }} {{ job.region_sigungu|default:'' }}{% if job.location %} {{ job.location }}{% endif %}{% else %}{{ job.location|default:"—" }}{% endif %}</span></div>
-                    <div class="gn-job-simple-row"><span class="gn-job-dt">급여</span><span class="gn-job-dd gn-job-pay"> : {% if job.pay %}{{ job.pay }}{% else %}협의후 결정{% endif %}</span></div>
-                    <div class="gn-job-simple-row"><span class="gn-job-dt">모집인원</span><span class="gn-job-dd"> : {% if job.recruit_count %}{{ job.recruit_count }}명{% else %}—{% endif %}</span></div>
-                    <div class="gn-job-simple-row"><span class="gn-job-dt">마감</span><span class="gn-job-dd"> : {% if job.deadline_type == 'DATE' and job.deadline %}{{ job.deadline|date:"Y-m-d" }}{% else %}채용시까지{% endif %}</span></div>
-                    <div class="gn-job-simple-row"><span class="gn-job-dt">담당자</span><span class="gn-job-dd"> : {{ job.writer_display|default:"—" }}</span></div>
-                    <div class="gn-job-simple-row"><span class="gn-job-dt">전화번호</span><span class="gn-job-dd"> : {% if job.contact %}<a href="tel:{{ job.contact }}" class="text-decoration-none">{{ job.contact|format_phone }}</a>{% else %}—{% endif %}</span></div>
-                    {% if job.company_address %}<div class="gn-job-simple-row"><span class="gn-job-dt">주소</span><span class="gn-job-dd"> : {{ job.company_address }}</span></div>{% endif %}
+                    <div class="gn-job-simple-row"><span class="gn-job-dt">회사명</span><span class="gn-job-dd">{{ job.company_name|default:"—" }}</span></div>
+                    <div class="gn-job-simple-row"><span class="gn-job-dt">근무지역</span><span class="gn-job-dd">{% if job.region_sido or job.region_sigungu %}{{ job.region_sido|default:'' }} {{ job.region_sigungu|default:'' }}{% if job.location %} {{ job.location }}{% endif %}{% else %}{{ job.location|default:"—" }}{% endif %}</span></div>
+                    <div class="gn-job-simple-row"><span class="gn-job-dt">급여</span><span class="gn-job-dd gn-job-pay">{% if job.pay %}{{ job.pay }}{% else %}협의후 결정{% endif %}</span></div>
+                    <div class="gn-job-simple-row"><span class="gn-job-dt">모집인원</span><span class="gn-job-dd">{% if job.recruit_count %}{{ job.recruit_count }}명{% else %}—{% endif %}</span></div>
+                    <div class="gn-job-simple-row"><span class="gn-job-dt">마감</span><span class="gn-job-dd">{% if job.deadline_type == 'DATE' and job.deadline %}{{ job.deadline|date:"Y-m-d" }}{% else %}채용시까지{% endif %}</span></div>
+                    <div class="gn-job-simple-row"><span class="gn-job-dt">담당자</span><span class="gn-job-dd">{{ job.writer_display|default:"—" }}</span></div>
+                    <div class="gn-job-simple-row"><span class="gn-job-dt">연락처</span><span class="gn-job-dd">{% if job.contact %}<a href="tel:{{ job.contact }}" class="text-decoration-none">{{ job.contact|format_phone }}</a>{% else %}—{% endif %}</span></div>
+                    {% if job.company_address %}<div class="gn-job-simple-row"><span class="gn-job-dt">주소</span><span class="gn-job-dd">{{ job.company_address }}</span></div>{% endif %}
                 </div>
                 {% else %}
-                <p class="gn-job-simple-heading">일자리구합니다.</p>
                 <div class="gn-job-simple-list">
-                    <div class="gn-job-simple-row"><span class="gn-job-dt">지역</span><span class="gn-job-dd"> : {% if job.region_sido or job.region_sigungu %}{{ job.region_sido|default:'' }} {{ job.region_sigungu|default:'' }}{% if job.location %} {{ job.location }}{% endif %}{% else %}{{ job.location|default:"—" }}{% endif %}</span></div>
-                    <div class="gn-job-simple-row"><span class="gn-job-dt">경력</span><span class="gn-job-dd"> : {{ job.experience|default:"—" }}</span></div>
-                    <div class="gn-job-simple-row"><span class="gn-job-dt">작성자</span><span class="gn-job-dd"> : {{ job.writer_display|default:"—" }}</span></div>
-                    <div class="gn-job-simple-row"><span class="gn-job-dt">연락처</span><span class="gn-job-dd"> : {% if job.contact %}<a href="tel:{{ job.contact }}" class="text-decoration-none">{{ job.contact|format_phone }}</a>{% else %}—{% endif %}</span></div>
-                    <div class="gn-job-simple-row"><span class="gn-job-dt">등록일</span><span class="gn-job-dd"> : {{ job.created_at|date:"Y-m-d" }}</span></div>
+                    <div class="gn-job-simple-row"><span class="gn-job-dt">지역</span><span class="gn-job-dd">{% if job.region_sido or job.region_sigungu %}{{ job.region_sido|default:'' }} {{ job.region_sigungu|default:'' }}{% if job.location %} {{ job.location }}{% endif %}{% else %}{{ job.location|default:"—" }}{% endif %}</span></div>
+                    <div class="gn-job-simple-row"><span class="gn-job-dt">경력</span><span class="gn-job-dd">{{ job.experience|default:"—" }}</span></div>
+                    <div class="gn-job-simple-row"><span class="gn-job-dt">작성자</span><span class="gn-job-dd">{{ job.writer_display|default:"—" }}</span></div>
+                    <div class="gn-job-simple-row"><span class="gn-job-dt">연락처</span><span class="gn-job-dd">{% if job.contact %}<a href="tel:{{ job.contact }}" class="text-decoration-none">{{ job.contact|format_phone }}</a>{% else %}—{% endif %}</span></div>
+                    <div class="gn-job-simple-row"><span class="gn-job-dt">등록일</span><span class="gn-job-dd">{{ job.created_at|date:"Y-m-d" }}</span></div>
                 </div>
                 {% endif %}
             </div>

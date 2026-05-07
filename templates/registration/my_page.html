@@ -63,16 +63,35 @@
             <a href="{% url 'equipment_create' %}" class="btn gn-gold-btn">매물등록 +</a>
         </div>
         {% if my_equipments %}
-        <div class="row g-3">
+        <div class="gn-my-listings-grid">
             {% for e in my_equipments %}
-            <div class="col-12 col-md-6">
-                <div class="gn-listing-card">
-                    <p class="fw-bold mb-1">{% if e.model_name %}{{ e.model_name }}{% else %}모름{% endif %}</p>
-                    <p class="small text-muted mb-2">{{ e.created_at|date:"Y-m-d" }} · {{ e.listing_price|floatformat:0|intcomma }}만원</p>
+            <div class="gn-listing-card">
+                <a href="{% url 'equipment_detail' e.pk %}" class="gn-listing-cover" aria-label="매물 상세 보기">
+                    {% if e.view_count >= 1000 %}
+                    <span class="gn-hot-badge">🔥 인기</span>
+                    {% endif %}
+                    {% with first_image=e.images.first %}
+                        {% if first_image %}
+                        <img src="{{ first_image.image.url }}" alt="대표사진">
+                        {% else %}
+                        <div class="gn-listing-cover-empty">사진 없음</div>
+                        {% endif %}
+                    {% endwith %}
+                    {% if e.wish_count %}
+                    <span class="gn-cover-badge gn-wish-badge"><span class="gn-badge-icon">♥</span> {{ e.wish_count|intcomma }}</span>
+                    {% endif %}
+                    <span class="gn-cover-badge gn-view-badge"><span class="gn-badge-icon">👁</span> {{ e.view_count|intcomma }}</span>
+                </a>
+                <div class="gn-listing-body">
+                    <p class="gn-listing-title mb-1">{% if e.model_name %}{{ e.model_name }}{% else %}모름{% endif %}</p>
+                    <p class="small text-muted mb-1 d-flex justify-content-start align-items-center">
+                      <span>{{ e.created_at|date:"Y-m-d" }}</span>
+                    </p>
+                    <p class="gn-listing-price mb-2">{{ e.listing_price|floatformat:0|intcomma }}만원</p>
                     <div class="d-flex gap-2">
                         <a href="{% url 'equipment_detail' e.pk %}" class="btn btn-sm btn-outline-secondary">보기</a>
-                        <a href="{% url 'equipment_edit' e.pk %}" class="btn btn-sm btn-outline-primary">수정</a>
-                        <a href="{% url 'equipment_delete' e.pk %}?next={{ request.get_full_path|urlencode }}" class="btn btn-sm btn-outline-danger">삭제</a>
+                        <a href="{% url 'equipment_edit' e.pk %}" class="btn btn-sm gn-btn-edit">수정</a>
+                        <a href="{% url 'equipment_delete' e.pk %}?next={{ request.get_full_path|urlencode }}" class="btn btn-sm gn-btn-delete">삭제</a>
                     </div>
                 </div>
             </div>
@@ -90,28 +109,61 @@
         <div class="gn-section-head">
             <h5 class="gn-section-title">찜한 매물</h5>
         </div>
-        {% if fav_equipments or fav_parts %}
-        <div class="row g-3">
+        {% if fav_equipments %}
+        <div class="gn-my-listings-grid">
             {% for e in fav_equipments %}
-            <div class="col-12 col-md-6 col-lg-4">
-                <div class="gn-fav-card">
-                    <p class="fw-bold mb-1">{% if e.model_name %}{{ e.model_name }}{% else %}모름{% endif %}</p>
-                    <p class="small text-muted mb-2">{{ e.listing_price|floatformat:0|intcomma }}만원</p>
-                    <a href="{% url 'equipment_detail' e.pk %}" class="btn btn-sm btn-outline-primary">보기</a>
+            <div class="gn-listing-card gn-fav-listing-card">
+                <a href="{% url 'toggle_equipment_favorite' e.pk %}?next={{ request.get_full_path|urlencode }}"
+                   class="gn-fav-unheart-top"
+                   title="찜 해제"
+                   aria-label="찜 해제">
+                    <i class="bi bi-heart-fill"></i>
+                </a>
+                <a href="{% url 'equipment_detail' e.pk %}" class="gn-listing-cover" aria-label="매물 상세 보기">
+                    {% with first_image=e.images.first %}
+                        {% if first_image %}
+                        <img src="{{ first_image.image.url }}" alt="대표사진">
+                        {% else %}
+                        <div class="gn-listing-cover-empty">사진 없음</div>
+                        {% endif %}
+                    {% endwith %}
+                    {% if e.wish_count %}
+                    <span class="gn-cover-badge gn-wish-badge"><span class="gn-badge-icon">♥</span> {{ e.wish_count|intcomma }}</span>
+                    {% endif %}
+                    <span class="gn-cover-badge gn-view-badge"><span class="gn-badge-icon">👁</span> {{ e.view_count|intcomma }}</span>
+                </a>
+                <div class="gn-listing-body">
+                    <p class="gn-listing-title mb-1">{% if e.model_name %}{{ e.model_name }}{% else %}모름{% endif %}</p>
+                    <p class="small text-muted mb-1 d-flex justify-content-start align-items-center">
+                        <span>{{ e.created_at|date:"Y-m-d" }}</span>
+                    </p>
+                    <p class="gn-listing-price mb-2">{{ e.listing_price|floatformat:0|intcomma }}만원</p>
                 </div>
-            </div>
-            {% endfor %}
-            {% for p in fav_parts %}
-            <div class="col-12 col-md-6 col-lg-4">
-                <div class="gn-fav-card">
-                    <p class="fw-bold mb-1">{{ p.title }}</p>
-                    <p class="small text-muted mb-2">{{ p.price }}</p>
-                    <a href="{% url 'part_detail' p.pk %}" class="btn btn-sm btn-outline-primary">보기</a>
+                <div class="gn-fav-card-actions">
+                    <a href="{% url 'equipment_detail' e.pk %}" class="btn btn-sm btn-outline-secondary">보기</a>
+                    <a href="{% url 'toggle_equipment_favorite' e.pk %}?next={{ request.get_full_path|urlencode }}" class="btn btn-sm gn-btn-unfavorite">찜 해제</a>
                 </div>
             </div>
             {% endfor %}
         </div>
-        {% else %}
+        {% endif %}
+        {% if fav_parts %}
+        <div class="mt-3">
+            <p class="small text-muted mb-2">찜한 부품</p>
+            <div class="row g-3">
+                {% for p in fav_parts %}
+                <div class="col-12 col-md-6 col-lg-4">
+                    <div class="gn-fav-card">
+                        <p class="fw-bold mb-1">{{ p.title }}</p>
+                        <p class="small text-muted mb-2">{{ p.price }}</p>
+                        <a href="{% url 'part_detail' p.pk %}" class="btn btn-sm btn-outline-primary">보기</a>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
+        {% if not fav_equipments and not fav_parts %}
         <p class="text-muted mb-0">찜한 매물이 없습니다. 목록에서 하트를 눌러 저장하세요.</p>
         {% endif %}
     </section>
@@ -176,11 +228,11 @@
     display: flex; align-items: center; justify-content: center;
     flex-shrink: 0;
   }
-  .gn-name { color: #fff; font-size: 1.05rem; font-weight: 700; }
-  .gn-meta { color: rgba(255,255,255,.78); font-size: 0.82rem; }
+  .gn-name { color: #fff; font-size: 22px; font-weight: 600; }
+  .gn-meta { color: rgba(255,255,255,.78); font-size: 14px; }
   .gn-badge-free {
     display: inline-block; border-radius: 999px; padding: 0.14rem 0.55rem;
-    background: #e5e7eb; color: #475569; font-size: 0.74rem; font-weight: 700;
+    background: #e5e7eb; color: #475569; font-size: 13px; font-weight: 700; padding: 3px 10px;
   }
   .gn-upgrade-btn {
     background: #F5A623; color: #1f2937; border-radius: 10px; font-weight: 700; border: none;
@@ -188,9 +240,9 @@
   }
   .gn-upgrade-btn:hover { background: #e3a12d; color: #1f2937; }
   .gn-stats-grid { display: grid; grid-template-columns: repeat(4, minmax(0,1fr)); gap: 0.65rem; }
-  .gn-stat-card { background: #fff; border: 1px solid #e5e7eb; border-radius: 12px; padding: 0.8rem; text-align: center; }
-  .gn-stat-num { color: #F5A623; font-weight: 800; font-size: 1.03rem; margin-bottom: 0.2rem; }
-  .gn-stat-label { color: #6b7280; font-size: 0.78rem; }
+  .gn-stat-card { background: #fff; border: 1px solid #e5e7eb; border-radius: 12px; padding: 1.25rem 0.8rem; text-align: center; }
+  .gn-stat-num { color: #F5A623; font-weight: 600; font-size: 24px; margin-bottom: 0.2rem; }
+  .gn-stat-label { color: #6b7280; font-size: 14px; }
 
   .gn-quick-grid { display: grid; grid-template-columns: repeat(5, minmax(0,1fr)); gap: 0.6rem; }
   .gn-quick-item {
@@ -216,6 +268,165 @@
 
   .gn-listing-card, .gn-fav-card {
     border: 1px solid #e5e7eb; border-radius: 10px; background: #fff; padding: 0.75rem;
+  }
+  .gn-my-listings-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+    gap: 14px;
+  }
+  .gn-my-listings-grid .gn-listing-card {
+    border-radius: 12px;
+    padding: 0;
+    overflow: hidden;
+  }
+  .gn-listing-cover {
+    width: 100%;
+    aspect-ratio: 4 / 3;
+    display: block;
+    background: #f8fafc;
+    border-bottom: 1px solid #e5e7eb;
+    position: relative;
+  }
+  .gn-listing-cover img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+  }
+  .gn-listing-cover-empty {
+    width: 100%;
+    height: 100%;
+    color: #94a3b8;
+    font-size: 0.82rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .gn-hot-badge {
+    position: absolute;
+    top: 8px;
+    left: 8px;
+    z-index: 2;
+    font-size: 11px;
+    font-weight: 800;
+    color: #7c2d12;
+    background: rgba(255, 237, 213, 0.95);
+    border: 1px solid #fdba74;
+    border-radius: 999px;
+    padding: 2px 7px;
+  }
+  .gn-cover-badge {
+    position: absolute;
+    bottom: 6px;
+    z-index: 2;
+    font-size: 11px;
+    font-weight: 700;
+    background: rgba(0, 0, 0, 0.52);
+    border-radius: 20px;
+    padding: 2px 8px;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+  }
+  .gn-wish-badge {
+    left: 6px;
+    color: #ffb3b3;
+  }
+  .gn-view-badge {
+    right: 6px;
+    color: #fff;
+  }
+  .gn-badge-icon {
+    line-height: 1;
+    display: inline-flex;
+    align-items: center;
+  }
+  .gn-listing-body {
+    padding: 10px 10px 12px;
+  }
+  .gn-listing-title {
+    font-size: 16px;
+    font-weight: 500;
+    color: #111827;
+  }
+  .gn-listing-body .small {
+    font-size: 13px !important;
+  }
+  .gn-listing-price {
+    font-size: 18px;
+    font-weight: 600;
+    color: #D4860A;
+  }
+  .gn-listing-body .btn.btn-sm {
+    font-size: 14px;
+    padding: 7px 10px;
+  }
+  .gn-fav-listing-card .gn-listing-cover {
+    border-bottom: 0.5px solid #e5e7eb;
+  }
+  .gn-fav-listing-card {
+    position: relative;
+  }
+  .gn-fav-unheart-top {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    z-index: 3;
+    width: 28px;
+    height: 28px;
+    border-radius: 999px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(255, 255, 255, 0.92);
+    color: #E24B4A;
+    text-decoration: none;
+    border: 1px solid rgba(226, 75, 74, 0.25);
+    line-height: 1;
+  }
+  .gn-fav-unheart-top:hover {
+    color: #c73635;
+    background: #fff;
+  }
+  .gn-fav-card-actions {
+    display: flex;
+    gap: 8px;
+    padding: 10px;
+    border-top: 0.5px solid #e5e7eb;
+  }
+  .gn-fav-card-actions .btn.btn-sm {
+    font-size: 14px;
+    padding: 7px 10px;
+  }
+  .gn-btn-unfavorite {
+    border: 1px solid #E24B4A;
+    background: #FCEBEB;
+    color: #A32D2D;
+  }
+  .gn-btn-unfavorite:hover {
+    border-color: #cf3f3f;
+    background: #f9dfdf;
+    color: #8f2525;
+  }
+  .gn-btn-edit {
+    color: #1d4ed8;
+    border: 1px solid #93c5fd;
+    background: #eff6ff;
+  }
+  .gn-btn-edit:hover {
+    color: #1e40af;
+    border-color: #60a5fa;
+    background: #dbeafe;
+  }
+  .gn-btn-delete {
+    color: #b91c1c;
+    border: 1px solid #fca5a5;
+    background: #fef2f2;
+  }
+  .gn-btn-delete:hover {
+    color: #991b1b;
+    border-color: #f87171;
+    background: #fee2e2;
   }
   .gn-grade-card { border: 1px solid #e5e7eb; border-radius: 12px; background: #f9fafb; padding: 0.85rem; height: 100%; }
   .gn-grade-card-pro { border: 1px solid #F5A623; border-radius: 12px; background: #fffdf5; padding: 0.85rem; height: 100%; }

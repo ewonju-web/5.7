@@ -28,8 +28,24 @@ class EquipmentForm(forms.ModelForm):
             "weight_class": forms.HiddenInput(),
             "mast_type": forms.HiddenInput(),
             "year_manufactured": forms.NumberInput(attrs={"class": "form-control", "min": 1980, "max": 2100, "placeholder": "예) 2000 (모르면 비워도 됨)"}),
-            "month_manufactured": forms.NumberInput(attrs={"class": "form-control", "min": 1, "max": 12, "placeholder": "1~12 (선택)"}),
-            "operating_hours": forms.NumberInput(attrs={"class": "form-control", "min": 0, "placeholder": "가동시간 (선택)"}),
+            "month_manufactured": forms.TextInput(attrs={
+                "class": "form-control",
+                "inputmode": "numeric",
+                "pattern": "[0-9]*",
+                "maxlength": "2",
+                "placeholder": "1~12 (선택)",
+                "autocomplete": "off",
+                "onfocus": "if(!this.dataset.firstClearDone){this.value='';this.dataset.firstClearDone='1';}"
+            }),
+            "operating_hours": forms.TextInput(attrs={
+                "class": "form-control",
+                "inputmode": "numeric",
+                "pattern": "[0-9]*",
+                "maxlength": "8",
+                "placeholder": "가동시간 (선택)",
+                "autocomplete": "off",
+                "onfocus": "if(!this.dataset.firstClearDone){this.value='';this.dataset.firstClearDone='1';}"
+            }),
             "listing_price": forms.NumberInput(attrs={"class": "form-control", "min": 0, "placeholder": "예) 3500 (만원)"}),
             "region_sido": forms.HiddenInput(),
             "region_sigungu": forms.HiddenInput(),
@@ -95,6 +111,17 @@ class EquipmentForm(forms.ModelForm):
     def clean_vehicle_number(self):
         data = (self.cleaned_data.get("vehicle_number") or "").strip()
         return data[:30] if data else ""
+
+    def clean_operating_hours(self):
+        val = self.cleaned_data.get("operating_hours")
+        if val is None or val == "":
+            return 0
+        if not isinstance(val, int):
+            try:
+                val = int(str(val).strip())
+            except (TypeError, ValueError):
+                return 0
+        return max(0, val)
 
     def clean_description(self):
         data = (self.cleaned_data.get("description") or "").strip()

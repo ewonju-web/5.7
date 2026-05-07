@@ -15,7 +15,7 @@
 
     <div class="card border-0 shadow-sm rounded-3 overflow-visible">
         <div class="card-body p-4">
-            <form id="equipment-form" method="post" enctype="multipart/form-data" data-mode="{{ mode }}" data-edit-existing-images="{% if mode == 'edit' and equipment %}{{ equipment.images.count }}{% else %}0{% endif %}">
+            <form id="equipment-form" method="post" enctype="multipart/form-data" autocomplete="off" data-mode="{{ mode }}" data-edit-existing-images="{% if mode == 'edit' and equipment %}{{ equipment.images.count }}{% else %}0{% endif %}">
                 {% csrf_token %}
                 {% if form.errors %}
                 <div class="alert alert-danger small">입력값을 다시 확인해 주세요.</div>
@@ -121,7 +121,7 @@
                                 <option value="EXC_CR_LE_6_5" data-group="crawler">5~6 ton 02급</option>
                                 <option value="EXC_CR_LE_16" data-group="crawler">12~16 ton 06급</option>
                                 <option value="EXC_CR_EQ_20" data-group="crawler">20~22 ton 08급</option>
-                                <option value="EXC_CR_GE_30" data-group="crawler">30~40 ton 10급</option>
+                                <option value="EXC_CR_GE_30" data-group="crawler">30~50 ton 10급 이상</option>
                                 <!-- 어테치먼트 -->
                                 <option value="EXC_ATT_LT_1" data-group="attachment">1톤 미만 (어테치)</option>
                                 <option value="EXC_ATT_LE_2" data-group="attachment">2톤 이하 (어테치)</option>
@@ -133,11 +133,13 @@
                         </div>
                         <div class="col-6 col-md-4" id="exc-month-wrapper">
                             <label class="form-label">제작월</label>
-                            {{ form.month_manufactured }}
+                            <input type="hidden" name="month_manufactured" id="id_month_manufactured" value="{{ form.month_manufactured.value|default:'' }}">
+                            <input type="text" id="id_month_manufactured_ui" class="form-control" inputmode="numeric" pattern="[0-9]*" maxlength="2" placeholder="1~12 (선택)" autocomplete="off" value="{{ form.month_manufactured.value|default:'' }}">
                         </div>
                         <div class="col-6 col-md-4" id="exc-op-hours-wrapper">
                             <label class="form-label">가동시간(hr)</label>
-                            {{ form.operating_hours }}
+                            <input type="hidden" name="operating_hours" id="id_operating_hours" value="{{ form.operating_hours.value|default:'' }}">
+                            <input type="text" id="id_operating_hours_ui" class="form-control" inputmode="numeric" pattern="[0-9]*" maxlength="8" placeholder="가동시간 (선택)" autocomplete="off" value="{{ form.operating_hours.value|default:'' }}">
                         </div>
                     </div>
                     <div id="forklift-fields" class="row g-3 col-12 d-none">
@@ -177,7 +179,7 @@
                         </div>
                         <div class="col-6 col-md-4" id="fk-op-hours-wrapper">
                             <label class="form-label">가동시간(hr)</label>
-                            <input type="number" name="operating_hours" id="id_operating_hours_forklift" class="form-control" min="0" placeholder="가동시간 (선택)" value="{{ form.operating_hours.value|default:'' }}">
+                            <input type="text" name="operating_hours_ui_forklift" id="id_operating_hours_forklift" class="form-control" inputmode="numeric" pattern="[0-9]*" maxlength="8" placeholder="가동시간 (선택)" autocomplete="off" value="{{ form.operating_hours.value|default:'' }}">
                         </div>
                     </div>
                     <!-- 덤프/로더/크레인/어태치먼트/기타: 톤수 (제조사·모델명·년월·지역·가격은 공통) -->
@@ -211,7 +213,7 @@
                     </div>
                     <div class="col-6 col-md-4 d-none" id="simple-month-wrapper">
                         <label class="form-label">제작월</label>
-                        <input type="number" name="month_manufactured" id="id_month_manufactured_simple" class="form-control" min="1" max="12" placeholder="1~12" value="{{ form.month_manufactured.value|default:1 }}">
+                        <input type="text" name="month_manufactured_ui_simple" id="id_month_manufactured_simple" class="form-control" inputmode="numeric" pattern="[0-9]*" maxlength="2" placeholder="1~12" autocomplete="off" value="{{ form.month_manufactured.value|default:'' }}">
                     </div>
                     <div class="col-12">
                         <label class="form-label">차량번호(장비번호) <span class="text-muted small">(선택)</span></label>
@@ -285,6 +287,8 @@
     color: #111827;
     border-color: #94a3b8;
     background: #ffffff;
+    border-width: 1px;
+    transition: background-color .18s ease, border-color .18s ease, color .18s ease, box-shadow .18s ease;
   }
   #equipment-form .form-control::placeholder {
     color: #6b7280;
@@ -295,6 +299,48 @@
     border-color: #2563eb;
     box-shadow: 0 0 0 0.2rem rgba(37, 99, 235, 0.2);
     color: #0f172a;
+  }
+  #equipment-form .form-control.gn-filled,
+  #equipment-form .form-select.gn-filled {
+    background-color: #eff6ff !important;
+    border: 2px solid #3b82f6 !important;
+    color: #1e40af !important;
+  }
+  #equipment-form .form-control.gn-required-filled,
+  #equipment-form .form-select.gn-required-filled {
+    background-color: #f0fdf4 !important;
+    border: 2px solid #16a34a !important;
+    color: #15803d !important;
+  }
+  #equipment-form input[data-filled="1"]:not([type="hidden"]):not([type="file"]):not([type="button"]):not([type="submit"]),
+  #equipment-form textarea[data-filled="1"],
+  #equipment-form select[data-filled="1"] {
+    background-color: #eff6ff !important;
+    border: 2px solid #3b82f6 !important;
+    color: #1e40af !important;
+  }
+  #equipment-form input[data-required-filled="1"]:not([type="hidden"]):not([type="file"]):not([type="button"]):not([type="submit"]),
+  #equipment-form textarea[data-required-filled="1"],
+  #equipment-form select[data-required-filled="1"] {
+    background-color: #f0fdf4 !important;
+    border: 2px solid #16a34a !important;
+    color: #15803d !important;
+  }
+  #equipment-form .form-control.gn-required-filled:focus,
+  #equipment-form .form-select.gn-required-filled:focus {
+    box-shadow: 0 0 0 0.2rem rgba(22, 163, 74, 0.2);
+  }
+  /* JS가 실패해도 placeholder 기반으로 입력 상태 색상을 보이게 한다 */
+  #equipment-form input.form-control:not(:placeholder-shown),
+  #equipment-form textarea.form-control:not(:placeholder-shown) {
+    background-color: #eff6ff !important;
+    border: 2px solid #3b82f6 !important;
+    color: #1e40af !important;
+  }
+  #equipment-form input.form-control[name="listing_price"]:not(:placeholder-shown) {
+    background-color: #f0fdf4 !important;
+    border: 2px solid #16a34a !important;
+    color: #15803d !important;
   }
   #equipment-form .form-text {
     color: #4b5563 !important;
@@ -349,14 +395,20 @@
   }
   /* 모바일 가독성: 비활성도 글씨 선명 (밝은 톤) */
   .gn-equipment-type-btns .gn-equipment-type-btn {
-    background: rgba(15,23,42,0.85);
-    border: 1px solid rgba(148,163,184,.55);
-    color: #e2e8f0;
+    background: #e5e7eb;
+    border: 1px solid #cbd5e1;
+    color: #334155;
   }
   .gn-equipment-type-btns .gn-equipment-type-btn.active {
     background: linear-gradient(135deg, var(--gn-accent) 0%, #ffcc40 100%);
     color: #0f172a;
     border-color: rgba(248,250,252,.95);
+  }
+  .gn-equipment-type-btns.gn-required-filled {
+    border: 2px solid #16a34a;
+    border-radius: 12px;
+    padding: 4px;
+    background: #f0fdf4;
   }
 </style>
 {% endblock %}
@@ -376,6 +428,114 @@
   const mastTypeInput = document.getElementById('id_mast_type');
   const regionSidoInput = document.getElementById('id_region_sido');
   const regionSigunguInput = document.getElementById('id_region_sigungu');
+  const equipmentTypeBtnsWrap = document.querySelector('.gn-equipment-type-btns');
+  const formMode = (form && form.getAttribute('data-mode')) || '';
+  const monthHiddenInput = document.getElementById('id_month_manufactured');
+  const monthUiInput = document.getElementById('id_month_manufactured_ui');
+  const monthSimpleUiInput = document.getElementById('id_month_manufactured_simple');
+  const opHoursHiddenInput = document.getElementById('id_operating_hours');
+  const opHoursUiInput = document.getElementById('id_operating_hours_ui');
+  const opHoursForkliftInput = document.getElementById('id_operating_hours_forklift');
+
+  function isFilledValue(val) {
+    if (val === null || val === undefined) return false;
+    var normalized = String(val).trim();
+    return normalized !== '' && normalized !== '---------';
+  }
+  function isFieldFilled(field) {
+    if (!field || field.disabled) return false;
+    if (field.type === 'checkbox' || field.type === 'radio') return !!field.checked;
+    return isFilledValue(field.value);
+  }
+  function applyFieldStateClass(field) {
+    if (!field || !field.classList || field.type === 'hidden') return;
+    var filled = isFieldFilled(field);
+    var requiredFilled = filled && (
+      field.name === 'listing_price' ||
+      field.id === 'id_listing_price'
+    );
+    field.classList.toggle('gn-filled', filled && !requiredFilled);
+    field.classList.toggle('gn-required-filled', requiredFilled);
+  }
+  function refreshInputVisualState() {
+    if (!form) return;
+    var fields = form.querySelectorAll('.form-control, .form-select');
+    fields.forEach(function(field) {
+      applyFieldStateClass(field);
+    });
+    if (equipmentTypeBtnsWrap && equipmentTypeSelect) {
+      equipmentTypeBtnsWrap.classList.toggle('gn-required-filled', isFilledValue(equipmentTypeSelect.value));
+    }
+  }
+  function normalizeDigits(value, maxLen) {
+    var v = String(value || '').replace(/\D/g, '');
+    if (maxLen && v.length > maxLen) v = v.slice(0, maxLen);
+    return v.replace(/^0+(?=\d)/, '');
+  }
+  function syncUiToHiddenValues() {
+    if (!equipmentTypeSelect) return;
+    var typeVal = (equipmentTypeSelect.value || '').trim();
+    var isOtherType = ['crane', 'loader', 'dump', 'attachment', 'other'].indexOf(typeVal) !== -1;
+    var isForklift = typeVal === 'forklift';
+    if (monthHiddenInput) {
+      var monthSrc = isOtherType ? monthSimpleUiInput : monthUiInput;
+      monthHiddenInput.value = normalizeDigits(monthSrc ? monthSrc.value : '', 2);
+    }
+    if (opHoursHiddenInput) {
+      var opSrc = isForklift ? opHoursForkliftInput : opHoursUiInput;
+      opHoursHiddenInput.value = normalizeDigits(opSrc ? opSrc.value : '', 8);
+    }
+  }
+  function clearCreatePrefillOnEdit(field, prefillValue) {
+    if (!field) return;
+    // 등록 화면에서만 기본값(1, 0)을 입력 시작 전에 비운다.
+    if (formMode !== 'create') return;
+    var initial = (field.value || '').trim();
+    if (initial !== prefillValue) return;
+    field.addEventListener('focus', function() {
+      if ((field.value || '').trim() === prefillValue) {
+        field.value = '';
+        applyFieldStateClass(field);
+      }
+    });
+  }
+  function bindOverwriteOnFirstType(id) {
+    var el = document.getElementById(id);
+    if (!el) return;
+    var baseValue = '';
+    var armed = false;
+
+    el.addEventListener('focus', function() {
+      baseValue = String(el.value || '');
+      armed = baseValue.length > 0;
+      // 첫 키 입력이 기존 값 뒤에 붙지 않도록 전체 선택
+      try { el.select(); } catch (e) {}
+    });
+
+    el.addEventListener('input', function() {
+      if (!armed) return;
+      var now = String(el.value || '');
+      // 기존값에 append 된 패턴이면 append된 부분만 남김
+      if (baseValue && now.indexOf(baseValue) === 0 && now.length > baseValue.length) {
+        el.value = now.slice(baseValue.length);
+      }
+      armed = false;
+    });
+  }
+  function lockUntilFirstFocus(id) {
+    var el = document.getElementById(id);
+    if (!el || formMode !== 'create') return;
+    // 브라우저 자동복원 방지: 첫 포커스 전까지 readonly
+    el.setAttribute('readonly', 'readonly');
+    el.addEventListener('focus', function onFocus() {
+      el.removeAttribute('readonly');
+      if (!el.dataset.firstHardCleared) {
+        el.value = '';
+        el.dataset.firstHardCleared = '1';
+      }
+      el.removeEventListener('focus', onFocus);
+    });
+  }
 
   const makerTextWrapper = document.getElementById('manufacturer-text-wrapper');
   const modelFieldWrapper = document.getElementById('model-field-wrapper');
@@ -421,7 +581,7 @@
       {value: 'EXC_CR_LE_6_5', label: '5~6 ton 02급'},
       {value: 'EXC_CR_LE_16', label: '12~16 ton 06급'},
       {value: 'EXC_CR_EQ_20', label: '20~22 ton 08급'},
-      {value: 'EXC_CR_GE_30', label: '30~40 ton 10급'},
+      {value: 'EXC_CR_GE_30', label: '30~50 ton 10급 이상'},
     ],
     attachment: [
       {value: 'EXC_ATT_LT_1', label: '1톤 미만 (어테치)'},
@@ -446,6 +606,7 @@
       btns.forEach(function(btn) {
         btn.classList.toggle('active', btn.getAttribute('data-value') === val);
       });
+      refreshInputVisualState();
     }
     function nudgeTypeScroller(targetBtn) {
       if (!typeScroller || !targetBtn) return;
@@ -508,9 +669,10 @@
       if (opHoursExc) opHoursExc.disabled = isForklift;
       if (opHoursFk) {
         opHoursFk.disabled = !isForklift;
-        if (isForklift && opHoursExc && opHoursExc.value) opHoursFk.value = opHoursExc.value;
-        if (isExcavator && opHoursFk && opHoursFk.value) opHoursExc.value = opHoursFk.value;
+        if (isForklift && opHoursUiInput && opHoursUiInput.value && !opHoursFk.value) opHoursFk.value = opHoursUiInput.value;
+        if (isExcavator && opHoursFk && opHoursFk.value && opHoursUiInput) opHoursUiInput.value = opHoursFk.value;
       }
+      syncUiToHiddenValues();
 
       // 지게차 등록 폼 배치:
       // 제조사(지게차) → 모델명 순서로 보이도록 재배치
@@ -524,13 +686,17 @@
       }
 
       // 굴삭기 등록 폼 배치:
-      // 가격 입력란을 제작년도 영역으로 올리고,
+      // 가격 입력란을 위쪽으로 올리고,
       // 제작년도 → 제작월 → 가동시간 순서가 유지되도록 필드 위치 재배치
       if (isExcavator && detailFields) {
-        // insertBefore 기준 노드가 다른 부모에 있으면 예외가 나므로,
-        // appendChild로 안전하게 원하는 최종 순서를 강제한다.
-        if (priceFieldWrapper) detailFields.appendChild(priceFieldWrapper);
-        if (yearFieldWrapper) detailFields.appendChild(yearFieldWrapper);
+        // 가격/제작년도는 detail-fields 위쪽(공통 row)으로 올린다.
+        if (priceFieldWrapper && detailFields.parentNode) {
+          detailFields.parentNode.insertBefore(priceFieldWrapper, detailFields);
+        }
+        if (yearFieldWrapper && detailFields.parentNode) {
+          detailFields.parentNode.insertBefore(yearFieldWrapper, detailFields);
+        }
+        // 제작월/가동시간은 detail-fields 내부에서 유지
         if (excMonthWrapper) detailFields.appendChild(excMonthWrapper);
         if (excOpHoursWrapper) detailFields.appendChild(excOpHoursWrapper);
       } else {
@@ -622,6 +788,7 @@
     }
     makerSelect.addEventListener('change', function() {
       manufacturerInput.value = this.value || '';
+      refreshInputVisualState();
     });
   }
 
@@ -635,6 +802,7 @@
     }
     fkMakerSelect.addEventListener('change', function() {
       manufacturerInput.value = this.value || '';
+      refreshInputVisualState();
     });
   }
 
@@ -648,6 +816,7 @@
     }
     dumpMakerSelect.addEventListener('change', function() {
       manufacturerInput.value = this.value || '';
+      refreshInputVisualState();
     });
   }
 
@@ -689,6 +858,7 @@
       subTypeInput.value = this.value || '';
       weightClassInput.value = '';
       applyWeightOptionsBySubType(this.value, '');
+      refreshInputVisualState();
     });
 
     // 페이지 처음 로드될 때도 한 번 필터링
@@ -707,6 +877,7 @@
     }
     excWeightSelect.addEventListener('change', function() {
       weightClassInput.value = this.value || '';
+      refreshInputVisualState();
     });
   }
 
@@ -720,6 +891,7 @@
     }
     fkSubTypeSelect.addEventListener('change', function() {
       subTypeInput.value = this.value || '';
+      refreshInputVisualState();
     });
   }
 
@@ -732,6 +904,7 @@
     }
     fkWeightSelect.addEventListener('change', function() {
       weightClassInput.value = this.value || '';
+      refreshInputVisualState();
     });
   }
 
@@ -744,6 +917,7 @@
     }
     fkMastSelect.addEventListener('change', function() {
       mastTypeInput.value = this.value || '';
+      refreshInputVisualState();
     });
   }
 
@@ -776,16 +950,42 @@
       regionSidoInput.value = this.value || '';
       fillSigungu(this.value, '');
       if (regionSigunguInput) regionSigunguInput.value = '';
+      refreshInputVisualState();
     });
   }
 
   if (sigunguEl && regionSigunguInput) {
     sigunguEl.addEventListener('change', function() {
       regionSigunguInput.value = this.value || '';
+      refreshInputVisualState();
     });
   }
 
+  if (form) {
+    form.addEventListener('input', function(e) {
+      applyFieldStateClass(e.target);
+    });
+    form.addEventListener('change', function(e) {
+      applyFieldStateClass(e.target);
+      refreshInputVisualState();
+    });
+    refreshInputVisualState();
+  }
+
   if (!hiddenInput || !previewContainer) return;
+
+  clearCreatePrefillOnEdit(document.getElementById('id_month_manufactured'), '1');
+  clearCreatePrefillOnEdit(document.getElementById('id_month_manufactured_simple'), '1');
+  clearCreatePrefillOnEdit(document.getElementById('id_operating_hours'), '0');
+  clearCreatePrefillOnEdit(document.getElementById('id_operating_hours_forklift'), '0');
+  bindOverwriteOnFirstType('id_month_manufactured_ui');
+  bindOverwriteOnFirstType('id_month_manufactured_simple');
+  bindOverwriteOnFirstType('id_operating_hours_ui');
+  bindOverwriteOnFirstType('id_operating_hours_forklift');
+  lockUntilFirstFocus('id_month_manufactured_ui');
+  lockUntilFirstFocus('id_month_manufactured_simple');
+  lockUntilFirstFocus('id_operating_hours_ui');
+  lockUntilFirstFocus('id_operating_hours_forklift');
 
   function updateHiddenInput() {
     const dataTransfer = new DataTransfer();
@@ -860,6 +1060,152 @@
       }
     });
   }
+})();
+</script>
+<script>
+(function() {
+  // Fail-safe: 기존 스크립트 오류가 있어도 입력 상태 색상은 반드시 반영
+  var form = document.getElementById('equipment-form');
+  if (!form) return;
+
+  var typeSelect = document.getElementById('id_equipment_type');
+  var typeBtnWrap = document.querySelector('.gn-equipment-type-btns');
+
+  function hasValue(el) {
+    if (!el || el.disabled) return false;
+    var v = (el.value || '').trim();
+    return v !== '' && v !== '---------';
+  }
+
+  function paint(el) {
+    if (!el || !el.classList || el.type === 'hidden') return;
+    var filled = hasValue(el);
+    var requiredFilled = filled && (el.name === 'listing_price' || el.id === 'id_listing_price');
+    el.classList.toggle('gn-filled', filled && !requiredFilled);
+    el.classList.toggle('gn-required-filled', requiredFilled);
+    if (filled) el.setAttribute('data-filled', '1');
+    else el.removeAttribute('data-filled');
+    if (requiredFilled) el.setAttribute('data-required-filled', '1');
+    else el.removeAttribute('data-required-filled');
+    // CSS 충돌 대비: 인라인 스타일로 최종 보장
+    if (requiredFilled) {
+      el.style.backgroundColor = '#F0FDF4';
+      el.style.border = '2px solid #16A34A';
+      el.style.color = '#15803D';
+    } else if (filled) {
+      el.style.backgroundColor = '#EFF6FF';
+      el.style.border = '2px solid #3B82F6';
+      el.style.color = '#1E40AF';
+    } else {
+      el.style.backgroundColor = '#FFFFFF';
+      el.style.border = '';
+      el.style.borderColor = '#94a3b8';
+      el.style.color = '#111827';
+    }
+  }
+
+  function paintAll() {
+    form.querySelectorAll('.form-control, .form-select').forEach(paint);
+    if (typeBtnWrap && typeSelect) {
+      typeBtnWrap.classList.toggle('gn-required-filled', hasValue(typeSelect));
+    }
+  }
+
+  form.addEventListener('input', function(e) {
+    paint(e.target);
+  });
+  form.addEventListener('change', function(e) {
+    paint(e.target);
+    paintAll();
+  });
+  paintAll();
+})();
+</script>
+<script>
+(function() {
+  // Fail-safe: 등록 화면에서 기본값(제작월 1, 가동시간 0) 첫 입력 시 즉시 비움
+  var form = document.getElementById('equipment-form');
+  if (!form) return;
+  var mode = form.getAttribute('data-mode') || '';
+  if (mode !== 'create') return;
+
+  function bindAutoClearOnFirstFocus(id, defaultValue) {
+    var el = document.getElementById(id);
+    if (!el) return;
+    var cleared = false;
+    var initialValue = (el.value || '').trim();
+    var startedWithDefault = (initialValue === defaultValue);
+
+    function clearDefaultIfNeeded() {
+      if (cleared) return;
+      var current = (el.value || '').trim();
+      if (current === defaultValue) {
+        el.value = '';
+        cleared = true;
+      }
+    }
+
+    el.addEventListener('focus', function() {
+      // 브라우저 자동완성/이전 입력 복원(예: 111, 02020)도 첫 포커스에서 통째로 비운다.
+      if (!cleared && initialValue) {
+        el.value = '';
+        cleared = true;
+      } else {
+        clearDefaultIfNeeded();
+      }
+      // 기본값이 남아있을 때 커서를 앞쪽으로 둬 뒤에 붙는 입력 방지
+      try {
+        el.setSelectionRange(0, 0);
+      } catch (e) {}
+    });
+
+    // 일부 모바일/브라우저에서 focus 타이밍을 놓쳐도 키 입력 시작 전에 제거
+    el.addEventListener('keydown', function() {
+      clearDefaultIfNeeded();
+    });
+
+    // 이미 "112", "02020"처럼 붙어버린 경우 첫 입력에서 기본 접두어 제거
+    el.addEventListener('input', function() {
+      if (!startedWithDefault || cleared) return;
+      var value = String(el.value || '');
+      if (value.length > defaultValue.length && value.indexOf(defaultValue) === 0) {
+        el.value = value.slice(defaultValue.length);
+        cleared = true;
+      }
+    });
+  }
+
+  bindAutoClearOnFirstFocus('id_month_manufactured', '1');
+  bindAutoClearOnFirstFocus('id_month_manufactured_simple', '1');
+  bindAutoClearOnFirstFocus('id_operating_hours', '0');
+  bindAutoClearOnFirstFocus('id_operating_hours_forklift', '0');
+
+  function bindNumericSanitizer(id, maxLen) {
+    var el = document.getElementById(id);
+    if (!el) return;
+    el.addEventListener('input', function() {
+      var v = String(el.value || '').replace(/\D/g, '');
+      if (maxLen && v.length > maxLen) v = v.slice(0, maxLen);
+      // 02020 같은 자동복원 흔적 방지: 선행 0 제거(단일 0은 허용)
+      v = v.replace(/^0+(?=\d)/, '');
+      el.value = v;
+    });
+  }
+  bindNumericSanitizer('id_month_manufactured_ui', 2);
+  bindNumericSanitizer('id_month_manufactured_simple', 2);
+  bindNumericSanitizer('id_operating_hours_ui', 8);
+  bindNumericSanitizer('id_operating_hours_forklift', 8);
+  [monthUiInput, monthSimpleUiInput, opHoursUiInput, opHoursForkliftInput].forEach(function(el) {
+    if (!el) return;
+    el.addEventListener('input', syncUiToHiddenValues);
+    el.addEventListener('change', syncUiToHiddenValues);
+  });
+  if (form) {
+    form.addEventListener('submit', function() {
+      syncUiToHiddenValues();
+    });
+  }
+  syncUiToHiddenValues();
 })();
 </script>
 {% endblock %}

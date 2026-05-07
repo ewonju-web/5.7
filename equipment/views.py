@@ -796,8 +796,19 @@ def my_page(request):
         messages.success(request, '소개글이 저장되었습니다.')
         return redirect('my_page')
 
-    my_equipments = Equipment.objects.filter(author=request.user).order_by('-created_at')
-    fav_equipments = Equipment.objects.filter(favorited_by__user=request.user).order_by('-favorited_by__created_at')
+    my_equipments = (
+        Equipment.objects
+        .filter(author=request.user)
+        .annotate(wish_count=Count('favorited_by', distinct=True))
+        .order_by('-created_at')
+    )
+    fav_equipments = (
+        Equipment.objects
+        .filter(favorited_by__user=request.user)
+        .annotate(wish_count=Count('favorited_by', distinct=True))
+        .prefetch_related('images')
+        .order_by('-favorited_by__created_at')
+    )
     fav_parts = Part.objects.filter(favorited_by__user=request.user).order_by('-favorited_by__created_at')
     total_views = my_equipments.aggregate(total=Coalesce(Sum('view_count'), 0))['total'] or 0
     premium_region_inquiry_alerts = []
@@ -1229,6 +1240,30 @@ def job_list(request):
     if eq_q is not None:
         qs = qs.filter(eq_q)
 
+    # 급여 컬럼 표시 여부(한 건이라도 급여 입력이 있으면 표시)
+    show_pay_column = qs.exclude(pay__isnull=True).exclude(pay='').exists()
+
+    # 목록용 표시 데이터 정리: 지역 중복 제거 + 한 줄 표기
+    jobs = list(qs)
+    for job in jobs:
+        sido = (job.region_sido or '').strip()
+        sigungu = (job.region_sigungu or '').strip()
+        location = (job.location or '').strip()
+
+        if sido and sigungu:
+            region_line = f"{sido} · {sigungu}"
+        elif sido:
+            region_line = sido
+        elif sigungu:
+            region_line = sigungu
+        else:
+            region_line = location
+
+        if location and region_line and location not in (sido, sigungu, f"{sido} {sigungu}".strip()):
+            region_line = f"{region_line} · {location}" if (sido or sigungu) else location
+
+        job.region_line = region_line or '—'
+
     from django.utils import timezone as dj_tz
 
     today = dj_tz.now().date()
@@ -1240,8 +1275,8 @@ def job_list(request):
     }
 
     return render(request, 'equipment/job_list.html', {
-        'job_list': qs,
-        'jobs': qs,
+        'job_list': jobs,
+        'jobs': jobs,
         'filter_type': job_type,
         'filter_region_sido': region_sido,
         'filter_region_sigungu': region_sigungu,
@@ -1250,6 +1285,7 @@ def job_list(request):
         'sido_choices': SIDO_CHOICES,
         'sigungu_map_json': json.dumps(SIGUNGU_MAP, ensure_ascii=False),
         'job_stats': job_stats,
+        'show_pay_column': show_pay_column,
     })
 
 
@@ -2202,13 +2238,20 @@ def equipment_create(request):
                     })
                 # 해시 계산으로 읽은 첫 이미지 포인터 초기화 (저장 시 사용)
                 image_files[0].seek(0)
-                obj = form.save(commit=False)
-                obj.author = request.user
-                obj.current_location = _build_location_text(obj.region_sido, obj.region_sigungu)
-                obj.save()
-                for f in image_files:
-                    EquipmentImage.objects.create(equipment=obj, image=f)
-                return redirect('equipment_detail', obj.pk)
+                try:
+                    obj = form.save(commit=False)
+                    obj.author = request.user
+                    if obj.operating_hours is None:
+                        obj.operating_hours = 0
+                    obj.current_location = _build_location_text(obj.region_sido, obj.region_sigungu)
+                    obj.save()
+                    for f in image_files:
+                        EquipmentImage.objects.create(equipment=obj, image=f)
+                    return redirect('equipment_detail', obj.pk)
+                except Exception:
+                    import traceback
+                    traceback.print_exc()
+                    form.add_error(None, ValidationError('등록 처리 중 오류가 발생했습니다. 사진 용량/형식을 확인한 뒤 다시 시도해 주세요.'))
     else:
         form = EquipmentForm(initial={'equipment_type': 'excavator'})
 
@@ -2250,12 +2293,19 @@ def equipment_edit(request, pk):
             if not has_existing and (not image_files or len(image_files) < 1):
                 form.add_error(None, ValidationError('허위 매물 방지를 위해 사진을 최소 1장 이상 등록해주세요.'))
             else:
-                obj = form.save(commit=False)
-                obj.current_location = _build_location_text(obj.region_sido, obj.region_sigungu)
-                obj.save()
-                for f in image_files:
-                    EquipmentImage.objects.create(equipment=obj, image=f)
-                return redirect('equipment_detail', obj.pk)
+                try:
+                    obj = form.save(commit=False)
+                    if obj.operating_hours is None:
+                        obj.operating_hours = 0
+                    obj.current_location = _build_location_text(obj.region_sido, obj.region_sigungu)
+                    obj.save()
+                    for f in image_files:
+                        EquipmentImage.objects.create(equipment=obj, image=f)
+                    return redirect('equipment_detail', obj.pk)
+                except Exception:
+                    import traceback
+                    traceback.print_exc()
+                    form.add_error(None, ValidationError('수정 저장 중 오류가 발생했습니다. 사진 용량/형식을 확인한 뒤 다시 시도해 주세요.'))
     else:
         form = EquipmentEditForm(instance=obj)
 
