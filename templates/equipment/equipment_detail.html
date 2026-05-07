@@ -78,7 +78,6 @@
           <div class="gn-price-label small text-muted mb-0">판매금액</div>
           <div class="gn-price-value">{{ equipment.listing_price|floatformat:0|intcomma }} 만원</div>
         </div>
-        <h6 class="gn-section-heading mb-2 small">기본 정보</h6>
         <table class="table table-sm table-borderless mb-0 align-middle gn-spec-table small">
           <tbody>
             {% if equipment.equipment_type != 'excavator' %}
@@ -125,9 +124,9 @@
         <h6 class="small text-muted text-uppercase mb-2">문의하기</h6>
         <div class="d-grid gap-2">
           {% if author_phone %}
-          <a href="tel:{{ author_phone|format_phone|cut:'-'|cut:' ' }}"
-             style="display:flex; align-items:center; justify-content:center; gap:8px; background:#F5A623; color:#fff; font-size:16px; font-weight:600; padding:14px; border-radius:10px; text-decoration:none;">
-            📞 {{ author_phone|format_phone }} 전화 걸기
+          <a href="tel:{{ author_phone|format_phone|cut:'-'|cut:' ' }}" class="gn-call-btn-unified">
+            <div class="gn-call-btn-phone">{{ author_phone|format_phone }}</div>
+            <div class="gn-call-btn-label">📞 전화 걸기</div>
           </a>
           {% else %}
           <button class="btn gn-btn-secondary py-2 fw-bold" disabled><i class="bi bi-telephone-fill me-2"></i> 연락처 없음</button>
@@ -729,6 +728,62 @@
     font-size: 1.08rem;
     font-weight: 800;
     color: #111827 !important;
+  }
+  .gn-call-btn-unified {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    background: #F5A623;
+    color: #fff !important;
+    font-size: 16px;
+    font-weight: 600;
+    padding: 14px;
+    border-radius: 10px;
+    text-decoration: none;
+  }
+  .gn-call-btn-phone,
+  .gn-call-btn-label {
+    display: inline;
+    margin: 0;
+    line-height: 1.2;
+  }
+  @media (max-width: 767px) {
+    .gn-detail-right > .card.gn-card-light.mb-3.p-3.d-lg-none {
+      display: none !important;
+    }
+  }
+  @media (min-width: 768px) {
+    .gn-spec-table .spec-label {
+      font-size: 13px;
+      color: #888888 !important;
+      font-weight: 400;
+    }
+    .gn-spec-table .spec-value,
+    .gn-spec-table .spec-value.spec-value-model {
+      font-size: 16px;
+      color: #1A1A1A !important;
+      font-weight: 500;
+    }
+    .gn-call-btn-unified {
+      display: block;
+      text-align: center;
+      padding: 12px;
+      border-radius: 10px;
+      background: #F5A623;
+      color: #fff !important;
+    }
+    .gn-call-btn-phone {
+      display: block;
+      font-size: 16px;
+      font-weight: 700;
+    }
+    .gn-call-btn-label {
+      display: block;
+      font-size: 13px;
+      font-weight: 400;
+      margin-top: 2px;
+    }
   }
   .gn-detail-desc {
     font-size: 0.95rem;

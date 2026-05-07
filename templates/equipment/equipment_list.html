@@ -4,12 +4,13 @@
 {% block content %}
 <div class="container gn-index-container py-2 py-md-4">
     <div class="gn-index-content-grid">
+    <div class="product-area">
     <!-- PC: 검색바 맨 위 → 그 아래 카테고리(모바일과 동일) -->
     <div class="d-none d-md-block">
         <div class="row justify-content-center gn-pc-search-row">
             <div class="col-lg-9 col-xl-8">
                 <!-- 카테고리 링크는 폼 밖에 두어 클릭 시 항상 해당 기종만 조회되도록 함 -->
-                <div class="d-flex flex-nowrap overflow-x-auto mb-3 gn-index-category-pc" style="min-width:0;-webkit-overflow-scrolling:touch;">
+                <div class="d-flex flex-nowrap overflow-x-auto mb-3 gn-index-category-pc category-scroll-container" style="min-width:0;-webkit-overflow-scrolling:touch;">
                     <a href="{% url 'index' %}?category=" class="gn-cat-pill gn-cat-pill-pc {% if not filter_category %}active{% endif %}">
                         <i class="bi bi-layers-fill"></i><span>전체</span>
                     </a>
@@ -331,7 +332,7 @@
 
     <!-- 모바일: 카테고리 + 상세검색 + 매물 그리드 -->
     <div class="gn-index-mobile d-md-none">
-        <div class="gn-category-scroll gn-index-category mb-2 d-flex flex-nowrap overflow-x-auto" style="gap:0.5rem;min-width:0;-webkit-overflow-scrolling:touch;">
+        <div class="gn-category-scroll gn-index-category category-scroll-container mb-2 d-flex flex-nowrap overflow-x-auto" style="gap:0.5rem;min-width:0;-webkit-overflow-scrolling:touch;">
             <a href="{% url 'index' %}?category=" class="gn-cat-pill {% if not filter_category %}active{% endif %}">
                 <i class="bi bi-layers-fill"></i><span>전체</span>
             </a>
@@ -778,17 +779,10 @@
     </div>
 
     {% if not hide_advanced_filters %}
-    <div id="gn-recommend-block" class="d-none d-md-flex justify-content-center mb-2">
-        <div class="d-flex align-items-center justify-content-between w-100">
-            <div class="d-flex align-items-center gap-2">
-                <span class="gn-total-count-marker" aria-hidden="true"></span>
-                <span class="small fw-semibold text-muted">
-                    {{ total_count_label }} <span class="gn-total-count-num">{{ total_count|intcomma }}</span>건
-                </span>
-            </div>
-            <h2 class="mb-0 gn-recommend-title-inline">추천 매물</h2>
-            <span class="gn-recommend-right-spacer" aria-hidden="true"></span>
-        </div>
+    <div id="gn-recommend-block" class="d-none d-md-flex align-items-baseline gap-2 mb-3">
+        <span style="font-size:13px; color:#888;">{{ total_count_label }}</span>
+        <span style="font-size:18px; font-weight:600; color:#F5A623;">{{ total_count|intcomma }}건</span>
+        <span style="font-size:18px; font-weight:600; color:#1A1A1A;">추천 매물</span>
     </div>
     {% endif %}
 
@@ -948,6 +942,7 @@
         {% endif %}
     </div>
 
+    </div>
     <div class="d-none d-xl-block gn-premium-side-wrap{% if filter_category == 'excavator' %} gn-premium-side--detail-rail-font{% endif %}">
       <aside class="gn-premium-side gn-premium-side-right" aria-label="우측 광고">
         <div class="card gn-premium-card-shell border-0 shadow-sm overflow-hidden">
@@ -1008,6 +1003,27 @@
     }
   }
   .gn-pc-search-form { max-width: 100%; }
+  @media (min-width: 768px) {
+    .category-scroll-container::-webkit-scrollbar {
+      height: 6px;
+    }
+    .category-scroll-container::-webkit-scrollbar-track {
+      background: #F1F1F1;
+      border-radius: 10px;
+    }
+    .category-scroll-container::-webkit-scrollbar-thumb {
+      background: #F5A623;
+      border-radius: 10px;
+    }
+    .category-scroll-container::-webkit-scrollbar-thumb:hover {
+      background: #D4860A;
+    }
+  }
+  @media (max-width: 767px) {
+    .category-scroll-container::-webkit-scrollbar {
+      display: none;
+    }
+  }
   .gn-pc-search-bar {
     display: flex;
     align-items: stretch;
@@ -1103,12 +1119,22 @@
   .gn-index-content-grid {
     display: block;
   }
+  .product-area {
+    min-width: 0;
+  }
+  .gn-premium-side-wrap {
+    align-self: flex-start;
+  }
   @media (min-width: 1200px) {
     .gn-index-content-grid {
       display: grid;
       grid-template-columns: 1fr 200px;
       gap: 12px;
       align-items: start;
+    }
+    /* 우측 광고 시작점을 "전체 n건 + 추천 매물" 블록/카드 시작선에 맞춤 */
+    .gn-premium-side-wrap {
+      margin-top: 48px;
     }
   }
   /* 우측 광고 1열 */
