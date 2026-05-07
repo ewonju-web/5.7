@@ -16,8 +16,8 @@ class Command(BaseCommand):
         parser.add_argument(
             '--domain',
             type=str,
-            default=getattr(settings, 'SITE_DOMAIN', 's2022.co.kr'),
-            help='사이트 도메인 (예: s2022.co.kr)',
+            default=getattr(settings, 'SITE_DOMAIN', '211.110.140.201'),
+            help='사이트 도메인 (예: 211.110.140.201)',
         )
         parser.add_argument(
             '--name',

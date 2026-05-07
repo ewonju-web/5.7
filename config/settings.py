@@ -1,6 +1,7 @@
 from pathlib import Path
 import os
 from dotenv import load_dotenv
+from django.core.exceptions import ImproperlyConfigured
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 load_dotenv(BASE_DIR / ".env")
@@ -10,7 +11,7 @@ SECRET_KEY = os.getenv("SECRET_KEY")
 # 운영 서버에서는 DJANGO_DEBUG=false를 명시하세요.
 # 로컬 개발 편의를 위해 환경변수가 없으면 DEBUG=True로 동작합니다.
 DEBUG = os.getenv("DJANGO_DEBUG", "true").lower() in ("1", "true", "yes")
-ALLOWED_HOSTS = ['211.110.140.201', 's2022.co.kr', 'www.s2022.co.kr', '127.0.0.1', 'localhost']
+ALLOWED_HOSTS = ['211.110.140.201', '127.0.0.1', 'localhost']
 if DEBUG:
     ALLOWED_HOSTS = ["*"]
 
@@ -148,7 +149,7 @@ DATABASES = {
 # django-allauth: 소셜 로그인 = 로그인 편의, 휴대폰 인증 = 거래/결제 신뢰 (별도 필수)
 SITE_ID = 1
 # 운영 도메인 (소셜 로그인 콜백·관리자 "사이트 보기" 등). .env 에 SITE_DOMAIN 으로 덮어쓰기
-SITE_DOMAIN = os.getenv('SITE_DOMAIN', 's2022.co.kr')
+SITE_DOMAIN = os.getenv('SITE_DOMAIN', '211.110.140.201')
 SITE_NAME = os.getenv('SITE_NAME', '굴삭기나라')
 AUTHENTICATION_BACKENDS = [
     'django.contrib.auth.backends.ModelBackend',
@@ -225,7 +226,6 @@ USE_X_FORWARDED_HOST = True
 SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
 # IP 직접·클론(8001)·nginx SSL 종료 시 Origin/Referer가 http 또는 https로 달라질 수 있으므로 둘 다 등록
 CSRF_TRUSTED_ORIGINS = [
-    'http://www.s2022.co.kr', 'https://www.s2022.co.kr', 'https://s2022.co.kr', 'http://s2022.co.kr',
     'http://211.110.140.201', 'https://211.110.140.201',
     'http://211.110.140.201:8001', 'https://211.110.140.201:8001',
 ]
@@ -235,6 +235,23 @@ if _csrf_extra:
         _p = _part.strip()
         if _p and _p not in CSRF_TRUSTED_ORIGINS:
             CSRF_TRUSTED_ORIGINS.append(_p)
+
+# 재발 방지: 폐기한 레거시 도메인이 설정에 다시 들어오면 즉시 실패시킨다.
+FORBIDDEN_DOMAINS = {"s2022.co.kr", "www.s2022.co.kr"}
+_domain_candidates = {SITE_DOMAIN, *ALLOWED_HOSTS}
+for _origin in CSRF_TRUSTED_ORIGINS:
+    _origin = (_origin or "").strip()
+    if "://" in _origin:
+        _origin = _origin.split("://", 1)[1]
+    _origin = _origin.split("/", 1)[0].split(":", 1)[0]
+    if _origin:
+        _domain_candidates.add(_origin)
+_blocked = sorted(d for d in _domain_candidates if d in FORBIDDEN_DOMAINS)
+if _blocked:
+    raise ImproperlyConfigured(
+        f"Forbidden legacy domain configured: {', '.join(_blocked)}. "
+        "Use 211.110.140.201 (or explicitly approved new domain) only."
+    )
 LANGUAGE_CODE = 'ko-kr'
 USE_I18N = True
 

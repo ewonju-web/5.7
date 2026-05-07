@@ -43,7 +43,7 @@ def _admin_view_site(request):
         domains.add(host)
         domains.add(f".{host}")
     # 운영에서 실제 사용 중인 호스트들까지 함께 만료해 쿠키 잔존 이슈를 줄인다.
-    domains.update({"211.110.140.201", "s2022.co.kr", ".s2022.co.kr", "www.s2022.co.kr", ".www.s2022.co.kr"})
+    domains.update({"211.110.140.201"})
 
     for domain in domains:
         for path in paths:
