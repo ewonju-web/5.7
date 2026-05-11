@@ -186,7 +186,7 @@
                     <div id="simple-type-fields" class="row g-3 col-12 d-none align-items-end">
                         <div class="col-6 col-md-4" id="dump-weight-wrapper">
                             <label class="form-label fw-bold">톤수 (덤프트럭) <span class="text-muted small">(선택)</span></label>
-                            <select name="weight_class" id="id_weight_class_dump" class="form-select">
+                            <select name="weight_class" id="id_weight_class_dump" class="form-select" disabled>
                                 <option value="">선택</option>
                                 <option value="DUMP_LE_3_5">3.5톤 이하</option>
                                 <option value="DUMP_LE_5">5톤 이하</option>
@@ -197,7 +197,7 @@
                         </div>
                         <div class="col-6 col-md-4 d-none" id="other-weight-wrapper">
                             <label class="form-label fw-bold">톤수/중량 <span class="text-muted small">(선택)</span></label>
-                            <input type="text" name="weight_class" id="id_weight_class_simple" class="form-control" placeholder="예) 5톤, 25CBM" maxlength="30" value="{{ form.initial.weight_class|default:form.weight_class.value|default:'' }}">
+                            <input type="text" name="weight_class" id="id_weight_class_simple" class="form-control" placeholder="예) 5톤, 25CBM" maxlength="30" value="{{ form.initial.weight_class|default:form.weight_class.value|default:'' }}" disabled>
                         </div>
                     </div>
                     {# 덤프·로더 등: 톤수 다음 → 가격 → 제작년도·제작월(한 줄) #}
@@ -248,6 +248,32 @@
                     <div class="col-12">
                         <label class="form-label fw-bold">사진 (1장 이상 필수)</label>
                         <p class="form-text small mb-1 gn-form-notice-strong">허위 매물 방지를 위해 실제 장비 사진을 1장 이상 등록해주세요.</p>
+                        {% if mode == 'edit' and equipment %}
+                        <div class="mb-3 p-2 rounded border bg-light">
+                            <p class="form-text small fw-bold text-secondary mb-2">등록된 사진</p>
+                            {% if equipment.images.count %}
+                            <div class="d-flex flex-wrap gap-2">
+                                {% for ei in equipment.images.all %}
+                                <div class="flex-shrink-0 gn-edit-photo-item" style="width:100px;">
+                                    <button type="button" class="gn-edit-photo-thumb-link gn-edit-photo-zoom-trigger d-block border rounded-top overflow-hidden shadow-sm w-100 p-0 m-0 bg-transparent" style="line-height:0;" data-full-src="{{ ei.image.url }}" title="크게 보기" aria-label="등록 사진 크게 보기">
+                                        <img src="{{ ei.image.url }}" alt="" width="100" height="100" loading="lazy" decoding="async" style="width:100px;height:100px;object-fit:cover;display:block;">
+                                    </button>
+                                    <label class="gn-photo-delete-row d-flex align-items-center justify-content-center mb-0 rounded-bottom small position-relative">
+                                        <input type="checkbox" name="delete_image_ids" value="{{ ei.pk }}" class="gn-delete-photo-check" title="삭제 선택" autocomplete="off">
+                                        <span class="gn-photo-delete-row-inner d-flex align-items-center justify-content-center gap-1 py-1 px-1 w-100">
+                                            <i class="bi bi-check-lg gn-delete-photo-bi" aria-hidden="true"></i>
+                                            <span>삭제</span>
+                                        </span>
+                                    </label>
+                                </div>
+                                {% endfor %}
+                            </div>
+                            <p class="form-text small text-muted mb-0 mt-2">삭제할 사진에 체크한 뒤 저장하면 해당 사진만 제거됩니다. 사진을 바꾸려면 기존 사진을 삭제 체크한 다음 아래에서 새 사진을 추가하면 됩니다. 추가만 할 경우 기존 사진 뒤에 이어서 저장됩니다.</p>
+                            {% else %}
+                            <p class="form-text small text-muted mb-0">등록된 사진이 없습니다. 아래에서 사진을 추가해 주세요.</p>
+                            {% endif %}
+                        </div>
+                        {% endif %}
                         <div class="photo-upload d-flex flex-wrap gap-2 align-items-center">
                             <label for="photo_gallery" class="btn btn-outline-secondary mb-0" style="border-radius: 10px;">
                                 <i class="bi bi-images me-1"></i> 갤러리에서 선택
@@ -272,6 +298,21 @@
                     <a href="{% url 'index' %}" class="btn btn-outline-secondary px-4" style="border-radius: 10px;">취소</a>
                 </div>
             </form>
+            {% if mode == 'edit' and equipment and equipment.images.count %}
+            <div class="modal fade" id="gnExistingPhotoModal" tabindex="-1" aria-labelledby="gnExistingPhotoModalLabel" aria-hidden="true">
+                <div class="modal-dialog modal-dialog-centered modal-lg modal-dialog-scrollable">
+                    <div class="modal-content">
+                        <div class="modal-header py-2">
+                            <h5 class="modal-title fs-6" id="gnExistingPhotoModalLabel">사진 보기</h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="닫기"></button>
+                        </div>
+                        <div class="modal-body text-center p-2 bg-body-secondary">
+                            <img id="gnExistingPhotoModalImg" src="" alt="등록 사진" class="img-fluid rounded" style="max-height:min(85vh, 900px);width:auto;object-fit:contain;">
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
         </div>
     </div>
 </div>
@@ -312,14 +353,14 @@
     border: 2px solid #16a34a !important;
     color: #15803d !important;
   }
-  #equipment-form input[data-filled="1"]:not([type="hidden"]):not([type="file"]):not([type="button"]):not([type="submit"]),
+  #equipment-form input[data-filled="1"]:not([type="hidden"]):not([type="file"]):not([type="button"]):not([type="submit"]):not(.gn-delete-photo-check),
   #equipment-form textarea[data-filled="1"],
   #equipment-form select[data-filled="1"] {
     background-color: #eff6ff !important;
     border: 2px solid #3b82f6 !important;
     color: #1e40af !important;
   }
-  #equipment-form input[data-required-filled="1"]:not([type="hidden"]):not([type="file"]):not([type="button"]):not([type="submit"]),
+  #equipment-form input[data-required-filled="1"]:not([type="hidden"]):not([type="file"]):not([type="button"]):not([type="submit"]):not(.gn-delete-photo-check),
   #equipment-form textarea[data-required-filled="1"],
   #equipment-form select[data-required-filled="1"] {
     background-color: #f0fdf4 !important;
@@ -349,6 +390,62 @@
     color: #334155 !important;
     font-weight: 700 !important;
     letter-spacing: -0.01em;
+  }
+  /* 매물 수정: 삭제 — 딥 블루 톤(라벨=버튼, 네이티브 체크는 스크린리더용만 표시) */
+  .gn-edit-photo-item .gn-photo-delete-row {
+    cursor: pointer;
+    margin: 0;
+    background: transparent !important;
+    color: #6c757d !important;
+    border: 1px solid #dee2e6 !important;
+    font-size: 12px;
+    font-weight: 600;
+    user-select: none;
+    transition: background-color 0.15s ease, color 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
+  }
+  .gn-edit-photo-item .gn-photo-delete-row:hover {
+    background: rgba(53, 132, 228, 0.06) !important;
+  }
+  .gn-edit-photo-item .gn-photo-delete-row:has(.gn-delete-photo-check:checked) {
+    background: #EAF2FF !important;
+    color: #1a5fb4 !important;
+    border: 1.5px solid #3584e4 !important;
+  }
+  .gn-edit-photo-item .gn-photo-delete-row:has(.gn-delete-photo-check:checked) .gn-delete-photo-bi {
+    color: #1a5fb4 !important;
+    opacity: 1 !important;
+  }
+  .gn-edit-photo-item .gn-delete-photo-bi {
+    font-size: 0.95rem;
+    line-height: 1;
+    opacity: 0.42;
+    color: inherit;
+  }
+  .gn-edit-photo-item:has(.gn-delete-photo-check:checked) .gn-edit-photo-thumb-link {
+    outline: 3px solid #3584e4;
+    outline-offset: 0;
+  }
+  .gn-edit-photo-item button.gn-edit-photo-thumb-link {
+    cursor: zoom-in;
+    appearance: none;
+    -webkit-appearance: none;
+  }
+  .gn-edit-photo-item .gn-photo-delete-row:focus-within {
+    box-shadow: 0 0 0 2px rgba(53, 132, 228, 0.35);
+  }
+  #equipment-form input[type="checkbox"].gn-delete-photo-check {
+    position: absolute !important;
+    width: 1px !important;
+    height: 1px !important;
+    padding: 0 !important;
+    margin: -1px !important;
+    overflow: hidden !important;
+    clip: rect(0, 0, 0, 0) !important;
+    white-space: nowrap !important;
+    border: 0 !important;
+    appearance: none !important;
+    -webkit-appearance: none !important;
+    opacity: 0 !important;
   }
   #equipment-form .text-muted.small {
     color: #4b5563 !important;
@@ -660,7 +757,9 @@
       if (weightExc) weightExc.disabled = isOtherType;
       if (dumpWeightWrapper) dumpWeightWrapper.classList.toggle('d-none', !isDump);
       if (otherWeightWrapper) otherWeightWrapper.classList.toggle('d-none', isDump);
-      if (weightSimple) weightSimple.disabled = isDump;
+      // 굴삭기·지게차는 장비중량이 숨은 필드(#id_weight_class)만 제출해야 함.
+      // 같은 name="weight_class"인 simple 입력이 활성화되면 POST에서 마지막 값이 채택되어 빈 값으로 덮어쓴다.
+      if (weightSimple) weightSimple.disabled = isDump || !isOtherType;
       if (weightDump) {
         weightDump.disabled = !isDump;
         if (isDump && weightExc && weightExc.value) weightDump.value = weightExc.value;
@@ -1047,15 +1146,20 @@
     });
   }
 
-  // ----- 사진 최소 1장 필수 (허위 매물 방지) -----
+  // ----- 사진 최소 1장 필수 (허위 매물 방지): 등록·수정·삭제 체크 반영 -----
   if (form) {
     form.addEventListener('submit', function(e) {
       var mode = form.getAttribute('data-mode') || '';
       var existingCount = parseInt(form.getAttribute('data-edit-existing-images') || '0', 10);
-      var needImages = (mode === 'create') || (mode === 'edit' && existingCount === 0);
-      if (needImages && selectedFiles.length < 1) {
+      var toDelete = 0;
+      form.querySelectorAll('input[name="delete_image_ids"]:checked').forEach(function() {
+        toDelete += 1;
+      });
+      var remainingExisting = Math.max(0, existingCount - toDelete);
+      var newCount = selectedFiles.length;
+      if (remainingExisting + newCount < 1) {
         e.preventDefault();
-        alert('허위 매물 방지를 위해 사진을 최소 1장 이상 업로드해주세요.');
+        alert('허위 매물 방지를 위해 사진을 최소 1장 이상 남기거나, 삭제한 만큼 새 사진을 추가해 주세요.');
         return false;
       }
     });
@@ -1073,12 +1177,15 @@
 
   function hasValue(el) {
     if (!el || el.disabled) return false;
+    if (el.type === 'checkbox' || el.type === 'radio') return !!el.checked;
     var v = (el.value || '').trim();
     return v !== '' && v !== '---------';
   }
 
   function paint(el) {
     if (!el || !el.classList || el.type === 'hidden') return;
+    /* 삭제 사진 체크: value(pk)가 있어 항상 "입력됨"으로 오인되며 파란 테두리 인라인이 덮어씀 → 전용 CSS만 사용 */
+    if (el.classList.contains('gn-delete-photo-check')) return;
     var filled = hasValue(el);
     var requiredFilled = filled && (el.name === 'listing_price' || el.id === 'id_listing_price');
     el.classList.toggle('gn-filled', filled && !requiredFilled);
@@ -1206,6 +1313,26 @@
     });
   }
   syncUiToHiddenValues();
+})();
+</script>
+<script>
+(function() {
+  var modalEl = document.getElementById('gnExistingPhotoModal');
+  var modalImg = document.getElementById('gnExistingPhotoModalImg');
+  if (!modalEl || !modalImg || typeof bootstrap === 'undefined' || !bootstrap.Modal) return;
+  var modal = bootstrap.Modal.getOrCreateInstance(modalEl);
+  document.querySelectorAll('.gn-edit-photo-zoom-trigger').forEach(function(btn) {
+    btn.addEventListener('click', function() {
+      var src = this.getAttribute('data-full-src');
+      if (!src) return;
+      modalImg.src = src;
+      modalImg.alt = '등록 사진';
+      modal.show();
+    });
+  });
+  modalEl.addEventListener('hidden.bs.modal', function() {
+    modalImg.removeAttribute('src');
+  });
 })();
 </script>
 {% endblock %}

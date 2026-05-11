@@ -10,7 +10,7 @@
         <div class="row justify-content-center gn-pc-search-row">
             <div class="col-lg-9 col-xl-8">
                 <!-- 카테고리 링크는 폼 밖에 두어 클릭 시 항상 해당 기종만 조회되도록 함 -->
-                <div class="d-flex flex-nowrap overflow-x-auto mb-3 gn-index-category-pc category-scroll-container" style="min-width:0;-webkit-overflow-scrolling:touch;">
+                <div class="d-flex flex-nowrap overflow-x-auto mb-3 gn-index-category-pc category-scroll-container" style="min-width:0;-webkit-overflow-scrolling:touch;" title="기종 띠 위에서 마우스를 왼쪽·오른쪽(가운데 제외)에 두면 그 방향으로 자연스럽게 따라갑니다.">
                     <a href="{% url 'index' %}?category=" class="gn-cat-pill gn-cat-pill-pc {% if not filter_category %}active{% endif %}">
                         <i class="bi bi-layers-fill"></i><span>전체</span>
                     </a>
@@ -1285,15 +1285,17 @@
       padding-right: 0.5rem;
       margin-bottom: 1rem;
       position: relative;
-      padding-bottom: 10px;
+      padding-bottom: 16px;
       overflow-x: auto !important;
       -webkit-overflow-scrolling: touch;
       min-width: 0;
+      scrollbar-color: #cbd5e1 #f1f5f9;
+      scrollbar-width: auto;
     }
-    /* 기종 띠 아래 스크롤바 보이도록 (높이 조금만) */
-    .gn-index-category-pc::-webkit-scrollbar { height: 6px; }
-    .gn-index-category-pc::-webkit-scrollbar-track { background: #f1f5f9; border-radius: 3px; }
-    .gn-index-category-pc::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }
+    /* 기종 띠 아래 스크롤바: PC에서 잡기 쉽게 두께 12px(기존 6px 대비 2배) */
+    .gn-index-category-pc::-webkit-scrollbar { height: 12px; }
+    .gn-index-category-pc::-webkit-scrollbar-track { background: #f1f5f9; border-radius: 6px; }
+    .gn-index-category-pc::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 6px; }
     .gn-index-category-pc::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
     /* 연결 바: 버튼 그룹 아래 얇은 라인 */
     .gn-index-category-pc::after {
@@ -1793,6 +1795,80 @@
     var mobileCategory = document.querySelector('.gn-category-scroll.gn-index-category');
     if (pcCategory) wheelScrollHoriz(pcCategory);
     if (mobileCategory) wheelScrollHoriz(mobileCategory);
+
+    /* PC 기종 띠: 끝이 아니라 왼쪽/오른쪽 구역에 두면, 가운데에서의 거리에 비례해 자연스럽게 따라감 */
+    function edgeHoverAutoScroll(el) {
+      if (!el) return;
+      var rafId = null;
+      var DEAD_LO = 0.40;
+      var DEAD_HI = 0.60;
+      var MAX_STEP = 12;
+      var VEL_EPS = 0.04;
+      el._gnCatVel = 0;
+      function stopTick() {
+        el._gnCatVel = 0;
+        if (rafId) {
+          cancelAnimationFrame(rafId);
+          rafId = null;
+        }
+      }
+      function tick() {
+        var v = el._gnCatVel;
+        if (Math.abs(v) < VEL_EPS) {
+          rafId = null;
+          return;
+        }
+        var maxScroll = el.scrollWidth - el.clientWidth;
+        if (maxScroll <= 0) {
+          stopTick();
+          return;
+        }
+        var step = v * MAX_STEP;
+        var cur = el.scrollLeft;
+        var next = cur + step;
+        if (next <= 0) {
+          el.scrollLeft = 0;
+          el._gnCatVel = 0;
+        } else if (next >= maxScroll) {
+          el.scrollLeft = maxScroll;
+          el._gnCatVel = 0;
+        } else {
+          el.scrollLeft = next;
+        }
+        if (Math.abs(el._gnCatVel) >= VEL_EPS) rafId = requestAnimationFrame(tick);
+        else rafId = null;
+      }
+      el.addEventListener('mousemove', function(e) {
+        if (window.matchMedia && !window.matchMedia('(min-width: 768px)').matches) {
+          stopTick();
+          return;
+        }
+        var rect = el.getBoundingClientRect();
+        var x = e.clientX - rect.left;
+        var w = rect.width;
+        if (w < 120) {
+          stopTick();
+          return;
+        }
+        var t = x / w;
+        if (t >= DEAD_LO && t <= DEAD_HI) {
+          el._gnCatVel = 0;
+          if (rafId) {
+            cancelAnimationFrame(rafId);
+            rafId = null;
+          }
+          return;
+        }
+        if (t < DEAD_LO) {
+          el._gnCatVel = -((DEAD_LO - t) / DEAD_LO);
+        } else {
+          el._gnCatVel = (t - DEAD_HI) / (1 - DEAD_HI);
+        }
+        if (!rafId) rafId = requestAnimationFrame(tick);
+      });
+      el.addEventListener('mouseleave', stopTick);
+    }
+    if (pcCategory) edgeHoverAutoScroll(pcCategory);
 
     // PC 카테고리: 모바일과 동일하게 active pill을 자동으로 스크롤해 가운데로 보이게 함
     if (pcCategory) {

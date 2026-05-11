@@ -66,7 +66,7 @@
         <div class="gn-my-listings-grid">
             {% for e in my_equipments %}
             <div class="gn-listing-card">
-                <a href="{% url 'equipment_detail' e.pk %}" class="gn-listing-cover" aria-label="매물 상세 보기">
+                <a href="{% url 'equipment_detail' e.pk %}?from=mypage" class="gn-listing-cover" aria-label="매물 상세 보기">
                     {% if e.view_count >= 1000 %}
                     <span class="gn-hot-badge">🔥 인기</span>
                     {% endif %}
@@ -89,7 +89,7 @@
                     </p>
                     <p class="gn-listing-price mb-2">{{ e.listing_price|floatformat:0|intcomma }}만원</p>
                     <div class="d-flex gap-2">
-                        <a href="{% url 'equipment_detail' e.pk %}" class="btn btn-sm btn-outline-secondary">보기</a>
+                        <a href="{% url 'equipment_detail' e.pk %}?from=mypage" class="btn btn-sm btn-outline-secondary">보기</a>
                         <a href="{% url 'equipment_edit' e.pk %}" class="btn btn-sm gn-btn-edit">수정</a>
                         <a href="{% url 'equipment_delete' e.pk %}?next={{ request.get_full_path|urlencode }}" class="btn btn-sm gn-btn-delete">삭제</a>
                     </div>

@@ -116,6 +116,39 @@ def _build_location_text(region_sido: str, region_sigungu: str) -> str:
     return sido or ''
 
 
+def _post_with_coalesced_weight_class(post):
+    """
+    equipment_form.html 에 name=weight_class 가 중복(숨은 필드 + simple/dump)일 때
+    QueryDict.get 가 마지막 값만 쓰면 빈 문자열이 앞쪽 코드를 덮어쓴다.
+    굴삭기·지게차: EXC_/FORK_/DUMP_ 코드가 있으면 그것을 단일 weight_class 로 쓴다.
+    """
+    if post is None:
+        return post
+    post = post.copy()
+    eq_type = (post.get('equipment_type') or '').strip()
+    if eq_type not in ('excavator', 'forklift'):
+        return post
+    vals = post.getlist('weight_class')
+    if len(vals) <= 1:
+        return post
+    best = ''
+    for v in vals:
+        s = (v or '').strip()
+        if not s:
+            continue
+        if s.startswith(('EXC_', 'FORK_', 'DUMP_')):
+            best = s
+            break
+    if not best:
+        for v in vals:
+            s = (v or '').strip()
+            if s:
+                best = s
+                break
+    post.setlist('weight_class', [best])
+    return post
+
+
 def _is_excavator_tire_5_6_filter(sub_type: str, weight_class: str) -> bool:
     """굴삭기 상세검색에서 '타이어식 5~6 ton' 선택 여부."""
     return sub_type == 'EXC_TIRE' and weight_class == 'EXC_TIRE_LE_6'
@@ -132,6 +165,22 @@ def _legacy_excavator_tire_5_6_q() -> Q:
             r"(EW\s*60|EW\s*55|HW\s*60|DX\s*55\s*W|R\s*555\s*W|"
             r"\b55\s*W(?:I)?\b|\b0?6\s*W\b)"
         )
+    )
+
+
+def _exclude_mislabeled_mini_crawler_in_tire_heavy_search(sub_type: str, weight_class: str):
+    """
+    타이어식 06W/08W 검색인데 DB에 체인 미니(DX55 등)가 타이어+대톤수로 오표기된 매물이 섞이는 경우 제외.
+    모델명에 W(윤/타이어 변형)가 있으면 제외하지 않는다.
+    해당 조건이 아니면 None.
+    """
+    if sub_type != "EXC_TIRE" or weight_class not in ("EXC_TIRE_LE_17", "EXC_TIRE_LE_21"):
+        return None
+    # DX50~DX59, EC55, HX55 등 소형 체인 명칭 — 모델에 W가 들어가면(예: DX55W) 타이어 변형으로 본다.
+    return (
+        Q(model_name__iregex=r"(?i)\bDX\s*5[0-9]\b(?!.*W)")
+        | Q(model_name__iregex=r"(?i)\bEC\s*55\b(?!.*W)")
+        | Q(model_name__iregex=r"(?i)\bHX\s*55\b(?!.*W)")
     )
 
 
@@ -321,6 +370,10 @@ def index(request):
                 )
             else:
                 equipment_list = equipment_list.filter(weight_class=weight_class)
+        # 타이어 06W/08W: 체인 미니가 타이어+대톤수로 잘못 저장된 행 제외(검색 UX)
+        mislabeled_q = _exclude_mislabeled_mini_crawler_in_tire_heavy_search(sub_type, weight_class)
+        if mislabeled_q is not None:
+            equipment_list = equipment_list.exclude(mislabeled_q)
     elif filter_category == 'forklift':
         if sub_type:
             equipment_list = equipment_list.filter(sub_type=sub_type)
@@ -1948,7 +2001,12 @@ def equipment_detail(request, pk):
                 content_type=ct,
                 object_id=pk,
             )
-        return redirect('equipment_detail', pk=pk)
+        from urllib.parse import urlencode
+
+        redir = reverse('equipment_detail', kwargs={'pk': pk})
+        if (request.GET.get('from') or '').strip().lower() == 'mypage':
+            redir += '?' + urlencode({'from': 'mypage'})
+        return redirect(redir)
 
     if request.method == 'GET':
         Equipment.objects.filter(pk=equipment.pk).update(view_count=F('view_count') + 1)
@@ -2147,8 +2205,18 @@ def equipment_detail(request, pk):
         else:
             next_bump_at = week_logs.first().bumped_at + timedelta(days=7)
 
+    detail_back_url = reverse('index')
+    if equipment.equipment_type:
+        detail_back_url += f'?category={equipment.equipment_type}'
+    detail_back_label = '목록으로 가기'
+    if (request.GET.get('from') or '').strip().lower() == 'mypage' and request.user.is_authenticated:
+        detail_back_url = reverse('my_page')
+        detail_back_label = '뒤로가기'
+
     return render(request, 'equipment/equipment_detail.html', {
         'equipment': equipment,
+        'detail_back_url': detail_back_url,
+        'detail_back_label': detail_back_label,
         'detail_images': detail_images,
         'is_favorited': is_favorited,
         'comments': comments,
@@ -2187,7 +2255,7 @@ def equipment_create(request):
         return redirect_resp
 
     if request.method == 'POST':
-        form = EquipmentForm(request.POST)
+        form = EquipmentForm(_post_with_coalesced_weight_class(request.POST))
         if form.is_valid():
             # 회원 등급별 월 등록 제한
             current_count = get_monthly_listing_count(request.user)
@@ -2287,7 +2355,7 @@ def equipment_edit(request, pk):
     from .region_choices import SIDO_CHOICES, SIGUNGU_MAP
     import json
 
-    obj = get_object_or_404(Equipment, pk=pk)
+    obj = get_object_or_404(Equipment.objects.prefetch_related('images'), pk=pk)
 
     if not request.user.is_authenticated:
         return redirect('login')
@@ -2297,21 +2365,43 @@ def equipment_edit(request, pk):
         return redirect('equipment_detail', obj.pk)
 
     if request.method == 'POST':
-        form = EquipmentEditForm(request.POST, instance=obj)
+        form = EquipmentEditForm(_post_with_coalesced_weight_class(request.POST), instance=obj)
         if form.is_valid():
             image_files = request.FILES.getlist('images')
-            has_existing = obj.images.exists()
-            if not has_existing and (not image_files or len(image_files) < 1):
-                form.add_error(None, ValidationError('허위 매물 방지를 위해 사진을 최소 1장 이상 등록해주세요.'))
+            delete_ids = []
+            for x in request.POST.getlist('delete_image_ids'):
+                try:
+                    delete_ids.append(int(x))
+                except (TypeError, ValueError):
+                    continue
+            delete_ids = list(dict.fromkeys(delete_ids))
+            n_delete = (
+                EquipmentImage.objects.filter(equipment_id=obj.pk, pk__in=delete_ids).count()
+                if delete_ids
+                else 0
+            )
+            n_remain_after = obj.images.count() - n_delete
+            if n_remain_after + len(image_files) < 1:
+                form.add_error(
+                    None,
+                    ValidationError(
+                        '허위 매물 방지를 위해 사진을 최소 1장 이상 남기거나, 삭제한 만큼 새 사진을 추가해 주세요.'
+                    ),
+                )
             else:
                 try:
-                    obj = form.save(commit=False)
-                    if obj.operating_hours is None:
-                        obj.operating_hours = 0
-                    obj.current_location = _build_location_text(obj.region_sido, obj.region_sigungu)
-                    obj.save()
-                    for f in image_files:
-                        EquipmentImage.objects.create(equipment=obj, image=f)
+                    from django.db import transaction
+
+                    with transaction.atomic():
+                        obj = form.save(commit=False)
+                        if obj.operating_hours is None:
+                            obj.operating_hours = 0
+                        obj.current_location = _build_location_text(obj.region_sido, obj.region_sigungu)
+                        obj.save()
+                        if delete_ids:
+                            EquipmentImage.objects.filter(equipment_id=obj.pk, pk__in=delete_ids).delete()
+                        for f in image_files:
+                            EquipmentImage.objects.create(equipment=obj, image=f)
                     return redirect('equipment_detail', obj.pk)
                 except Exception:
                     import traceback

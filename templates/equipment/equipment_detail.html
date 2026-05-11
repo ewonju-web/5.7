@@ -3,8 +3,8 @@
 {% block content %}
 <div class="container-fluid px-md-5 py-4 gn-detail-page">
   <div class="mb-3">
-    <a href="{% url 'index' %}{% if equipment.equipment_type %}?category={{ equipment.equipment_type }}{% endif %}" class="btn btn-outline-secondary btn-sm">
-      <i class="bi bi-arrow-left me-1"></i>목록으로 가기
+    <a href="{{ detail_back_url }}" class="btn btn-outline-secondary btn-sm">
+      <i class="bi bi-arrow-left me-1"></i>{{ detail_back_label }}
     </a>
   </div>
   <!-- 메인 + 바깥 레일(좌·우 굴삭기 전문가, 우측 하단 어태치먼트·부품 — PC) -->
@@ -215,9 +215,14 @@
       <h5 class="fw-bold mb-3" style="border-left: 4px solid #c00; padding-left: 12px;">사진 보기</h5>
       <div class="gn-detail-photo-stack">
         {% for image in detail_images %}
-        <a href="{{ image.image.url }}" target="_blank" rel="noopener" class="d-block gn-detail-photo-item gn-card-sharp rounded overflow-hidden">
-          <img src="{{ image.image.url }}" class="img-fluid w-100" alt="{{ equipment.model_name }} {{ forloop.counter }}">
-        </a>
+        <button type="button"
+                class="d-block w-100 text-start p-0 border-0 bg-transparent gn-detail-photo-item gn-detail-photo-stack-open gn-card-sharp rounded overflow-hidden"
+                data-bs-toggle="modal" data-bs-target="#lightboxModal"
+                data-lightbox-index="{{ forloop.counter0 }}"
+                data-lightbox-src="{{ image.image.url }}"
+                aria-label="사진 {{ forloop.counter }} 크게 보기">
+          <img src="{{ image.image.url }}" class="img-fluid w-100" alt="{{ equipment.model_name }} {{ forloop.counter }}" style="cursor: zoom-in;">
+        </button>
         {% endfor %}
       </div>
     </div>
@@ -291,10 +296,10 @@
     </div>
   </div>
 
-  <!-- 하단: 목록으로 가기 (사진·내용 다 본 후) -->
+  <!-- 하단: 마이페이지에서 온 경우 뒤로가기, 그 외 목록으로 -->
   <div class="mt-4 mb-3 text-center">
-    <a href="{% url 'index' %}{% if equipment.equipment_type %}?category={{ equipment.equipment_type }}{% endif %}" class="btn btn-outline-secondary">
-      <i class="bi bi-arrow-left me-1"></i>목록으로 가기
+    <a href="{{ detail_back_url }}" class="btn btn-outline-secondary">
+      <i class="bi bi-arrow-left me-1"></i>{{ detail_back_label }}
     </a>
   </div>
     </div><!-- /.gn-detail-main-col -->
@@ -302,28 +307,29 @@
     <!-- PC 전용: 본문 바깥 우측 레일 — 어태치먼트/타이어 전문가 -->
     {% if has_right_ads %}
     <aside class="col-12 col-lg-3 col-xl-3 gn-detail-outer-rail gn-detail-outer-rail--balance d-none d-lg-block" aria-label="우측 전문가·어태치먼트·부품">
+      <div class="gn-detail-rail-shell">
       <div class="gn-detail-sticky-rail gn-detail-rail">
         {% if premium_sidebar_expert_title %}
-        <div class="card gn-card-sharp border shadow-sm gn-detail-premium-experts overflow-hidden mb-1" style="border-color: rgba(232, 163, 23, 0.35) !important;">
-          <div class="card-header py-2 px-2 gn-detail-premium-experts-head d-flex align-items-center justify-content-between gap-2">
+        <div class="card gn-card-sharp border shadow-sm gn-detail-premium-experts gn-rail-section-card overflow-hidden">
+          <div class="card-header gn-rail-section-head py-2 px-2 gn-detail-premium-experts-head d-flex align-items-center justify-content-between gap-2">
             <span class="gn-rail-card-title"><i class="bi bi-person-badge text-warning me-1"></i>{{ premium_sidebar_expert_title }}</span>
             <a href="{% url 'billing_upgrade' %}" class="btn btn-sm btn-outline-primary py-1 px-2 gn-rail-btn-outline">등록안내</a>
           </div>
-          <div class="card-body p-2 gn-rail-card-body">
+          <div class="card-body gn-rail-card-body gn-rail-ad-list p-2">
             {% for slot in right_premium_slots %}
             {% if slot %}
-            <a href="{% if slot.author_id %}{% url 'author_listings' slot.author_id %}?category=excavator{% else %}{% url 'equipment_detail' slot.pk %}{% endif %}" class="d-block text-decoration-none gn-rail-ad-row {% if not forloop.last %}border-bottom mb-2 pb-2{% endif %}" style="border-color: rgba(226, 232, 240, 0.9);">
+            <a href="{% if slot.author_id %}{% url 'author_listings' slot.author_id %}?category=excavator{% else %}{% url 'equipment_detail' slot.pk %}{% endif %}" class="d-block text-decoration-none gn-rail-ad-row gn-rail-ad-card">
               <div class="d-flex gap-2 align-items-center">
-                <div class="flex-shrink-0 rounded overflow-hidden gn-rail-ad-thumb" style="background: #e2e8f0;">
+                <div class="flex-shrink-0 gn-rail-ad-thumb">
                   {% if slot.images.first %}
-                  <img src="{{ slot.images.first.image.url }}" class="w-100 h-100" style="object-fit: cover;" alt="">
+                  <img src="{{ slot.images.first.image.url }}" alt="" width="52" height="52" loading="lazy" decoding="async">
                   {% else %}
-                  <div class="w-100 h-100 d-flex align-items-center justify-content-center text-muted gn-rail-thumb-fallback">—</div>
+                  <div class="gn-rail-thumb-fallback d-flex align-items-center justify-content-center text-muted">—</div>
                   {% endif %}
                 </div>
                 <div class="min-width-0 flex-grow-1">
                   <div class="fw-bold text-truncate text-dark gn-rail-text">{{ slot.model_name|default:"-" }}</div>
-                  <div class="text-danger fw-bold gn-rail-text">{{ slot|equipment_row_contact|default:"문의" }}</div>
+                  <div class="fw-bold gn-rail-text gn-rail-contact">{{ slot|equipment_row_contact|default:"문의" }}</div>
                 </div>
               </div>
             </a>
@@ -332,51 +338,51 @@
           </div>
         </div>
         {% endif %}
-        <div class="card gn-card-sharp border shadow-sm gn-detail-premium-experts gn-detail-attachment-ad-card overflow-hidden" style="border-color: rgba(232, 163, 23, 0.35) !important;">
-          <div class="card-header py-2 px-2 gn-detail-premium-experts-head d-flex align-items-center justify-content-between gap-2">
+        <div class="card gn-card-sharp border shadow-sm gn-detail-premium-experts gn-detail-attachment-ad-card gn-rail-section-card overflow-hidden">
+          <div class="card-header gn-rail-section-head py-2 px-2 gn-detail-premium-experts-head d-flex align-items-center justify-content-between gap-2">
             <span class="gn-ad-card-title gn-rail-card-title"><i class="bi bi-megaphone text-warning me-1"></i>어태치먼트·타이어 광고</span>
             <a href="{% url 'billing_upgrade' %}" class="btn btn-sm btn-outline-primary py-1 px-2 gn-rail-btn-outline">
               등록안내
             </a>
           </div>
-          <div class="card-body p-2 gn-rail-card-body">
+          <div class="card-body gn-rail-card-body gn-rail-ad-list p-2">
             {% if left_specialist_cards %}
             {% for eq in left_specialist_cards %}
-            <a href="{% url 'equipment_detail' eq.pk %}" class="d-block text-decoration-none gn-rail-ad-row {% if not forloop.last %}border-bottom mb-2 pb-2{% endif %}" style="border-color: rgba(226, 232, 240, 0.9);">
+            <a href="{% url 'equipment_detail' eq.pk %}" class="d-block text-decoration-none gn-rail-ad-row gn-rail-ad-card">
               <div class="d-flex gap-2 align-items-center">
-                <div class="flex-shrink-0 rounded overflow-hidden gn-rail-ad-thumb" style="background: #e2e8f0;">
+                <div class="flex-shrink-0 gn-rail-ad-thumb">
                   {% if eq.images.first %}
-                  <img src="{{ eq.images.first.image.url }}" class="w-100 h-100" style="object-fit: cover;" alt="">
+                  <img src="{{ eq.images.first.image.url }}" alt="" width="52" height="52" loading="lazy" decoding="async">
                   {% else %}
-                  <div class="w-100 h-100 d-flex align-items-center justify-content-center text-muted gn-rail-thumb-fallback">—</div>
+                  <div class="gn-rail-thumb-fallback d-flex align-items-center justify-content-center text-muted">—</div>
                   {% endif %}
                 </div>
                 <div class="min-width-0 flex-grow-1">
                   <div class="fw-bold text-truncate text-dark gn-rail-text">{{ eq.model_name|default:"-" }}</div>
-                  <div class="text-danger fw-bold gn-rail-text">{{ eq|equipment_row_contact|default:"문의" }}</div>
+                  <div class="fw-bold gn-rail-text gn-rail-contact">{{ eq|equipment_row_contact|default:"문의" }}</div>
                 </div>
               </div>
             </a>
             {% endfor %}
             {% else %}
-            <p class="text-muted mb-2 text-center py-2 px-1 gn-rail-text gn-rail-empty">현재 등록된 광고가 없습니다.</p>
+            <p class="text-muted mb-0 text-center py-2 px-1 gn-rail-text gn-rail-empty">현재 등록된 광고가 없습니다.</p>
             {% endif %}
           </div>
         </div>
 
-        <div class="card gn-card-sharp border shadow-sm mt-1 overflow-hidden gn-detail-parts-as-card" style="border-color: rgba(59, 130, 246, 0.28) !important;">
-          <div class="card-header py-2 px-2 d-flex align-items-center justify-content-between gn-detail-parts-as-head" style="background: linear-gradient(90deg, rgba(219,234,254,0.7), rgba(239,246,255,0.6)); border-bottom: 1px solid rgba(59,130,246,0.2);">
+        <div class="card gn-card-sharp border shadow-sm overflow-hidden gn-detail-parts-as-card gn-rail-section-card">
+          <div class="card-header gn-rail-section-head py-2 px-2 d-flex align-items-center justify-content-between gn-detail-parts-as-head">
             <span class="gn-rail-card-title"><i class="bi bi-geo-alt-fill text-primary me-1"></i>전국 부품점 A/S센터</span>
             <a href="{% url 'parts_as' %}" class="text-decoration-none text-primary gn-rail-link">전체보기</a>
           </div>
-          <div class="card-body p-2 gn-rail-card-body">
+          <div class="card-body gn-rail-card-body gn-rail-ad-list p-2">
             {% if nearby_parts_shops %}
             {% for shop in nearby_parts_shops %}
-            <div class="border rounded p-2 mb-2 gn-detail-parts-as-item" style="background:#f8fbff; border-color: rgba(59,130,246,0.2) !important;">
+            <div class="gn-detail-parts-as-item gn-rail-ad-card">
               <div class="fw-bold text-dark text-truncate gn-rail-text">{{ shop.name }}</div>
               <div class="text-muted text-truncate gn-rail-text-muted">📍 {{ shop.region }}{% if shop.address %} · {{ shop.address }}{% endif %}</div>
               <div class="d-flex align-items-center justify-content-between mt-1">
-                <a href="tel:{{ shop.contact|cut:'-'|cut:' ' }}" class="text-decoration-none fw-bold text-dark gn-rail-text">
+                <a href="tel:{{ shop.contact|cut:'-'|cut:' ' }}" class="text-decoration-none fw-bold gn-rail-text gn-rail-contact">
                   <i class="bi bi-telephone me-1"></i>{{ shop.contact }}
                 </a>
                 <a href="https://map.kakao.com/?q={{ shop.address|default:shop.name|urlencode }}" target="_blank" rel="noopener noreferrer" class="btn btn-sm btn-outline-primary py-0 px-2 gn-rail-btn-outline">
@@ -391,53 +397,129 @@
           </div>
         </div>
       </div>
+      </div>
     </aside>
     {% endif %}
   </div><!-- /.gn-detail-layout -->
 </div>
 
-<!-- 사진 확대 모달 -->
-<div class="modal fade" id="lightboxModal" tabindex="-1" aria-hidden="true">
-  <div class="modal-dialog modal-fullscreen p-0">
-    <div class="modal-content bg-black border-0">
-      <div class="modal-body p-0 d-flex align-items-center justify-content-center position-relative overflow-auto">
-        <button type="button" class="btn-close btn-close-white position-absolute top-0 end-0 m-3 z-2" data-bs-dismiss="modal" aria-label="닫기"></button>
-        <a href="#" id="lightboxOriginalLink" target="_blank" rel="noopener" class="position-absolute top-0 start-0 m-3 btn btn-outline-light btn-sm z-2">
-          <i class="bi bi-arrows-fullscreen me-1"></i>원본 크기로 보기
-        </a>
+{% if detail_images %}
+<!-- 사진 확대: 전체 화면이 아닌 페이지 안 모달 + 확대/이전·다음 -->
+<div class="modal fade" id="lightboxModal" tabindex="-1" aria-labelledby="lightboxModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered modal-xl gn-lightbox-dialog">
+    <div class="modal-content border-0 shadow-lg bg-dark text-white overflow-hidden rounded-3">
+      <div class="modal-header border-secondary border-opacity-25 py-2 px-3 align-items-center flex-wrap gap-2">
+        <div class="d-flex align-items-center gap-2 flex-grow-1 min-w-0">
+          <h5 class="modal-title fs-6 mb-0 text-white" id="lightboxModalLabel">사진 보기</h5>
+          <span class="text-white-50 small" id="lightboxCounter">1 / {{ detail_images|length }}</span>
+        </div>
+        <div class="d-flex align-items-center gap-1 flex-shrink-0 flex-wrap">
+          <div class="btn-group btn-group-sm" role="group" aria-label="확대·축소">
+            <button type="button" class="btn btn-outline-light" id="lightboxZoomOut" title="축소" aria-label="축소"><i class="bi bi-dash-lg"></i></button>
+            <button type="button" class="btn btn-outline-light px-2" id="lightboxZoomReset" title="화면에 맞춤">맞춤</button>
+            <button type="button" class="btn btn-outline-light" id="lightboxZoomIn" title="확대" aria-label="확대"><i class="bi bi-plus-lg"></i></button>
+          </div>
+          <a href="#" id="lightboxOriginalLink" target="_blank" rel="noopener" class="btn btn-outline-light btn-sm">
+            <i class="bi bi-box-arrow-up-right me-1"></i>새 탭
+          </a>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="닫기"></button>
+        </div>
+      </div>
+      <div class="modal-body p-0 position-relative bg-black gn-lightbox-body">
         {% if detail_images|length > 1 %}
-        <button type="button" class="btn btn-outline-light btn-lg position-absolute start-0 top-50 translate-middle-y m-3 z-2 rounded-circle opacity-75" id="lightboxPrev" aria-label="이전">
+        <button type="button" class="btn btn-outline-light btn-lg position-absolute start-0 top-50 translate-middle-y ms-1 ms-sm-2 z-3 rounded-circle gn-lightbox-nav" id="lightboxPrev" aria-label="이전 사진">
           <i class="bi bi-chevron-left"></i>
         </button>
-        <button type="button" class="btn btn-outline-light btn-lg position-absolute end-0 top-50 translate-middle-y m-3 z-2 rounded-circle opacity-75" id="lightboxNext" aria-label="다음">
+        <button type="button" class="btn btn-outline-light btn-lg position-absolute end-0 top-50 translate-middle-y me-1 me-sm-2 z-3 rounded-circle gn-lightbox-nav" id="lightboxNext" aria-label="다음 사진">
           <i class="bi bi-chevron-right"></i>
         </button>
-        <span class="position-absolute bottom-0 start-50 translate-middle-x mb-3 text-white-50 small z-2" id="lightboxCounter">1 / {{ detail_images|length }}</span>
         {% endif %}
-        <img src="" class="img-fluid" id="lightboxImg" style="max-width: 100%; max-height: 95vh; width: auto; height: auto;" alt="확대 보기">
+        <div id="lightboxViewport" class="gn-lightbox-viewport" title="휠로 확대·축소, 드래그로 이동">
+          <div class="gn-lightbox-pan-inner">
+            <img src="" alt="확대 보기" id="lightboxImg" class="gn-lightbox-img d-block" draggable="false">
+          </div>
+        </div>
       </div>
     </div>
   </div>
 </div>
+{% endif %}
 
+{% if detail_images %}
 <script>
 (function() {
   var images = [{% for image in detail_images %}'{{ image.image.url|escapejs }}'{% if not forloop.last %}, {% endif %}{% endfor %}];
   var total = images.length;
+  if (total === 0) return;
+
   var currentIndex = 0;
   var lastClickedIndex = 0;
+  var lightboxZoom = 1;
+
+  var modalEl = document.getElementById('lightboxModal');
+  var img = document.getElementById('lightboxImg');
+  var link = document.getElementById('lightboxOriginalLink');
+  var counter = document.getElementById('lightboxCounter');
+  var viewport = document.getElementById('lightboxViewport');
+  var zoomInBtn = document.getElementById('lightboxZoomIn');
+  var zoomOutBtn = document.getElementById('lightboxZoomOut');
+  var zoomResetBtn = document.getElementById('lightboxZoomReset');
+
+  function canPanLightbox() {
+    if (!viewport || !img) return false;
+    return viewport.scrollWidth > viewport.clientWidth + 0.5 || viewport.scrollHeight > viewport.clientHeight + 0.5;
+  }
+
+  function layoutLightboxImage(opts) {
+    opts = opts || {};
+    if (!viewport || !img || !img.naturalWidth) return;
+    var panInner = viewport.querySelector('.gn-lightbox-pan-inner');
+    var vw = viewport.clientWidth;
+    var vh = viewport.clientHeight;
+    if (vw < 40 || vh < 40) return;
+    var nw = img.naturalWidth;
+    var nh = img.naturalHeight;
+    var fitScale = Math.min(vw / nw, vh / nh, 1);
+    var scale = fitScale * lightboxZoom;
+    scale = Math.min(scale, 2.5);
+    var dispW = nw * scale;
+    var dispH = nh * scale;
+    img.style.width = dispW + 'px';
+    img.style.height = dispH + 'px';
+    img.style.maxWidth = 'none';
+    img.style.maxHeight = 'none';
+    if (panInner) {
+      panInner.style.width = Math.max(vw, Math.ceil(dispW)) + 'px';
+      panInner.style.height = Math.max(vh, Math.ceil(dispH)) + 'px';
+    }
+    void viewport.offsetWidth;
+    viewport.classList.toggle('gn-lightbox-pannable', canPanLightbox());
+    requestAnimationFrame(function() {
+      var maxL = Math.max(0, viewport.scrollWidth - viewport.clientWidth);
+      var maxT = Math.max(0, viewport.scrollHeight - viewport.clientHeight);
+      if (opts.center) {
+        viewport.scrollLeft = maxL / 2;
+        viewport.scrollTop = maxT / 2;
+      } else {
+        viewport.scrollLeft = Math.min(Math.max(0, viewport.scrollLeft), maxL);
+        viewport.scrollTop = Math.min(Math.max(0, viewport.scrollTop), maxT);
+      }
+      void viewport.offsetWidth;
+      viewport.classList.toggle('gn-lightbox-pannable', canPanLightbox());
+    });
+  }
 
   function showLightbox(index) {
-    if (total === 0) return;
     if (index < 0) index = total - 1;
     if (index >= total) index = 0;
     currentIndex = index;
-    var img = document.getElementById('lightboxImg');
-    var link = document.getElementById('lightboxOriginalLink');
-    if (img) img.src = images[currentIndex] || '';
+    lightboxZoom = 1;
     if (link) link.href = images[currentIndex] || '#';
-    var counter = document.getElementById('lightboxCounter');
     if (counter) counter.textContent = (currentIndex + 1) + ' / ' + total;
+    if (!img) return;
+    img.onload = function() { layoutLightboxImage({ center: true }); };
+    img.src = images[currentIndex] || '';
+    if (img.complete && img.naturalWidth) layoutLightboxImage({ center: true });
   }
 
   document.querySelectorAll('[data-lightbox-index]').forEach(function(el) {
@@ -447,21 +529,112 @@
     }, true);
   });
 
-  var modalEl = document.getElementById('lightboxModal');
   if (modalEl) {
-    modalEl.addEventListener('show.bs.modal', function() { currentIndex = lastClickedIndex; showLightbox(currentIndex); });
+    modalEl.addEventListener('show.bs.modal', function() {
+      currentIndex = lastClickedIndex;
+      showLightbox(currentIndex);
+    });
+    modalEl.addEventListener('shown.bs.modal', function() {
+      layoutLightboxImage({ center: true });
+    });
+    modalEl.addEventListener('hidden.bs.modal', function() {
+      if (img) img.removeAttribute('src');
+      var pi = viewport && viewport.querySelector('.gn-lightbox-pan-inner');
+      if (pi) {
+        pi.style.width = '';
+        pi.style.height = '';
+      }
+    });
   }
-  var prevBtn = document.getElementById('lightboxPrev');
-  var nextBtn = document.getElementById('lightboxNext');
-  if (prevBtn) prevBtn.addEventListener('click', function() { showLightbox(currentIndex - 1); });
-  if (nextBtn) nextBtn.addEventListener('click', function() { showLightbox(currentIndex + 1); });
-  document.addEventListener('keydown', function(e) {
+
+  function bumpZoom(factor) {
+    if (!viewport || !img || !img.naturalWidth) return;
+    var vw = viewport.clientWidth;
+    var vh = viewport.clientHeight;
+    if (vw < 40 || vh < 40) return;
+    var nw = img.naturalWidth;
+    var nh = img.naturalHeight;
+    var fitScale = Math.min(vw / nw, vh / nh, 1);
+    var maxZoomMul = Math.max(4, 2.5 / Math.max(fitScale, 0.001));
+    lightboxZoom = Math.min(maxZoomMul, Math.max(1, lightboxZoom * factor));
+    layoutLightboxImage();
+  }
+
+  if (zoomInBtn) zoomInBtn.addEventListener('click', function(e) { e.preventDefault(); bumpZoom(1.25); });
+  if (zoomOutBtn) zoomOutBtn.addEventListener('click', function(e) { e.preventDefault(); bumpZoom(1 / 1.25); });
+  if (zoomResetBtn) zoomResetBtn.addEventListener('click', function(e) { e.preventDefault(); lightboxZoom = 1; layoutLightboxImage({ center: true }); });
+
+  var panPointerId = null;
+  var panStartX = 0;
+  var panStartY = 0;
+  var panStartScrollL = 0;
+  var panStartScrollT = 0;
+  var panDragging = false;
+  var PAN_THRESHOLD = 2;
+
+  if (viewport) {
+    viewport.addEventListener('wheel', function(e) {
+      if (!document.body.classList.contains('modal-open')) return;
+      e.preventDefault();
+      if (e.deltaY > 0) bumpZoom(1 / 1.08);
+      else bumpZoom(1.08);
+    }, { passive: false });
+
+    viewport.addEventListener('pointerdown', function(e) {
+      if (!document.body.classList.contains('modal-open')) return;
+      if (e.pointerType === 'mouse' && e.button !== 0) return;
+      if (!canPanLightbox()) return;
+      panPointerId = e.pointerId;
+      panStartX = e.clientX;
+      panStartY = e.clientY;
+      panStartScrollL = viewport.scrollLeft;
+      panStartScrollT = viewport.scrollTop;
+      panDragging = false;
+      try { viewport.setPointerCapture(e.pointerId); } catch (err) {}
+    });
+
+    viewport.addEventListener('pointermove', function(e) {
+      if (panPointerId === null || e.pointerId !== panPointerId) return;
+      var dx = e.clientX - panStartX;
+      var dy = e.clientY - panStartY;
+      if (!panDragging && (Math.abs(dx) > PAN_THRESHOLD || Math.abs(dy) > PAN_THRESHOLD)) {
+        panDragging = true;
+        viewport.classList.add('gn-lightbox-grabbing');
+      }
+      if (panDragging) {
+        viewport.scrollLeft = panStartScrollL - dx;
+        viewport.scrollTop = panStartScrollT - dy;
+        e.preventDefault();
+      }
+    });
+
+    function endPan(e) {
+      if (panPointerId === null || (e && e.pointerId !== panPointerId)) return;
+      try { viewport.releasePointerCapture(panPointerId); } catch (err2) {}
+      viewport.classList.remove('gn-lightbox-grabbing');
+      panPointerId = null;
+      panDragging = false;
+    }
+    viewport.addEventListener('pointerup', endPan);
+    viewport.addEventListener('pointercancel', endPan);
+  }
+
+  window.addEventListener('resize', function() {
     if (!modalEl || !document.body.classList.contains('modal-open')) return;
-    if (e.key === 'ArrowLeft') { showLightbox(currentIndex - 1); e.preventDefault(); }
-    if (e.key === 'ArrowRight') { showLightbox(currentIndex + 1); e.preventDefault(); }
+    layoutLightboxImage();
   });
 
-  // 썸네일 클릭 시 메인 이미지 변경
+  var prevBtn = document.getElementById('lightboxPrev');
+  var nextBtn = document.getElementById('lightboxNext');
+  if (prevBtn) prevBtn.addEventListener('click', function(e) { e.preventDefault(); showLightbox(currentIndex - 1); });
+  if (nextBtn) nextBtn.addEventListener('click', function(e) { e.preventDefault(); showLightbox(currentIndex + 1); });
+
+  document.addEventListener('keydown', function(e) {
+    if (!modalEl || !document.body.classList.contains('modal-open')) return;
+    if (e.key === 'ArrowLeft' && total > 1) { showLightbox(currentIndex - 1); e.preventDefault(); }
+    if (e.key === 'ArrowRight' && total > 1) { showLightbox(currentIndex + 1); e.preventDefault(); }
+  });
+
   document.querySelectorAll('.detail-thumb').forEach(function(btn) {
     btn.addEventListener('click', function() {
       var src = this.getAttribute('data-src');
@@ -478,6 +651,7 @@
   });
 })();
 </script>
+{% endif %}
 <script>
 (function() {
   function syncRightAdCardHeight() {
@@ -516,6 +690,96 @@
     position: sticky;
     top: 4.9rem;
     padding-bottom: 1rem;
+  }
+  /* 우측 광고 사이드바: 통일 카드·딥블루 연락처·섹션 구분 */
+  .gn-detail-rail-shell {
+    background: #f9f9f9;
+    border-radius: 10px;
+    padding: 16px;
+    box-sizing: border-box;
+  }
+  .gn-detail-rail-shell .gn-detail-sticky-rail {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    padding-bottom: 0;
+  }
+  .gn-detail-rail-shell .gn-rail-section-card {
+    background: #fff !important;
+    border: 1px solid #e8e8e8 !important;
+    border-radius: 10px;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06) !important;
+    margin-bottom: 0 !important;
+    margin-top: 0 !important;
+  }
+  .gn-detail-rail-shell .gn-rail-section-head {
+    border-top: 1px solid #eee;
+    padding-top: 12px !important;
+    padding-bottom: 12px !important;
+  }
+  .gn-detail-rail-shell .gn-rail-section-card:first-of-type .gn-rail-section-head {
+    border-top: none;
+  }
+  .gn-detail-rail-shell .gn-rail-ad-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+  }
+  .gn-detail-rail-shell .gn-rail-ad-list > .gn-rail-ad-card {
+    margin-bottom: 8px;
+  }
+  .gn-detail-rail-shell .gn-rail-ad-list > .gn-rail-ad-card:last-child {
+    margin-bottom: 0;
+  }
+  .gn-detail-rail-shell .gn-rail-ad-card {
+    background: #fff;
+    border: 1px solid #e0e0e0;
+    border-radius: 8px;
+    padding: 8px 10px;
+    box-sizing: border-box;
+  }
+  .gn-detail-rail-shell a.gn-rail-ad-card {
+    color: #111827;
+  }
+  .gn-detail-rail-shell a.gn-rail-ad-card:hover {
+    background: #fafafa;
+    border-color: #d0d0d0;
+    color: #111827;
+  }
+  .gn-detail-rail-shell .gn-rail-ad-thumb {
+    width: 52px;
+    height: 52px;
+    flex-shrink: 0;
+    border-radius: 6px;
+    overflow: hidden;
+    background: #e2e8f0;
+  }
+  .gn-detail-rail-shell .gn-rail-ad-thumb img {
+    width: 52px;
+    height: 52px;
+    object-fit: cover;
+    display: block;
+    border-radius: 6px;
+  }
+  .gn-detail-rail-shell .gn-rail-thumb-fallback {
+    width: 52px;
+    height: 52px;
+    font-size: 0.75rem;
+    border-radius: 6px;
+    background: #e2e8f0;
+  }
+  .gn-detail-rail-shell .gn-rail-contact,
+  .gn-detail-rail-shell a.gn-rail-contact,
+  .gn-detail-rail-shell a.gn-rail-ad-card .gn-rail-contact {
+    color: #3584e4 !important;
+  }
+  .gn-detail-rail-shell a.gn-rail-contact:hover,
+  .gn-detail-rail-shell a.gn-rail-ad-card:hover .gn-rail-contact {
+    color: #1a5fb4 !important;
+  }
+  .gn-detail-rail-shell .gn-detail-parts-as-head {
+    background: linear-gradient(90deg, rgba(219, 234, 254, 0.7), rgba(239, 246, 255, 0.6));
+    border-bottom: 1px solid rgba(59, 130, 246, 0.2);
   }
   @media (min-width: 992px) {
     .gn-detail-outer-rail {
@@ -955,6 +1219,65 @@
   .gn-similar-year {
     color: #9CA3AF;
     font-weight: 600;
+  }
+
+  /* 상세: 사진 뷰어(페이지 안 모달) — 하단「사진 보기」큰 사진(920px)에 가깝게 */
+  .gn-lightbox-dialog {
+    max-width: min(98vw, 1320px) !important;
+    margin: 0.75rem auto;
+  }
+  .gn-lightbox-body {
+    min-height: min(80vh, 980px);
+  }
+  .gn-lightbox-viewport {
+    height: min(76vh, 920px);
+    overflow: auto;
+    display: block;
+    touch-action: none;
+    background: radial-gradient(circle at center, #1f1f1f 0%, #0a0a0a 100%);
+  }
+  .gn-lightbox-viewport.gn-lightbox-pannable {
+    cursor: grab;
+  }
+  .gn-lightbox-viewport.gn-lightbox-grabbing {
+    cursor: grabbing;
+  }
+  .gn-lightbox-pan-inner {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-sizing: border-box;
+    line-height: 0;
+    flex-shrink: 0;
+  }
+  .gn-lightbox-img {
+    user-select: none;
+    -webkit-user-drag: none;
+    pointer-events: none;
+  }
+  .gn-lightbox-nav {
+    opacity: 0.9;
+  }
+  .gn-detail-photo-stack-open {
+    cursor: pointer;
+  }
+  .gn-detail-photo-stack-open:focus-visible {
+    outline: 3px solid #2563eb;
+    outline-offset: 2px;
+  }
+  @media (max-width: 767.98px) {
+    .gn-lightbox-body {
+      min-height: min(72vh, 640px);
+    }
+    .gn-lightbox-viewport {
+      height: min(68vh, 620px);
+    }
+  }
+  @media (max-width: 575.98px) {
+    .gn-lightbox-dialog {
+      max-width: calc(100vw - 0.75rem) !important;
+      margin: 0.35rem auto;
+    }
   }
 
   /* 상세 하단 사진: 큰 사이즈로 1장씩 세로 나열 */
