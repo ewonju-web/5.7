@@ -356,19 +356,27 @@ def index(request):
 
     # 카테고리별 세부 필터
     if filter_category == 'excavator':
-        if sub_type:
-            if _is_excavator_tire_5_6_filter(sub_type, weight_class):
-                equipment_list = equipment_list.filter(
-                    Q(sub_type=sub_type) | _legacy_excavator_tire_5_6_q()
-                )
-            else:
+        # 타이어 03W 5~6: 예전 (sub OR 레거시) ∧ (weight OR 레거시) 는
+        # 모델명 "06w" 등 레거시 패턴만 맞은 크롤러·미니까지 같이 걸려 목록이 섞임 →
+        # (코드 정확 일치) ∨ (레거시 패턴 ∧ 체인 코드 아님) 으로 한 번에 필터.
+        if (
+            sub_type
+            and weight_class
+            and _is_excavator_tire_5_6_filter(sub_type, weight_class)
+        ):
+            exact_tire_56 = Q(sub_type=sub_type, weight_class=weight_class)
+            legacy_tire_56 = (
+                _legacy_excavator_tire_5_6_q()
+                & ~Q(sub_type="EXC_CRAWLER")
+                & ~Q(sub_type="EXC_ATTACHMENT")
+                & ~Q(weight_class__startswith="EXC_CR")
+                & ~Q(weight_class__startswith="EXC_ATT")
+            )
+            equipment_list = equipment_list.filter(exact_tire_56 | legacy_tire_56)
+        else:
+            if sub_type:
                 equipment_list = equipment_list.filter(sub_type=sub_type)
-        if weight_class:
-            if _is_excavator_tire_5_6_filter(sub_type, weight_class):
-                equipment_list = equipment_list.filter(
-                    Q(weight_class=weight_class) | _legacy_excavator_tire_5_6_q()
-                )
-            else:
+            if weight_class:
                 equipment_list = equipment_list.filter(weight_class=weight_class)
         # 타이어 06W/08W: 체인 미니가 타이어+대톤수로 잘못 저장된 행 제외(검색 UX)
         mislabeled_q = _exclude_mislabeled_mini_crawler_in_tire_heavy_search(sub_type, weight_class)

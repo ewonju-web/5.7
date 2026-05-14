@@ -470,6 +470,10 @@
     return viewport.scrollWidth > viewport.clientWidth + 0.5 || viewport.scrollHeight > viewport.clientHeight + 0.5;
   }
 
+  function shouldAllowLightboxPan() {
+    return canPanLightbox() || lightboxZoom > 1.001;
+  }
+
   function layoutLightboxImage(opts) {
     opts = opts || {};
     if (!viewport || !img || !img.naturalWidth) return;
@@ -538,6 +542,7 @@
       layoutLightboxImage({ center: true });
     });
     modalEl.addEventListener('hidden.bs.modal', function() {
+      endLightboxPan();
       if (img) img.removeAttribute('src');
       var pi = viewport && viewport.querySelector('.gn-lightbox-pan-inner');
       if (pi) {
@@ -571,6 +576,48 @@
   var panStartScrollT = 0;
   var panDragging = false;
   var PAN_THRESHOLD = 2;
+  var panDocCapture = true;
+
+  function detachLightboxPanDocListeners() {
+    document.removeEventListener('pointermove', onLightboxPanDocMove, panDocCapture);
+    document.removeEventListener('pointerup', onLightboxPanDocEnd, panDocCapture);
+    document.removeEventListener('pointercancel', onLightboxPanDocEnd, panDocCapture);
+  }
+
+  function onLightboxPanDocMove(e) {
+    if (!viewport || panPointerId === null || e.pointerId !== panPointerId) return;
+    var dx = e.clientX - panStartX;
+    var dy = e.clientY - panStartY;
+    if (!panDragging && (Math.abs(dx) > PAN_THRESHOLD || Math.abs(dy) > PAN_THRESHOLD)) {
+      panDragging = true;
+      viewport.classList.add('gn-lightbox-grabbing');
+    }
+    if (panDragging) {
+      viewport.scrollLeft = panStartScrollL - dx;
+      viewport.scrollTop = panStartScrollT - dy;
+      e.preventDefault();
+    }
+  }
+
+  function onLightboxPanDocEnd(e) {
+    if (panPointerId === null) return;
+    if (e && e.pointerId != null && e.pointerId !== panPointerId) return;
+    detachLightboxPanDocListeners();
+    try { viewport.releasePointerCapture(panPointerId); } catch (err2) {}
+    viewport.classList.remove('gn-lightbox-grabbing');
+    panPointerId = null;
+    panDragging = false;
+  }
+
+  function endLightboxPan() {
+    detachLightboxPanDocListeners();
+    if (viewport && panPointerId !== null) {
+      try { viewport.releasePointerCapture(panPointerId); } catch (err3) {}
+    }
+    if (viewport) viewport.classList.remove('gn-lightbox-grabbing');
+    panPointerId = null;
+    panDragging = false;
+  }
 
   if (viewport) {
     viewport.addEventListener('wheel', function(e) {
@@ -583,7 +630,8 @@
     viewport.addEventListener('pointerdown', function(e) {
       if (!document.body.classList.contains('modal-open')) return;
       if (e.pointerType === 'mouse' && e.button !== 0) return;
-      if (!canPanLightbox()) return;
+      if (panPointerId !== null) return;
+      if (!shouldAllowLightboxPan()) return;
       panPointerId = e.pointerId;
       panStartX = e.clientX;
       panStartY = e.clientY;
@@ -591,32 +639,11 @@
       panStartScrollT = viewport.scrollTop;
       panDragging = false;
       try { viewport.setPointerCapture(e.pointerId); } catch (err) {}
-    });
-
-    viewport.addEventListener('pointermove', function(e) {
-      if (panPointerId === null || e.pointerId !== panPointerId) return;
-      var dx = e.clientX - panStartX;
-      var dy = e.clientY - panStartY;
-      if (!panDragging && (Math.abs(dx) > PAN_THRESHOLD || Math.abs(dy) > PAN_THRESHOLD)) {
-        panDragging = true;
-        viewport.classList.add('gn-lightbox-grabbing');
-      }
-      if (panDragging) {
-        viewport.scrollLeft = panStartScrollL - dx;
-        viewport.scrollTop = panStartScrollT - dy;
-        e.preventDefault();
-      }
-    });
-
-    function endPan(e) {
-      if (panPointerId === null || (e && e.pointerId !== panPointerId)) return;
-      try { viewport.releasePointerCapture(panPointerId); } catch (err2) {}
-      viewport.classList.remove('gn-lightbox-grabbing');
-      panPointerId = null;
-      panDragging = false;
-    }
-    viewport.addEventListener('pointerup', endPan);
-    viewport.addEventListener('pointercancel', endPan);
+      document.addEventListener('pointermove', onLightboxPanDocMove, panDocCapture);
+      document.addEventListener('pointerup', onLightboxPanDocEnd, panDocCapture);
+      document.addEventListener('pointercancel', onLightboxPanDocEnd, panDocCapture);
+      e.preventDefault();
+    }, true);
   }
 
   window.addEventListener('resize', function() {
@@ -1234,6 +1261,9 @@
     overflow: auto;
     display: block;
     touch-action: none;
+    overscroll-behavior: contain;
+    user-select: none;
+    -webkit-user-select: none;
     background: radial-gradient(circle at center, #1f1f1f 0%, #0a0a0a 100%);
   }
   .gn-lightbox-viewport.gn-lightbox-pannable {
@@ -1249,6 +1279,8 @@
     box-sizing: border-box;
     line-height: 0;
     flex-shrink: 0;
+    user-select: none;
+    -webkit-user-select: none;
   }
   .gn-lightbox-img {
     user-select: none;

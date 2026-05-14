@@ -19,6 +19,32 @@ from .models import (
 )
 
 
+# 굴삭기 어드민: 세부 유형·중량 코드 → 사용자 화면과 동일한 한글 라벨
+_EXCAVATOR_SUB_TYPE_LABELS = {
+    "EXC_TIRE": "타이어식",
+    "EXC_CRAWLER": "크롤러식(체인)",
+    "EXC_ATTACHMENT": "어테치먼트",
+}
+_EXCAVATOR_WEIGHT_CLASS_LABELS = {
+    "EXC_TIRE_LE_6": "03W 5~6 ton",
+    "EXC_TIRE_LE_17": "06W 12~16 ton",
+    "EXC_TIRE_LE_21": "08W 20~22 ton",
+    "EXC_CR_LT_1": "1 ton 미만",
+    "EXC_CR_LE_2": "2 ton 미만",
+    "EXC_CR_LE_3_5": "3.5 ton 미만",
+    "EXC_CR_LE_6_5": "5~6 ton 02급",
+    "EXC_CR_LE_16": "12~16 ton 06급",
+    "EXC_CR_EQ_20": "20~22 ton 08급",
+    "EXC_CR_GE_30": "30~50 ton 10급 이상",
+    "EXC_ATT_LT_1": "1톤 미만 (어테치)",
+    "EXC_ATT_LE_2": "2톤 이하 (어테치)",
+    "EXC_ATT_LE_3_5": "3.5톤 이하 (어테치)",
+    "EXC_ATT_LE_6_5": "6.5톤 이하 (어테치)",
+    "EXC_ATT_LE_16": "16톤 이하 (어테치)",
+    "EXC_ATT_EQ_20": "20톤 (어테치)",
+}
+
+
 class EquipmentOwnerFilter(admin.SimpleListFilter):
     title = '작성자(소유)'
     parameter_name = 'equipment_owner'
@@ -157,6 +183,52 @@ class EquipmentTypeProxyAdmin(EquipmentAdmin):
 @admin.register(ExcavatorEquipment)
 class ExcavatorEquipmentAdmin(EquipmentTypeProxyAdmin):
     equipment_type_value = EquipmentType.EXCAVATOR
+    list_display = [
+        "id",
+        "equipment_type",
+        "model_name",
+        "manufacturer",
+        "excavator_sub_type_display",
+        "excavator_weight_class_display",
+        "year_manufactured",
+        "listing_price_display",
+        "current_location",
+        "vehicle_number",
+        "listing_status",
+        "is_sold",
+        "author",
+        "unclaimed_phone_norm",
+        "ownership_claimed_at",
+        "last_bumped_at",
+        "created_at",
+    ]
+    list_filter = (
+        "sub_type",
+        "weight_class",
+        EquipmentOwnerFilter,
+        "author",
+        "listing_status",
+        "is_sold",
+        "manufacturer",
+    )
+
+    def excavator_sub_type_display(self, obj):
+        code = (obj.sub_type or "").strip()
+        if not code:
+            return "-"
+        return _EXCAVATOR_SUB_TYPE_LABELS.get(code, code)
+
+    excavator_sub_type_display.short_description = "세부 유형"
+    excavator_sub_type_display.admin_order_field = "sub_type"
+
+    def excavator_weight_class_display(self, obj):
+        code = (obj.weight_class or "").strip()
+        if not code:
+            return "-"
+        return _EXCAVATOR_WEIGHT_CLASS_LABELS.get(code, code)
+
+    excavator_weight_class_display.short_description = "중량 구분"
+    excavator_weight_class_display.admin_order_field = "weight_class"
 
 
 @admin.register(ForkliftEquipment)

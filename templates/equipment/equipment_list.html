@@ -885,7 +885,6 @@
                     <thead>
                         <tr>
                             <th>번호</th>
-                            <th>매물구분</th>
                             <th>사진</th>
                             <th>구분</th>
                             <th>제조사</th>
@@ -893,20 +892,13 @@
                             <th>지역</th>
                             <th>년식</th>
                             <th>매물가</th>
-                            <th>등록인</th>
+                            <th class="gn-line-col-contact">등록인</th>
                         </tr>
                     </thead>
                     <tbody>
                         {% for equipment in equipment_list|slice:slice_rest %}
                         <tr class="gn-pc-line-row" onclick="window.location.href='{% url 'equipment_detail' equipment.pk %}'">
                             <td class="text-muted">{{ forloop.counter }}</td>
-                            <td>
-                                {% if equipment.author and equipment.author.profile.user_type == 'DEALER' %}
-                                    매매상사
-                                {% else %}
-                                    위탁
-                                {% endif %}
-                            </td>
                             <td>
                                 <a href="{% url 'equipment_detail' equipment.pk %}" class="text-decoration-none d-inline-block" onclick="event.stopPropagation();">
                                     {% if equipment.images.all %}
@@ -928,11 +920,11 @@
                             <td>{% if equipment.current_location %}{{ equipment.current_location }}{% elif equipment.region_sido %}{{ equipment.region_sido }}{% if equipment.region_sigungu %} {{ equipment.region_sigungu }}{% endif %}{% else %}-{% endif %}</td>
                             <td>{% if equipment.year_manufactured %}{{ equipment.year_manufactured }}-{{ equipment.month_manufactured|default:1|stringformat:"02d" }}{% else %}-{% endif %}</td>
                             <td class="text-danger fw-bold">{% if equipment.listing_price is not None %}{{ equipment.listing_price|floatformat:0|intcomma }}만원{% else %}문의{% endif %}</td>
-                            <td>{{ equipment|equipment_row_contact }}</td>
+                            <td class="gn-line-col-contact">{{ equipment|equipment_row_contact }}</td>
                         </tr>
                         {% empty %}
                         <tr>
-                            <td colspan="10" class="text-center py-5 text-muted">등록된 매물이 없습니다.</td>
+                            <td colspan="9" class="text-center py-5 text-muted">등록된 매물이 없습니다.</td>
                         </tr>
                         {% endfor %}
                     </tbody>
@@ -1718,16 +1710,34 @@
     }
   }
   .gn-simple-list-row:hover { opacity: 0.95; background: var(--gn-card) !important; }
+  /* overflow:hidden 이면 table-responsive 가로 스크롤이 막혀 등록인(전화) 끝이 잘림 */
   .gn-pc-line-table-wrap {
     background: #fff;
     border: 1px solid #e2e8f0;
     border-radius: 10px;
-    overflow: hidden;
+    overflow-x: auto;
+    overflow-y: visible;
+    -webkit-overflow-scrolling: touch;
     margin-top: 0.8rem;
+    width: 100%;
+    max-width: 100%;
   }
-  .gn-pc-line-table {
+  /* Bootstrap .table { width:100% } 때문에 열이 압축돼 전화번호 마지막 자리가 잘림 → 내용 너비만큼 확장 */
+  .gn-pc-line-table.table {
+    width: max-content !important;
+    min-width: 100%;
+    max-width: none;
     font-size: 0.9rem;
     margin-bottom: 0 !important;
+    table-layout: auto;
+  }
+  .gn-pc-line-table .gn-line-col-contact {
+    min-width: 12.5rem;
+    white-space: nowrap;
+    overflow: visible;
+    text-overflow: clip;
+    padding-right: 0.75rem !important;
+    font-variant-numeric: tabular-nums;
   }
   .gn-pc-line-table thead th {
     background: #f8fafc;
