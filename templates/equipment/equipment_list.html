@@ -2,6 +2,7 @@
 {% load humanize i18n_extras %}
 {% block body_class %}gn-page-index{% endblock %}
 {% block content %}
+{% firstof equipment_detail_next request.get_full_path|urlencode as equipment_detail_next_q %}
 <div class="container gn-index-container py-2 py-md-4">
     <div class="gn-index-content-grid">
     <div class="product-area">
@@ -130,13 +131,12 @@
                                     <option value="EXC_CR_LE_16" {% if filter_weight_class == 'EXC_CR_LE_16' %}selected{% endif %}>12~16 ton 06급</option>
                                     <option value="EXC_CR_EQ_20" {% if filter_weight_class == 'EXC_CR_EQ_20' %}selected{% endif %}>20~22 ton 08급</option>
                                     <option value="EXC_CR_GE_30" {% if filter_weight_class == 'EXC_CR_GE_30' %}selected{% endif %}>30~50 ton 10급 이상</option>
-                                    <!-- 어테치먼트 -->
-                                    <option value="EXC_ATT_LT_1" {% if filter_weight_class == 'EXC_ATT_LT_1' %}selected{% endif %}>1톤 미만 (어테치)</option>
-                                    <option value="EXC_ATT_LE_2" {% if filter_weight_class == 'EXC_ATT_LE_2' %}selected{% endif %}>2톤 이하 (어테치)</option>
-                                    <option value="EXC_ATT_LE_3_5" {% if filter_weight_class == 'EXC_ATT_LE_3_5' %}selected{% endif %}>3.5톤 이하 (어테치)</option>
-                                    <option value="EXC_ATT_LE_6_5" {% if filter_weight_class == 'EXC_ATT_LE_6_5' %}selected{% endif %}>6.5톤 이하 (어테치)</option>
-                                    <option value="EXC_ATT_LE_16" {% if filter_weight_class == 'EXC_ATT_LE_16' %}selected{% endif %}>16톤 이하 (어테치)</option>
-                                    <option value="EXC_ATT_EQ_20" {% if filter_weight_class == 'EXC_ATT_EQ_20' %}selected{% endif %}>20톤 (어테치)</option>
+                                    <!-- 어테치먼트 (DB는 EXC_CR_* 저장, 필터 값은 EXC_ATT_*) -->
+                                    <option value="EXC_ATT_LE_3_5" {% if filter_weight_class == 'EXC_ATT_LE_3_5' %}selected{% endif %}>3.5톤 이하</option>
+                                    <option value="EXC_ATT_LE_6_5" {% if filter_weight_class == 'EXC_ATT_LE_6_5' %}selected{% endif %}>6.5톤 이하</option>
+                                    <option value="EXC_ATT_LE_16" {% if filter_weight_class == 'EXC_ATT_LE_16' %}selected{% endif %}>16톤 이하</option>
+                                    <option value="EXC_ATT_EQ_20" {% if filter_weight_class == 'EXC_ATT_EQ_20' %}selected{% endif %}>20톤</option>
+                                    <option value="EXC_ATT_GE_30" {% if filter_weight_class == 'EXC_ATT_GE_30' %}selected{% endif %}>30톤 이상</option>
                                     {% elif filter_category == 'forklift' %}
                                     <option value="FORK_LE_1" {% if filter_weight_class == 'FORK_LE_1' %}selected{% endif %}>1 ton 이하</option>
                                     <option value="FORK_LE_2" {% if filter_weight_class == 'FORK_LE_2' %}selected{% endif %}>2 ton 이하</option>
@@ -433,12 +433,11 @@
                             <option value="EXC_CR_LE_16" {% if filter_weight_class == 'EXC_CR_LE_16' %}selected{% endif %}>12~16 ton 06급</option>
                             <option value="EXC_CR_EQ_20" {% if filter_weight_class == 'EXC_CR_EQ_20' %}selected{% endif %}>20~22 ton 08급</option>
                             <option value="EXC_CR_GE_30" {% if filter_weight_class == 'EXC_CR_GE_30' %}selected{% endif %}>30~50 ton 10급 이상</option>
-                            <option value="EXC_ATT_LT_1" {% if filter_weight_class == 'EXC_ATT_LT_1' %}selected{% endif %}>1톤 미만 (어테치)</option>
-                            <option value="EXC_ATT_LE_2" {% if filter_weight_class == 'EXC_ATT_LE_2' %}selected{% endif %}>2톤 이하 (어테치)</option>
-                            <option value="EXC_ATT_LE_3_5" {% if filter_weight_class == 'EXC_ATT_LE_3_5' %}selected{% endif %}>3.5톤 이하 (어테치)</option>
-                            <option value="EXC_ATT_LE_6_5" {% if filter_weight_class == 'EXC_ATT_LE_6_5' %}selected{% endif %}>6.5톤 이하 (어테치)</option>
-                            <option value="EXC_ATT_LE_16" {% if filter_weight_class == 'EXC_ATT_LE_16' %}selected{% endif %}>16톤 이하 (어테치)</option>
-                            <option value="EXC_ATT_EQ_20" {% if filter_weight_class == 'EXC_ATT_EQ_20' %}selected{% endif %}>20톤 (어테치)</option>
+                            <option value="EXC_ATT_LE_3_5" {% if filter_weight_class == 'EXC_ATT_LE_3_5' %}selected{% endif %}>3.5톤 이하</option>
+                            <option value="EXC_ATT_LE_6_5" {% if filter_weight_class == 'EXC_ATT_LE_6_5' %}selected{% endif %}>6.5톤 이하</option>
+                            <option value="EXC_ATT_LE_16" {% if filter_weight_class == 'EXC_ATT_LE_16' %}selected{% endif %}>16톤 이하</option>
+                            <option value="EXC_ATT_EQ_20" {% if filter_weight_class == 'EXC_ATT_EQ_20' %}selected{% endif %}>20톤</option>
+                            <option value="EXC_ATT_GE_30" {% if filter_weight_class == 'EXC_ATT_GE_30' %}selected{% endif %}>30톤 이상</option>
                             {% elif filter_category == 'forklift' %}
                             <option value="FORK_LE_1" {% if filter_weight_class == 'FORK_LE_1' %}selected{% endif %}>1 ton 이하</option>
                             <option value="FORK_LE_2" {% if filter_weight_class == 'FORK_LE_2' %}selected{% endif %}>2 ton 이하</option>
@@ -675,7 +674,7 @@
         <div class="col">
             <div class="card h-100 gn-list-card border shadow-sm overflow-hidden position-relative">
                 <div class="position-relative gn-list-card-img" style="z-index: 2;">
-                    <a href="{% url 'equipment_detail' equipment.pk %}" class="d-block text-decoration-none h-100" style="cursor: pointer;">
+                    <a href="{% url 'equipment_detail' equipment.pk %}?next={{ equipment_detail_next_q }}" class="d-block text-decoration-none h-100" style="cursor: pointer;">
                         {% if equipment.images.all %}
                         <img src="{{ equipment.images.first.image.url }}" class="w-100 h-100" style="object-fit: cover; pointer-events: none; display: block;" alt="{% if equipment.model_name %}{{ equipment.model_name }}{% else %}모름{% endif %}">
                         {% else %}
@@ -717,7 +716,7 @@
                         </span>
                     </p>
                 </div>
-                <a href="{% url 'equipment_detail' equipment.pk %}" class="stretched-link" aria-label="{% if equipment.model_name %}{{ equipment.model_name }}{% else %}모름{% endif %} 상세보기"></a>
+                <a href="{% url 'equipment_detail' equipment.pk %}?next={{ equipment_detail_next_q }}" class="stretched-link" aria-label="{% if equipment.model_name %}{{ equipment.model_name }}{% else %}모름{% endif %} 상세보기"></a>
             </div>
         </div>
         {% empty %}
@@ -735,7 +734,7 @@
         <div class="d-flex flex-wrap align-items-center justify-content-center gap-2 my-3 gn-more-controls">
             <label class="small text-muted mb-0 d-flex align-items-center gap-1">
                 <span>한줄 목록</span>
-                <select class="form-select form-select-sm" style="width: auto;" onchange="var p=this.value; var u=new URL(location.href); u.searchParams.set('per_page', p); location.href=u.toString();" aria-label="보기 개수">
+                <select class="form-select form-select-sm" style="width: auto;" onchange="window.gnApplyPerPage(this.value)" aria-label="보기 개수">
                     <option value="40" {% if list_per_page == 40 %}selected{% endif %}>40개씩 보기</option>
                     <option value="80" {% if list_per_page == 80 %}selected{% endif %}>80개씩 보기</option>
                 </select>
@@ -750,7 +749,7 @@
             <div class="row g-2 mb-4">
                 {% for equipment in equipment_list|slice:slice_rest %}
                 <div class="col-12">
-                    <a href="{% url 'equipment_detail' equipment.pk %}" class="d-flex align-items-center gap-3 p-2 rounded border text-decoration-none gn-simple-list-row" style="background: var(--gn-card); color: var(--gn-text);">
+                    <a href="{% url 'equipment_detail' equipment.pk %}?next={{ equipment_detail_next_q }}" class="d-flex align-items-center gap-3 p-2 rounded border text-decoration-none gn-simple-list-row" style="background: var(--gn-card); color: var(--gn-text);">
                         {% if equipment.images.all %}
                         <div class="rounded flex-shrink-0 overflow-hidden" style="width: 80px; height: 80px;"><img src="{{ equipment.images.first.image.url }}" alt="" class="w-100 h-100" style="object-fit: cover; display: block;"></div>
                         {% else %}
@@ -823,7 +822,7 @@
                         </span>
                     </p>
                 </div>
-                <a href="{% url 'equipment_detail' equipment.pk %}" class="position-relative order-2 order-md-1 equip-card-img d-block text-decoration-none" style="background: #e2e8f0; overflow: hidden; cursor: pointer; z-index: 2;">
+                <a href="{% url 'equipment_detail' equipment.pk %}?next={{ equipment_detail_next_q }}" class="position-relative order-2 order-md-1 equip-card-img d-block text-decoration-none" style="background: #e2e8f0; overflow: hidden; cursor: pointer; z-index: 2;">
                     {% if equipment.images.all %}
                     <img src="{{ equipment.images.first.image.url }}" class="w-100 h-100" style="object-fit: cover; pointer-events: none; display: block;" alt="{% if equipment.model_name %}{{ equipment.model_name }}{% else %}모름{% endif %}">
                     {% else %}
@@ -834,7 +833,7 @@
                     <span class="position-absolute top-0 start-0 m-1 mt-4 px-1 py-0 rounded text-white fw-bold" style="background: #e8a317; font-size: 0.7rem;"><i class="bi bi-star-fill"></i> 프리미엄</span>
                     {% endif %}
                 </a>
-                <a href="{% url 'equipment_detail' equipment.pk %}" class="stretched-link"></a>
+                <a href="{% url 'equipment_detail' equipment.pk %}?next={{ equipment_detail_next_q }}" class="stretched-link"></a>
             </div>
         </div>
         {% empty %}
@@ -851,7 +850,7 @@
         <div class="d-flex flex-wrap align-items-center justify-content-center gap-2 my-3 gn-more-controls">
             <label class="small text-muted mb-0 d-flex align-items-center gap-1">
                 <span>한줄 목록</span>
-                <select class="form-select form-select-sm" style="width: auto;" onchange="var p=this.value; var u=new URL(location.href); u.searchParams.set('per_page', p); location.href=u.toString();" aria-label="보기 개수">
+                <select class="form-select form-select-sm" style="width: auto;" onchange="window.gnApplyPerPage(this.value)" aria-label="보기 개수">
                     <option value="40" {% if list_per_page == 40 %}selected{% endif %}>40개씩 보기</option>
                     <option value="80" {% if list_per_page == 80 %}selected{% endif %}>80개씩 보기</option>
                 </select>
@@ -897,10 +896,10 @@
                     </thead>
                     <tbody>
                         {% for equipment in equipment_list|slice:slice_rest %}
-                        <tr class="gn-pc-line-row" onclick="window.location.href='{% url 'equipment_detail' equipment.pk %}'">
+                        <tr class="gn-pc-line-row" onclick="window.location.href='{% url 'equipment_detail' equipment.pk %}?next={{ equipment_detail_next_q }}'">
                             <td class="text-muted">{{ forloop.counter }}</td>
                             <td>
-                                <a href="{% url 'equipment_detail' equipment.pk %}" class="text-decoration-none d-inline-block" onclick="event.stopPropagation();">
+                                <a href="{% url 'equipment_detail' equipment.pk %}?next={{ equipment_detail_next_q }}" class="text-decoration-none d-inline-block" onclick="event.stopPropagation();">
                                     {% if equipment.images.all %}
                                     <span class="d-inline-block overflow-hidden border gn-line-thumb-wrap">
                                         <img src="{{ equipment.images.first.image.url }}" alt="" class="gn-line-thumb-img" loading="lazy" decoding="async">
@@ -913,7 +912,7 @@
                             <td class="fw-semibold">{% if equipment.is_sold %}판매완료{% else %}팝니다{% endif %}</td>
                             <td>{% if equipment.manufacturer %}{{ equipment.manufacturer }}{% else %}-{% endif %}</td>
                             <td class="fw-semibold">
-                                <a href="{% url 'equipment_detail' equipment.pk %}" class="text-decoration-none text-dark" onclick="event.stopPropagation();">
+                                <a href="{% url 'equipment_detail' equipment.pk %}?next={{ equipment_detail_next_q }}" class="text-decoration-none text-dark" onclick="event.stopPropagation();">
                                     {% if equipment.model_name %}{{ equipment.model_name }}{% else %}모름{% endif %}
                                 </a>
                             </td>
@@ -946,7 +945,7 @@
           </div>
           <div class="card-body p-2 gn-premium-side-body">
             {% for ad in right_ads %}
-            <a href="{% if ad.author_id %}{% url 'author_listings' ad.author_id %}{% if filter_category %}?category={{ filter_category }}{% endif %}{% else %}{% url 'equipment_detail' ad.pk %}{% endif %}" class="d-block text-decoration-none border-bottom mb-1 pb-1 gn-premium-side-row gn-premium-bizcard {% if forloop.last %}border-0 mb-0 pb-0{% endif %}">
+            <a href="{% if ad.author_id %}{% url 'author_listings' ad.author_id %}{% if filter_category %}?category={{ filter_category }}{% endif %}{% else %}{% url 'equipment_detail' ad.pk %}?next={{ equipment_detail_next_q }}{% endif %}" class="d-block text-decoration-none border-bottom mb-1 pb-1 gn-premium-side-row gn-premium-bizcard {% if forloop.last %}border-0 mb-0 pb-0{% endif %}">
               <div class="d-flex gap-2 align-items-center">
                 <div class="flex-shrink-0 rounded overflow-hidden gn-premium-side-thumb">
                   {% if ad.images.first %}
@@ -1913,33 +1912,64 @@
     });
   })();
 
-  // 상세검색: 폼 값을 GET 쿼리로 만들어 이동 (PC/모바일 공통)
+  // 목록 GET 파라미터 화이트리스트 (name=/?category=... 같은 오염 방지)
+  var GN_INDEX_QUERY_KEYS = [
+    'category', 'expand', 'q', 'maker', 'sub_type', 'weight_class', 'model',
+    'year_min', 'year_max', 'region_sido', 'region_sigungu', 'mast_type',
+    'sort', 'per_page', 'premium_only'
+  ];
+
+  function gnCleanIndexSearchParams(params) {
+    var clean = new URLSearchParams();
+    GN_INDEX_QUERY_KEYS.forEach(function(key) {
+      if (params.has(key)) {
+        clean.set(key, params.get(key));
+      }
+    });
+    return clean;
+  }
+
+  function gnIndexBasePath() {
+    return '/';
+  }
+
+  // 상세검색: 폼 값을 GET 쿼리로 만들어 이동 (PC/모바일/헤더 검색 공통)
   function submitSearchForm(form) {
     if (!form) return;
-    var basePath = (form.getAttribute('data-index-url') || form.getAttribute('action') || window.location.pathname || '').split('?')[0];
-    if (!basePath) basePath = '/';
-    if (!basePath.startsWith('/')) basePath = '/' + basePath;
     var fd = new FormData(form);
     var params = new URLSearchParams();
     fd.forEach(function(value, key) {
-      if (key) params.append(key, value);
+      if (!key || GN_INDEX_QUERY_KEYS.indexOf(key) === -1) return;
+      params.append(key, value);
     });
-    var qs = params.toString();
-    var targetUrl = window.location.origin + basePath + (qs ? '?' + qs : '');
+    var qs = gnCleanIndexSearchParams(params).toString();
+    var targetUrl = window.location.origin + gnIndexBasePath() + (qs ? '?' + qs : '');
     window.location.href = targetUrl;
   }
+  window.gnSubmitIndexSearchForm = submitSearchForm;
 
-  // PC: 폼 기본 GET 제출 사용 (검색 버튼 클릭 시 확실히 이동)
+  function gnApplyPerPage(perPage) {
+    var params = gnCleanIndexSearchParams(new URLSearchParams(window.location.search || ''));
+    params.set('per_page', perPage);
+    var qs = params.toString();
+    window.location.href = window.location.origin + gnIndexBasePath() + (qs ? '?' + qs : '');
+  }
+  window.gnApplyPerPage = gnApplyPerPage;
+
+  // PC: 항상 화이트리스트 쿼리로 제출
   (function() {
     var pcForm = document.getElementById('gn-pc-search-form');
     if (pcForm) {
       pcForm.addEventListener('submit', function(e) {
-        // 기본 제출을 막지 않고, action이 비어 있으면 우리가 직접 이동
-        var action = (pcForm.getAttribute('action') || '').trim();
-        if (!action || action === '#' || action === '') {
-          e.preventDefault();
-          submitSearchForm(pcForm);
-        }
+        e.preventDefault();
+        submitSearchForm(pcForm);
+      });
+    }
+    var headerSearchForm = document.getElementById('gnSearchForm');
+    if (headerSearchForm) {
+      headerSearchForm.addEventListener('submit', function(e) {
+        e.preventDefault();
+        submitSearchForm(headerSearchForm);
       });
     }
   })();
@@ -2027,23 +2057,20 @@
 
     var CRAWLER_OPTIONS = [
       { value: '', text: '전체' },
-      { value: 'EXC_CR_LT_1', text: '1 ton 미만' },
-      { value: 'EXC_CR_LE_2', text: '2 ton 미만' },
-      { value: 'EXC_CR_LE_3_5', text: '3.5 ton 미만' },
-      { value: 'EXC_CR_LE_6_5', text: '5~6 ton 02급' },
-      { value: 'EXC_CR_LE_16', text: '12~16 ton 06급' },
-      { value: 'EXC_CR_EQ_20', text: '20~22 ton 08급' },
-      { value: 'EXC_CR_GE_30', text: '30~50 ton 10급 이상' }
+      { value: 'EXC_CR_LE_3_5', text: '미니굴삭기 1~3ton' },
+      { value: 'EXC_CR_LE_6_5', text: '02급 5~6ton' },
+      { value: 'EXC_CR_LE_16', text: '06급 14~16ton' },
+      { value: 'EXC_CR_EQ_20', text: '08급 20~22ton' },
+      { value: 'EXC_CR_GE_30', text: '10급이상 30~50ton' },
     ];
 
     var ATTACH_OPTIONS = [
       { value: '', text: '전체' },
-      { value: 'EXC_ATT_LT_1', text: '1톤 미만 (어테치)' },
-      { value: 'EXC_ATT_LE_2', text: '2톤 이하 (어테치)' },
-      { value: 'EXC_ATT_LE_3_5', text: '3.5톤 이하 (어테치)' },
-      { value: 'EXC_ATT_LE_6_5', text: '6.5톤 이하 (어테치)' },
-      { value: 'EXC_ATT_LE_16', text: '16톤 이하 (어테치)' },
-      { value: 'EXC_ATT_EQ_20', text: '20톤 (어테치)' }
+      { value: 'EXC_ATT_LE_3_5', text: '3.5톤 이하' },
+      { value: 'EXC_ATT_LE_6_5', text: '6.5톤 이하' },
+      { value: 'EXC_ATT_LE_16', text: '16톤 이하' },
+      { value: 'EXC_ATT_EQ_20', text: '20톤' },
+      { value: 'EXC_ATT_GE_30', text: '30톤 이상' },
     ];
 
     function wireWeightFilter(subId, weightId) {

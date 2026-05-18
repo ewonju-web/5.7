@@ -3,7 +3,12 @@
 <div class="container py-4 py-md-5" style="max-width: 920px;">
   <div class="text-center mb-4">
     <h2 class="fw-bold mb-2">유료회원 안내</h2>
+    {% if slot == 'attachment' %}
+    <p class="text-primary fw-semibold mb-1">어태치먼트·타이어 광고 문의</p>
+    <p class="text-muted mb-0">상세 페이지 우측 「어태치먼트·타이어 광고」 슬롯 노출을 원하시면 아래 연락처로 문의해 주세요.</p>
+    {% else %}
     <p class="text-muted mb-0">필요할 때 바로 적용할 수 있는 단일 유료 상품입니다.</p>
+    {% endif %}
   </div>
 
   <div class="row g-3 g-md-4 mb-4">

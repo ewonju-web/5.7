@@ -1,6 +1,7 @@
 {% extends "base.html" %}
 {% load humanize i18n_extras %}
 {% block content %}
+{% firstof equipment_detail_next request.get_full_path|urlencode as equipment_detail_next_q %}
 <div class="container py-3 py-md-4 gn-author-showcase">
   {% with first_listing=listings|first %}
   <section class="card border-0 shadow-sm mb-4 overflow-hidden gn-author-profile-card">
@@ -83,7 +84,7 @@
       <div class="carousel-inner rounded-3 overflow-hidden border">
         {% for equipment in featured_listings %}
         <div class="carousel-item {% if forloop.first %}active{% endif %}">
-          <a href="{% url 'equipment_detail' equipment.pk %}" class="d-block text-decoration-none">
+          <a href="{% url 'equipment_detail' equipment.pk %}?next={{ equipment_detail_next_q }}" class="d-block text-decoration-none">
             <div class="position-relative gn-author-featured-slide">
               {% if equipment.images.first %}
               <img src="{{ equipment.images.first.image.url }}" class="w-100 h-100" style="object-fit: cover;" alt="">
@@ -133,7 +134,7 @@
     <div class="row g-3">
       {% for equipment in listings %}
       <div class="col-12 col-md-6 col-xl-4">
-        <a href="{% url 'equipment_detail' equipment.pk %}" class="card h-100 text-decoration-none gn-author-grid-card">
+        <a href="{% url 'equipment_detail' equipment.pk %}?next={{ equipment_detail_next_q }}" class="card h-100 text-decoration-none gn-author-grid-card">
           <div class="position-relative">
             {% if equipment.images.first %}
             <img src="{{ equipment.images.first.image.url }}" alt="" class="card-img-top gn-author-grid-thumb">

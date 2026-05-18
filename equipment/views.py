@@ -13,6 +13,7 @@ from django.contrib import messages
 from django.conf import settings
 from decimal import Decimal, ROUND_HALF_UP
 from datetime import timedelta
+from urllib.parse import parse_qs, quote, urlencode, urlparse
 import json
 
 from django.contrib.contenttypes.models import ContentType
@@ -36,6 +37,7 @@ from .premium_utils import (
     PREMIUM_SIDEBAR_EXPERT_TITLE_BY_CATEGORY,
 )
 from .claim_utils import normalize_phone_digits
+from .partsshop_validation import validate_partsshop_form
 from .listing_filters import (
     exclude_excavator_misclassified_for_non_excavator_tabs,
     exclude_attachment_like_from_non_attachment_tabs,
@@ -232,8 +234,41 @@ def board_post_detail(request, pk):
     raise Http404()
 
 
+def _redirect_repaired_index_query(request):
+    """
+    잘못된 GET name=/?category=... (pathname+search가 name 값으로 들어온 경우)를
+    내장 쿼리스트링을 풀어 정상 목록 URL로 302 리다이렉트한다.
+    """
+    raw_name = (request.GET.get('name') or '').strip()
+    if not raw_name.startswith('/'):
+        return None
+    parsed = urlparse(raw_name)
+    if not parsed.query:
+        return None
+    embedded = {
+        k: (vals[0] if len(vals) == 1 else vals)
+        for k, vals in parse_qs(parsed.query, keep_blank_values=True).items()
+    }
+    merged = {}
+    for key in request.GET:
+        if key == 'name':
+            continue
+        merged[key] = request.GET.get(key)
+    merged.update(embedded)
+    target_path = parsed.path or '/'
+    target_qs = urlencode(merged)
+    target = target_path + ('?' + target_qs if target_qs else '')
+    if target == request.get_full_path():
+        return None
+    return redirect(target)
+
+
 # [1] 메인 페이지 (키워드 + 정렬만)
 def index(request):
+    repaired = _redirect_repaired_index_query(request)
+    if repaired is not None:
+        return repaired
+
     query = (request.GET.get('q', '') or '').strip()
     sort = (request.GET.get('sort', '') or 'new').strip().lower()
     if sort not in ('price_asc', 'price_desc', 'year_desc', 'new'):
@@ -374,10 +409,44 @@ def index(request):
             )
             equipment_list = equipment_list.filter(exact_tire_56 | legacy_tire_56)
         else:
-            if sub_type:
+            ATT_TO_CR_MAP = {
+                'EXC_ATT_LT_1': 'EXC_CR_LE_3_5',
+                'EXC_ATT_LE_2': 'EXC_CR_LE_2',
+                'EXC_ATT_LE_3_5': 'EXC_CR_LE_3_5',
+                'EXC_ATT_LE_6_5': 'EXC_CR_LE_6_5',
+                'EXC_ATT_LE_16': 'EXC_CR_LE_16',
+                'EXC_ATT_EQ_20': 'EXC_CR_EQ_20',
+                'EXC_ATT_GE_30': 'EXC_CR_GE_30',
+            }
+            if sub_type == 'EXC_CRAWLER':
+                equipment_list = equipment_list.filter(
+                    Q(sub_type='EXC_CRAWLER') |
+                    (Q(sub_type='') & Q(weight_class__startswith='EXC_CR_'))
+                )
+            elif sub_type:
                 equipment_list = equipment_list.filter(sub_type=sub_type)
+
             if weight_class:
-                equipment_list = equipment_list.filter(weight_class=weight_class)
+                if sub_type == 'EXC_ATTACHMENT':
+                    cr_code = ATT_TO_CR_MAP.get(weight_class)
+                    if cr_code:
+                        equipment_list = equipment_list.filter(
+                            Q(weight_class=weight_class)
+                            | Q(weight_class=cr_code)
+                            | Q(weight_class='')
+                        )
+                    else:
+                        equipment_list = equipment_list.filter(
+                            Q(weight_class=weight_class) | Q(weight_class='')
+                        )
+                else:
+                    cr_code = ATT_TO_CR_MAP.get(weight_class)
+                    if cr_code:
+                        equipment_list = equipment_list.filter(
+                            Q(weight_class=weight_class) | Q(weight_class=cr_code)
+                        )
+                    else:
+                        equipment_list = equipment_list.filter(weight_class=weight_class)
         # 타이어 06W/08W: 체인 미니가 타이어+대톤수로 잘못 저장된 행 제외(검색 UX)
         mislabeled_q = _exclude_mislabeled_mini_crawler_in_tire_heavy_search(sub_type, weight_class)
         if mislabeled_q is not None:
@@ -532,6 +601,8 @@ def index(request):
         'index_query_base': index_query_base,
         'hide_advanced_filters': hide_advanced_filters,
         'premium_only': premium_only,
+        'list_back_url': request.get_full_path,
+        'equipment_detail_next': quote(request.get_full_path(), safe=''),
     })
 
 
@@ -929,6 +1000,7 @@ def billing_upgrade(request):
     """유료 회원 안내 페이지(로그인 필수)."""
     return render(request, 'billing/upgrade.html', {
         'kakao_inquiry_url': getattr(settings, 'KAKAO_INQUIRY_URL', 'https://open.kakao.com/'),
+        'slot': (request.GET.get('slot') or '').strip(),
     })
 
 
@@ -1896,6 +1968,14 @@ def parts_as_register(request):
 
         if not name or not region or not contact:
             messages.error(request, "업체명, 지역, 연락처는 필수입니다.")
+        elif validation_error := validate_partsshop_form(
+            name=name,
+            region=region,
+            contact=contact,
+            address=address,
+            note=note,
+        ):
+            messages.error(request, validation_error)
         else:
             if shop_kind not in ("parts", "as"):
                 shop_kind = "parts"
@@ -1985,6 +2065,35 @@ def service_centers_api(request):
     return JsonResponse({"centers": centers})
 
 
+def _resolve_equipment_detail_back_url(request, equipment):
+    """상세 화면에서 목록으로 돌아갈 URL (검색·필터·정렬 상태 유지)."""
+    if (request.GET.get('from') or '').strip().lower() == 'mypage' and request.user.is_authenticated:
+        return reverse('my_page'), '뒤로가기'
+
+    allowed_hosts = {request.get_host()}
+    next_url = (request.GET.get('next') or '').strip()
+    if next_url and url_has_allowed_host_and_scheme(next_url, allowed_hosts=allowed_hosts):
+        return next_url, '목록으로 가기'
+
+    referer = (request.META.get('HTTP_REFERER') or '').strip()
+    if referer and url_has_allowed_host_and_scheme(referer, allowed_hosts=allowed_hosts):
+        from urllib.parse import urlparse
+
+        parsed = urlparse(referer)
+        path = (parsed.path or '/').rstrip('/') or '/'
+        index_path = reverse('index').rstrip('/') or '/'
+        if path == index_path or path == '/' or path.startswith('/equipment/author/'):
+            back = parsed.path or '/'
+            if parsed.query:
+                back += '?' + parsed.query
+            return back, '목록으로 가기'
+
+    detail_back_url = reverse('index')
+    if equipment.equipment_type:
+        detail_back_url += f'?category={equipment.equipment_type}'
+    return detail_back_url, '목록으로 가기'
+
+
 # [4] 매물 관련
 def equipment_detail(request, pk):
     equipment = get_object_or_404(Equipment, pk=pk)
@@ -2011,9 +2120,17 @@ def equipment_detail(request, pk):
             )
         from urllib.parse import urlencode
 
-        redir = reverse('equipment_detail', kwargs={'pk': pk})
+        redir_params = {}
         if (request.GET.get('from') or '').strip().lower() == 'mypage':
-            redir += '?' + urlencode({'from': 'mypage'})
+            redir_params['from'] = 'mypage'
+        next_after_comment = (request.GET.get('next') or '').strip()
+        if next_after_comment and url_has_allowed_host_and_scheme(
+            next_after_comment, allowed_hosts={request.get_host()}
+        ):
+            redir_params['next'] = next_after_comment
+        redir = reverse('equipment_detail', kwargs={'pk': pk})
+        if redir_params:
+            redir += '?' + urlencode(redir_params)
         return redirect(redir)
 
     if request.method == 'GET':
@@ -2143,12 +2260,12 @@ def equipment_detail(request, pk):
             Equipment.objects.visible()
             .filter(is_sold=False)
             .filter(
-                Q(equipment_type="attachment")
+                Q(equipment_type="excavator", sub_type="EXC_ATTACHMENT")
                 | Q(equipment_type="excavator", sub_type="EXC_TIRE")
             )
             .exclude(pk=equipment.pk)
             .select_related("author__profile")
-            .order_by("?")[:5]
+            .order_by("-created_at")[:5]
         )
 
     # 상세 레일·연동: 같은 기종 유료 전문가 (현재 매물 제외). 굴삭기는 좌우 10+10 슬롯용으로 20칸 패딩
@@ -2213,13 +2330,7 @@ def equipment_detail(request, pk):
         else:
             next_bump_at = week_logs.first().bumped_at + timedelta(days=7)
 
-    detail_back_url = reverse('index')
-    if equipment.equipment_type:
-        detail_back_url += f'?category={equipment.equipment_type}'
-    detail_back_label = '목록으로 가기'
-    if (request.GET.get('from') or '').strip().lower() == 'mypage' and request.user.is_authenticated:
-        detail_back_url = reverse('my_page')
-        detail_back_label = '뒤로가기'
+    detail_back_url, detail_back_label = _resolve_equipment_detail_back_url(request, equipment)
 
     return render(request, 'equipment/equipment_detail.html', {
         'equipment': equipment,
@@ -2565,6 +2676,8 @@ def author_listings(request, user_id):
         'sold_count': sold_count,
         'trust_score': trust_score,
         'avg_response_text': avg_response_text,
+        'list_back_url': request.get_full_path,
+        'equipment_detail_next': quote(request.get_full_path(), safe=''),
     })
 
 

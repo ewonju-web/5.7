@@ -76,7 +76,15 @@ class EquipmentForm(forms.ModelForm):
         if eq_type is None and self.data:
             eq_type = self.data.get("equipment_type")
         # 덤프/로더/크레인/어태치먼트/기타: 제조사·모델명·톤수·년월·지역·가격 동일하게 등록 가능. 세부종류/마스트/가동시간만 숨김. 톤수는 템플릿 simple-type-fields에서 별도 입력란으로 노출.
-        if eq_type in ("crane", "loader", "dump", "attachment", "other"):
+        if eq_type == "attachment":
+            self.fields["sub_type"].initial = "EXC_ATTACHMENT"
+            self.fields["sub_type"].widget = forms.HiddenInput()
+            self.fields["sub_type"].required = False
+            for name in ("mast_type", "operating_hours"):
+                self.fields[name].widget = forms.HiddenInput()
+                self.fields[name].required = False
+            self.fields["weight_class"].required = False
+        elif eq_type in ("crane", "loader", "dump", "other"):
             for name in ("sub_type", "mast_type", "operating_hours"):
                 self.fields[name].widget = forms.HiddenInput()
                 self.fields[name].required = False
@@ -128,6 +136,13 @@ class EquipmentForm(forms.ModelForm):
         if len(data) > 50:
             raise forms.ValidationError("상세 설명은 최대 50자까지 입력 가능합니다.")
         return data[:50]
+
+    def clean(self):
+        cleaned = super().clean()
+        eq_type = (cleaned.get("equipment_type") or "").strip()
+        if eq_type == "attachment":
+            cleaned["sub_type"] = "EXC_ATTACHMENT"
+        return cleaned
 
 
 class EquipmentEditForm(forms.ModelForm):
