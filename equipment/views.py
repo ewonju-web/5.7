@@ -339,6 +339,9 @@ def index(request):
             equipment_list = filter_attachment_tab(equipment_list)
         else:
             equipment_list = equipment_list.filter(equipment_type=filter_category)
+    # 굴삭기 탭: 어태치먼트(sub_type)는 기본 목록에서 제외(세부검색에서 EXC_ATTACHMENT 선택 시만 포함)
+    if filter_category == "excavator" and sub_type != "EXC_ATTACHMENT":
+        equipment_list = equipment_list.exclude(sub_type="EXC_ATTACHMENT")
     # 지게차·덤프·로더 탭: DB 오분류로 굴삭기가 섞이지 않도록 EXC_*·모델 패턴 제외
     equipment_list = exclude_excavator_misclassified_for_non_excavator_tabs(
         equipment_list, filter_category
@@ -538,17 +541,6 @@ def index(request):
         for i in range(0, len(premium_rotation_list), 6)
         if premium_rotation_list[i : i + 6]
     ]
-    premium_sidebar_list = get_premium_equipment_sidebar(
-        limit=PREMIUM_SIDEBAR_INDEX_TOTAL, equipment_type=filter_category or None
-    )
-    premium_sidebar_slots = pad_premium_sidebar_slots(
-        premium_sidebar_list, PREMIUM_SIDEBAR_INDEX_TOTAL
-    )
-    right_ads = [slot for slot in premium_sidebar_slots[10:20] if slot][:3]
-    premium_sidebar_expert_title = PREMIUM_SIDEBAR_EXPERT_TITLE_BY_CATEGORY.get(
-        filter_category, ""
-    )
-
     # 더보기 목록:
     # - 일반 화면: 21번째부터 per_page개(40/80)
     # - 상세검색 결과 화면: 21번째부터 전부 한줄 목록으로 즉시 노출
@@ -583,10 +575,6 @@ def index(request):
         'favorited_equipment_ids': favorited_ids,
         'premium_rotation_list': premium_rotation_list,
         'premium_rotation_chunks': premium_rotation_chunks,
-        'premium_sidebar_list': premium_sidebar_list,
-        'premium_sidebar_slots': premium_sidebar_slots,
-        'right_ads': right_ads,
-        'premium_sidebar_expert_title': premium_sidebar_expert_title,
         'premium_author_ids': premium_author_ids,
         # 상세 검색 상태 유지용
         'filter_maker': maker,
