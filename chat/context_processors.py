@@ -1,11 +1,19 @@
 from django.db.models import Q
 
+from equipment.templatetags.i18n_extras import SUPPORTED_LANGS
+from equipment.i18n.page_messages import get_page_dict
 from .models import ChatMessage
 
 
 def lang(request):
     """템플릿에서 사용할 언어 코드. 세션에 없으면 'ko'."""
-    return {'LANG': request.session.get('lang', 'ko')}
+    code = (request.session.get('lang') or 'ko').strip().lower()
+    if code not in SUPPORTED_LANGS:
+        code = 'ko'
+    return {
+        'LANG': code,
+        'I18N_PAGE': get_page_dict(code),
+    }
 
 
 def chat_unread(request):

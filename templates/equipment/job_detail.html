@@ -36,7 +36,6 @@
                 {% else %}
                 <div class="gn-job-simple-list">
                     <div class="gn-job-simple-row"><span class="gn-job-dt">지역</span><span class="gn-job-dd">{% if job.region_sido or job.region_sigungu %}{{ job.region_sido|default:'' }} {{ job.region_sigungu|default:'' }}{% if job.location %} {{ job.location }}{% endif %}{% else %}{{ job.location|default:"—" }}{% endif %}</span></div>
-                    <div class="gn-job-simple-row"><span class="gn-job-dt">경력</span><span class="gn-job-dd">{{ job.experience|default:"—" }}</span></div>
                     <div class="gn-job-simple-row"><span class="gn-job-dt">작성자</span><span class="gn-job-dd">{{ job.writer_display|default:"—" }}</span></div>
                     <div class="gn-job-simple-row"><span class="gn-job-dt">연락처</span><span class="gn-job-dd">{% if job.contact %}<a href="tel:{{ job.contact }}" class="text-decoration-none">{{ job.contact|format_phone }}</a>{% else %}—{% endif %}</span></div>
                     <div class="gn-job-simple-row"><span class="gn-job-dt">등록일</span><span class="gn-job-dd">{{ job.created_at|date:"Y-m-d" }}</span></div>

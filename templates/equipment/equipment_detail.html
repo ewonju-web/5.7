@@ -24,8 +24,12 @@
                  data-lightbox-index="0"
                  data-lightbox-src="{{ detail_images.0.image.url }}"
                  alt="{{ equipment.model_name }}">
-            <span class="position-absolute bottom-0 end-0 m-2 badge bg-dark bg-opacity-75 py-2 px-3 small">
-              <i class="bi bi-zoom-in me-1"></i>클릭하면 크게 보기
+            {% if detail_images|length > 1 %}
+            <button type="button" class="gn-detail-main-nav gn-detail-main-prev d-md-none" id="detailMainPrev" aria-label="이전 사진"><i class="bi bi-chevron-left"></i></button>
+            <button type="button" class="gn-detail-main-nav gn-detail-main-next d-md-none" id="detailMainNext" aria-label="다음 사진"><i class="bi bi-chevron-right"></i></button>
+            {% endif %}
+            <span class="position-absolute bottom-0 end-0 m-2 badge bg-dark bg-opacity-75 py-2 px-3 small gn-detail-zoom-hint">
+              <i class="bi bi-zoom-in me-1"></i>탭하면 크게 보기
             </span>
           </div>
           {% if detail_images|length > 1 %}
@@ -385,9 +389,21 @@
                 <a href="tel:{{ shop.contact|cut:'-'|cut:' ' }}" class="text-decoration-none fw-bold gn-rail-text gn-rail-contact">
                   <i class="bi bi-telephone me-1"></i>{{ shop.contact }}
                 </a>
-                <a href="https://map.kakao.com/?q={{ shop.address|default:shop.name|urlencode }}" target="_blank" rel="noopener noreferrer" class="btn btn-sm btn-outline-primary py-0 px-2 gn-rail-btn-outline">
+                {% if kakao_map_js_key %}
+                <button type="button" class="btn btn-sm btn-outline-primary py-0 px-2 gn-rail-btn-outline gn-parts-map-open"
+                        data-shop-id="{{ shop.pk }}"
+                        data-shop-name="{{ shop.name|escape }}"
+                        data-shop-lat="{% if shop.lat %}{{ shop.lat }}{% endif %}"
+                        data-shop-lng="{% if shop.lng %}{{ shop.lng }}{% endif %}"
+                        data-shop-address="{{ shop.address|default:shop.region|escape }}"
+                        data-shop-phone="{{ shop.contact|escape }}"
+                        data-shop-kind="{{ shop.shop_kind }}"
+                        data-parts-as-url="{% url 'parts_as' %}?shop={{ shop.pk }}">
                   지도
-                </a>
+                </button>
+                {% else %}
+                <a href="{% url 'parts_as' %}?shop={{ shop.pk }}" class="btn btn-sm btn-outline-primary py-0 px-2 gn-rail-btn-outline">지도</a>
+                {% endif %}
               </div>
             </div>
             {% endfor %}
@@ -403,8 +419,58 @@
   </div><!-- /.gn-detail-layout -->
 </div>
 
+{% if kakao_map_js_key and nearby_parts_shops %}
+<div class="modal fade" id="partsShopMapModal" tabindex="-1" aria-labelledby="partsShopMapModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered modal-lg modal-dialog-scrollable">
+    <div class="modal-content border-0 shadow-lg overflow-hidden rounded-3">
+      <div class="modal-header py-2 px-3 border-bottom">
+        <div class="min-w-0 me-2">
+          <h5 class="modal-title fs-6 mb-0 text-truncate" id="partsShopMapModalLabel">부품점 위치</h5>
+          <div class="small text-muted text-truncate" id="partsShopMapModalSub"></div>
+        </div>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="닫기"></button>
+      </div>
+      <div class="modal-body p-0 position-relative">
+        <div id="partsShopMapModalMap" class="gn-parts-map-modal-canvas" aria-label="카카오 지도"></div>
+        <div id="partsShopMapModalNoCoords" class="d-none p-4 text-center text-muted small">
+          좌표 정보가 없습니다. 아래 버튼으로 부품 A/S 지도에서 확인해 주세요.
+        </div>
+      </div>
+      <div class="modal-footer py-2 px-3 d-flex flex-wrap gap-2 justify-content-between">
+        <a href="{% url 'parts_as' %}" id="partsShopMapModalFullLink" class="btn btn-sm btn-outline-secondary">부품 A/S 전체 지도</a>
+        <button type="button" class="btn btn-sm btn-primary" data-bs-dismiss="modal">닫기</button>
+      </div>
+    </div>
+  </div>
+</div>
+{% endif %}
+
 {% if detail_images %}
-<!-- 사진 확대: 전체 화면이 아닌 페이지 안 모달 + 확대/이전·다음 -->
+<!-- 모바일: 새 탭 없이 전체 화면 사진 뷰어 (확대·이전/다음·스와이프) -->
+<div id="gnMobilePhotoViewer" class="gn-mobile-photo-viewer d-md-none" hidden aria-hidden="true" role="dialog" aria-modal="true" aria-label="사진 보기">
+  <div class="gn-mobile-photo-viewer-top">
+    <span class="gn-mobile-photo-counter" id="gnMobilePhotoCounter">1 / {{ detail_images|length }}</span>
+    <div class="gn-mobile-photo-tools">
+      <button type="button" class="btn btn-sm btn-outline-light" id="gnMobilePhotoZoomOut" aria-label="축소"><i class="bi bi-dash-lg"></i></button>
+      <button type="button" class="btn btn-sm btn-outline-light px-2" id="gnMobilePhotoZoomReset">맞춤</button>
+      <button type="button" class="btn btn-sm btn-outline-light" id="gnMobilePhotoZoomIn" aria-label="확대"><i class="bi bi-plus-lg"></i></button>
+      <button type="button" class="btn btn-sm btn-close btn-close-white ms-1" id="gnMobilePhotoClose" aria-label="닫기"></button>
+    </div>
+  </div>
+  <div class="gn-mobile-photo-stage">
+    {% if detail_images|length > 1 %}
+    <button type="button" class="gn-mobile-photo-nav gn-mobile-photo-prev" id="gnMobilePhotoPrev" aria-label="이전 사진"><i class="bi bi-chevron-left"></i></button>
+    <button type="button" class="gn-mobile-photo-nav gn-mobile-photo-next" id="gnMobilePhotoNext" aria-label="다음 사진"><i class="bi bi-chevron-right"></i></button>
+    {% endif %}
+    <div id="gnMobilePhotoViewport" class="gn-mobile-photo-viewport">
+      <div class="gn-mobile-photo-pan-inner">
+        <img src="" alt="확대 보기" id="gnMobilePhotoImg" class="gn-mobile-photo-img" draggable="false">
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- PC: 페이지 안 모달 + 확대/이전·다음 -->
 <div class="modal fade" id="lightboxModal" tabindex="-1" aria-labelledby="lightboxModalLabel" aria-hidden="true">
   <div class="modal-dialog modal-dialog-centered modal-xl gn-lightbox-dialog">
     <div class="modal-content border-0 shadow-lg bg-dark text-white overflow-hidden rounded-3">
@@ -419,7 +485,7 @@
             <button type="button" class="btn btn-outline-light px-2" id="lightboxZoomReset" title="화면에 맞춤">맞춤</button>
             <button type="button" class="btn btn-outline-light" id="lightboxZoomIn" title="확대" aria-label="확대"><i class="bi bi-plus-lg"></i></button>
           </div>
-          <a href="#" id="lightboxOriginalLink" target="_blank" rel="noopener" class="btn btn-outline-light btn-sm">
+          <a href="#" id="lightboxOriginalLink" target="_blank" rel="noopener" class="btn btn-outline-light btn-sm d-none d-md-inline-flex">
             <i class="bi bi-box-arrow-up-right me-1"></i>새 탭
           </a>
           <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="닫기"></button>
@@ -455,6 +521,7 @@
   var currentIndex = 0;
   var lastClickedIndex = 0;
   var lightboxZoom = 1;
+  var mobilePhotoZoom = 1;
 
   var modalEl = document.getElementById('lightboxModal');
   var img = document.getElementById('lightboxImg');
@@ -464,6 +531,21 @@
   var zoomInBtn = document.getElementById('lightboxZoomIn');
   var zoomOutBtn = document.getElementById('lightboxZoomOut');
   var zoomResetBtn = document.getElementById('lightboxZoomReset');
+
+  var mobileViewer = document.getElementById('gnMobilePhotoViewer');
+  var mobileImg = document.getElementById('gnMobilePhotoImg');
+  var mobileViewport = document.getElementById('gnMobilePhotoViewport');
+  var mobileCounter = document.getElementById('gnMobilePhotoCounter');
+  var mobileZoomInBtn = document.getElementById('gnMobilePhotoZoomIn');
+  var mobileZoomOutBtn = document.getElementById('gnMobilePhotoZoomOut');
+  var mobileZoomResetBtn = document.getElementById('gnMobilePhotoZoomReset');
+  var mobileCloseBtn = document.getElementById('gnMobilePhotoClose');
+  var mobilePrevBtn = document.getElementById('gnMobilePhotoPrev');
+  var mobileNextBtn = document.getElementById('gnMobilePhotoNext');
+
+  function isMobilePhotoMode() {
+    return window.matchMedia('(max-width: 767.98px)').matches;
+  }
 
   function canPanLightbox() {
     if (!viewport || !img) return false;
@@ -526,10 +608,91 @@
     if (img.complete && img.naturalWidth) layoutLightboxImage({ center: true });
   }
 
+  function layoutMobilePhoto(opts) {
+    opts = opts || {};
+    if (!mobileViewport || !mobileImg || !mobileImg.naturalWidth) return;
+    var panInner = mobileViewport.querySelector('.gn-mobile-photo-pan-inner');
+    var vw = mobileViewport.clientWidth;
+    var vh = mobileViewport.clientHeight;
+    if (vw < 40 || vh < 40) return;
+    var nw = mobileImg.naturalWidth;
+    var nh = mobileImg.naturalHeight;
+    var fitScale = Math.min(vw / nw, vh / nh, 1);
+    var scale = fitScale * Math.min(4, Math.max(1, mobilePhotoZoom));
+    var dispW = nw * scale;
+    var dispH = nh * scale;
+    mobileImg.style.width = dispW + 'px';
+    mobileImg.style.height = dispH + 'px';
+    mobileImg.style.maxWidth = 'none';
+    mobileImg.style.maxHeight = 'none';
+    if (panInner) {
+      panInner.style.width = Math.max(vw, Math.ceil(dispW)) + 'px';
+      panInner.style.height = Math.max(vh, Math.ceil(dispH)) + 'px';
+    }
+    if (opts.skipScroll) return;
+    void mobileViewport.offsetWidth;
+    var applyScroll = function() {
+      var maxL = Math.max(0, mobileViewport.scrollWidth - mobileViewport.clientWidth);
+      var maxT = Math.max(0, mobileViewport.scrollHeight - mobileViewport.clientHeight);
+      if (opts.center) {
+        mobileViewport.scrollLeft = maxL / 2;
+        mobileViewport.scrollTop = maxT / 2;
+      } else if (opts.preserveScroll && opts.focusX != null && opts.focusY != null) {
+        mobileViewport.scrollLeft = Math.max(0, Math.min(maxL, opts.focusX));
+        mobileViewport.scrollTop = Math.max(0, Math.min(maxT, opts.focusY));
+      }
+    };
+    if (opts.syncScroll) applyScroll();
+    else requestAnimationFrame(applyScroll);
+  }
+
+  function showMobilePhoto(index) {
+    if (index < 0) index = total - 1;
+    if (index >= total) index = 0;
+    mobilePhotoZoom = 1;
+    setMainPhotoIndex(index);
+    if (mobileCounter) mobileCounter.textContent = (currentIndex + 1) + ' / ' + total;
+    if (!mobileImg) return;
+    mobileImg.onload = function() { layoutMobilePhoto({ center: true }); };
+    mobileImg.src = images[currentIndex] || '';
+    if (mobileImg.complete && mobileImg.naturalWidth) layoutMobilePhoto({ center: true });
+  }
+
+  function openMobileViewer(index) {
+    if (!mobileViewer) return;
+    lastClickedIndex = index;
+    showMobilePhoto(index);
+    mobileViewer.hidden = false;
+    mobileViewer.setAttribute('aria-hidden', 'false');
+    document.body.classList.add('gn-mobile-photo-viewer-open');
+    layoutMobilePhoto({ center: true });
+  }
+
+  function closeMobileViewer() {
+    if (!mobileViewer) return;
+    mobileViewer.hidden = true;
+    mobileViewer.setAttribute('aria-hidden', 'true');
+    document.body.classList.remove('gn-mobile-photo-viewer-open');
+    if (mobileImg) mobileImg.removeAttribute('src');
+    mobilePhotoZoom = 1;
+  }
+
+  function bumpMobileZoom(factor) {
+    if (!mobileViewport || !mobileImg || !mobileImg.naturalWidth) return;
+    mobilePhotoZoom = Math.min(4, Math.max(1, mobilePhotoZoom * factor));
+    layoutMobilePhoto();
+  }
+
   document.querySelectorAll('[data-lightbox-index]').forEach(function(el) {
-    el.addEventListener('click', function() {
+    el.addEventListener('click', function(e) {
       var idx = parseInt(el.getAttribute('data-lightbox-index'), 10);
-      if (!isNaN(idx)) lastClickedIndex = idx;
+      if (isNaN(idx)) return;
+      lastClickedIndex = idx;
+      if (isMobilePhotoMode()) {
+        e.preventDefault();
+        e.stopPropagation();
+        openMobileViewer(idx);
+      }
     }, true);
   });
 
@@ -656,6 +819,166 @@
   if (prevBtn) prevBtn.addEventListener('click', function(e) { e.preventDefault(); showLightbox(currentIndex - 1); });
   if (nextBtn) nextBtn.addEventListener('click', function(e) { e.preventDefault(); showLightbox(currentIndex + 1); });
 
+  if (mobileCloseBtn) mobileCloseBtn.addEventListener('click', function(e) { e.preventDefault(); closeMobileViewer(); });
+  if (mobilePrevBtn) mobilePrevBtn.addEventListener('click', function(e) { e.preventDefault(); showMobilePhoto(currentIndex - 1); });
+  if (mobileNextBtn) mobileNextBtn.addEventListener('click', function(e) { e.preventDefault(); showMobilePhoto(currentIndex + 1); });
+  if (mobileZoomInBtn) mobileZoomInBtn.addEventListener('click', function(e) { e.preventDefault(); bumpMobileZoom(1.25); });
+  if (mobileZoomOutBtn) mobileZoomOutBtn.addEventListener('click', function(e) { e.preventDefault(); bumpMobileZoom(1 / 1.25); });
+  if (mobileZoomResetBtn) mobileZoomResetBtn.addEventListener('click', function(e) { e.preventDefault(); mobilePhotoZoom = 1; layoutMobilePhoto({ center: true }); });
+
+  if (mobileViewport) {
+    var swipeStartX = 0;
+    var swipeStartY = 0;
+    var swipeTracking = false;
+    var pinchActive = false;
+    var pinchStartDist = 0;
+    var pinchStartZoom = 1;
+    var panOneActive = false;
+    var panOneStartX = 0;
+    var panOneStartY = 0;
+    var panOneScrollL = 0;
+    var panOneScrollT = 0;
+    function touchDistance(touches) {
+      var dx = touches[0].clientX - touches[1].clientX;
+      var dy = touches[0].clientY - touches[1].clientY;
+      return Math.hypot(dx, dy);
+    }
+
+    function touchCenter(touches) {
+      return {
+        x: (touches[0].clientX + touches[1].clientX) / 2,
+        y: (touches[0].clientY + touches[1].clientY) / 2
+      };
+    }
+
+    function applyPinchZoom(touches) {
+      if (!pinchStartDist) return;
+      var dist = touchDistance(touches);
+      var ratio = dist / pinchStartDist;
+      var center = touchCenter(touches);
+      var rect = mobileViewport.getBoundingClientRect();
+      var cx = center.x - rect.left;
+      var cy = center.y - rect.top;
+      var contentX = mobileViewport.scrollLeft + cx;
+      var contentY = mobileViewport.scrollTop + cy;
+      var prevZoom = mobilePhotoZoom;
+      mobilePhotoZoom = Math.min(4, Math.max(1, pinchStartZoom * ratio));
+      var zoomRatio = mobilePhotoZoom / prevZoom;
+      layoutMobilePhoto({ skipScroll: true });
+      var maxL = Math.max(0, mobileViewport.scrollWidth - mobileViewport.clientWidth);
+      var maxT = Math.max(0, mobileViewport.scrollHeight - mobileViewport.clientHeight);
+      mobileViewport.scrollLeft = Math.max(0, Math.min(maxL, contentX * zoomRatio - cx));
+      mobileViewport.scrollTop = Math.max(0, Math.min(maxT, contentY * zoomRatio - cy));
+    }
+
+    mobileViewport.addEventListener('touchstart', function(e) {
+      if (e.touches.length === 2) {
+        pinchActive = true;
+        swipeTracking = false;
+        pinchStartDist = touchDistance(e.touches);
+        pinchStartZoom = mobilePhotoZoom;
+        e.preventDefault();
+        return;
+      }
+      if (e.touches.length === 1 && mobilePhotoZoom > 1.05) {
+        panOneActive = true;
+        panOneStartX = e.touches[0].clientX;
+        panOneStartY = e.touches[0].clientY;
+        panOneScrollL = mobileViewport.scrollLeft;
+        panOneScrollT = mobileViewport.scrollTop;
+        swipeTracking = false;
+        e.preventDefault();
+        return;
+      }
+      if (e.touches.length === 1 && mobilePhotoZoom <= 1.05 && total > 1) {
+        swipeStartX = e.touches[0].clientX;
+        swipeStartY = e.touches[0].clientY;
+        swipeTracking = true;
+      }
+    }, { passive: false });
+
+    mobileViewport.addEventListener('touchmove', function(e) {
+      if (e.touches.length === 2 && pinchActive) {
+        applyPinchZoom(e.touches);
+        e.preventDefault();
+        return;
+      }
+      if (e.touches.length === 1 && panOneActive && mobilePhotoZoom > 1.05) {
+        var dx = e.touches[0].clientX - panOneStartX;
+        var dy = e.touches[0].clientY - panOneStartY;
+        var maxL = Math.max(0, mobileViewport.scrollWidth - mobileViewport.clientWidth);
+        var maxT = Math.max(0, mobileViewport.scrollHeight - mobileViewport.clientHeight);
+        mobileViewport.scrollLeft = Math.max(0, Math.min(maxL, panOneScrollL - dx));
+        mobileViewport.scrollTop = Math.max(0, Math.min(maxT, panOneScrollT - dy));
+        swipeTracking = false;
+        e.preventDefault();
+      }
+    }, { passive: false });
+
+    mobileViewport.addEventListener('touchend', function(e) {
+      if (e.touches.length < 2) pinchActive = false;
+      if (e.touches.length === 0) panOneActive = false;
+      if (pinchActive || panOneActive || e.touches.length > 0) return;
+      if (!swipeTracking || mobilePhotoZoom > 1.05 || total <= 1) {
+        swipeTracking = false;
+        return;
+      }
+      swipeTracking = false;
+      var t = e.changedTouches && e.changedTouches[0];
+      if (!t) return;
+      var dx = t.clientX - swipeStartX;
+      var dy = t.clientY - swipeStartY;
+      if (Math.abs(dx) < 48 || Math.abs(dx) < Math.abs(dy) * 1.2) return;
+      if (dx < 0) showMobilePhoto(currentIndex + 1);
+      else showMobilePhoto(currentIndex - 1);
+    }, { passive: true });
+
+    mobileViewport.addEventListener('gesturestart', function(e) { e.preventDefault(); }, { passive: false });
+    mobileViewport.addEventListener('gesturechange', function(e) {
+      e.preventDefault();
+      if (!mobileImg || !mobileImg.naturalWidth) return;
+      var newZoom = Math.min(4, Math.max(1, mobilePhotoZoom * (e.scale || 1)));
+      mobilePhotoZoom = newZoom;
+      layoutMobilePhoto({ preserveScroll: true, focusX: mobileViewport.scrollLeft, focusY: mobileViewport.scrollTop });
+    }, { passive: false });
+  }
+
+  function setMainPhotoIndex(index) {
+    if (index < 0) index = total - 1;
+    if (index >= total) index = 0;
+    currentIndex = index;
+    var mainImg = document.getElementById('detailMainImg');
+    var src = images[index];
+    if (mainImg && src) {
+      mainImg.src = src;
+      mainImg.setAttribute('data-lightbox-index', index);
+      mainImg.setAttribute('data-lightbox-src', src);
+    }
+    document.querySelectorAll('.detail-thumb').forEach(function(b) {
+      var bi = parseInt(b.getAttribute('data-index'), 10);
+      if (bi === index) {
+        b.classList.add('border-primary');
+        b.style.borderWidth = '2px';
+      } else {
+        b.classList.remove('border-primary');
+        b.style.borderWidth = '1px';
+      }
+    });
+  }
+
+  var detailMainPrev = document.getElementById('detailMainPrev');
+  var detailMainNext = document.getElementById('detailMainNext');
+  if (detailMainPrev) detailMainPrev.addEventListener('click', function(e) {
+    e.preventDefault();
+    e.stopPropagation();
+    setMainPhotoIndex(currentIndex - 1);
+  });
+  if (detailMainNext) detailMainNext.addEventListener('click', function(e) {
+    e.preventDefault();
+    e.stopPropagation();
+    setMainPhotoIndex(currentIndex + 1);
+  });
+
   document.addEventListener('keydown', function(e) {
     if (!modalEl || !document.body.classList.contains('modal-open')) return;
     if (e.key === 'ArrowLeft' && total > 1) { showLightbox(currentIndex - 1); e.preventDefault(); }
@@ -664,17 +987,13 @@
 
   document.querySelectorAll('.detail-thumb').forEach(function(btn) {
     btn.addEventListener('click', function() {
-      var src = this.getAttribute('data-src');
       var idx = parseInt(this.getAttribute('data-index'), 10);
-      var mainImg = document.getElementById('detailMainImg');
-      if (mainImg && src) {
-        mainImg.src = src;
-        mainImg.setAttribute('data-lightbox-index', idx);
-        mainImg.setAttribute('data-lightbox-src', src);
-      }
-      document.querySelectorAll('.detail-thumb').forEach(function(b) { b.classList.remove('border-primary'); b.style.borderWidth = '1px'; });
-      this.classList.add('border-primary'); this.style.borderWidth = '2px';
+      if (!isNaN(idx)) setMainPhotoIndex(idx);
     });
+  });
+
+  window.addEventListener('resize', function() {
+    if (!isMobilePhotoMode() && mobileViewer && !mobileViewer.hidden) closeMobileViewer();
   });
 })();
 </script>
@@ -1248,6 +1567,115 @@
     font-weight: 600;
   }
 
+  /* 모바일: 전체 화면 사진 뷰어 (새 탭 없음) */
+  body.gn-mobile-photo-viewer-open {
+    overflow: hidden;
+    touch-action: none;
+  }
+  .gn-mobile-photo-viewer {
+    position: fixed;
+    inset: 0;
+    z-index: 1080;
+    background: #000;
+    display: flex;
+    flex-direction: column;
+  }
+  .gn-mobile-photo-viewer[hidden] {
+    display: none !important;
+  }
+  .gn-mobile-photo-viewer-top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+    padding: 0.55rem 0.65rem;
+    padding-top: max(0.55rem, env(safe-area-inset-top));
+    background: rgba(0, 0, 0, 0.92);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+    flex-shrink: 0;
+  }
+  .gn-mobile-photo-counter {
+    color: #f8fafc;
+    font-size: 0.9rem;
+    font-weight: 600;
+  }
+  .gn-mobile-photo-tools {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+    flex-shrink: 0;
+  }
+  .gn-mobile-photo-stage {
+    position: relative;
+    flex: 1 1 auto;
+    min-height: 0;
+    background: #000;
+  }
+  .gn-mobile-photo-viewport {
+    width: 100%;
+    height: 100%;
+    overflow: auto;
+    touch-action: none;
+    -webkit-overflow-scrolling: touch;
+    background: radial-gradient(circle at center, #1a1a1a 0%, #000 100%);
+  }
+  .gn-mobile-photo-pan-inner {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 100%;
+    box-sizing: border-box;
+  }
+  .gn-mobile-photo-img {
+    user-select: none;
+    -webkit-user-drag: none;
+    pointer-events: none;
+  }
+  .gn-mobile-photo-nav {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    z-index: 3;
+    width: 2.75rem;
+    height: 2.75rem;
+    border: 0;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.22);
+    color: #fff;
+    font-size: 1.35rem;
+    line-height: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    backdrop-filter: blur(4px);
+  }
+  .gn-mobile-photo-prev { left: 0.35rem; }
+  .gn-mobile-photo-next { right: 0.35rem; }
+  .gn-detail-main-nav {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    z-index: 4;
+    width: 2.25rem;
+    height: 2.25rem;
+    border: 0;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.85);
+    color: #0f172a;
+    font-size: 1.2rem;
+    line-height: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+  }
+  .gn-detail-main-prev { left: 0.4rem; }
+  .gn-detail-main-next { right: 0.4rem; }
+  .gn-detail-zoom-hint {
+    z-index: 2;
+    pointer-events: none;
+  }
+
   /* 상세: 사진 뷰어(페이지 안 모달) — 하단「사진 보기」큰 사진(920px)에 가깝게 */
   .gn-lightbox-dialog {
     max-width: min(98vw, 1320px) !important;
@@ -1336,5 +1764,106 @@
       max-height: 620px;
     }
   }
+  .gn-parts-map-modal-canvas {
+    width: 100%;
+    height: min(62vh, 480px);
+    min-height: 320px;
+    background: #f1f5f9;
+  }
 </style>
+{% if kakao_map_js_key and nearby_parts_shops %}
+<script src="https://dapi.kakao.com/v2/maps/sdk.js?appkey={{ kakao_map_js_key }}&autoload=false"></script>
+<script>
+(function () {
+  var modalEl = document.getElementById("partsShopMapModal");
+  if (!modalEl) return;
+  var mapEl = document.getElementById("partsShopMapModalMap");
+  var noCoordsEl = document.getElementById("partsShopMapModalNoCoords");
+  var subEl = document.getElementById("partsShopMapModalSub");
+  var fullLinkEl = document.getElementById("partsShopMapModalFullLink");
+  var map, marker, infoWindow;
+  var mapReady = false;
+  var pendingShop = null;
+
+  function esc(v) {
+    return (v || "").replace(/[&<>"']/g, function (c) {
+      return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c];
+    });
+  }
+
+  function markerImage(kind) {
+    var text = kind === "as" ? "AS" : "부";
+    var fillColor = kind === "as" ? "rgba(37, 99, 235, 0.75)" : "rgba(249, 115, 22, 0.75)";
+    var textColor = kind === "as" ? "#2563eb" : "#f97316";
+    var svg = encodeURIComponent(
+      "<svg xmlns='http://www.w3.org/2000/svg' width='46' height='56'><path d='M23 2C12 2 3 11 3 22c0 14 18 30 20 32 2-2 20-18 20-32C43 11 34 2 23 2z' fill='" + fillColor + "' stroke='white' stroke-width='1.2'/><circle cx='23' cy='22' r='13' fill='white'/><text x='23' y='26' font-size='11' font-family='Arial' font-weight='700' text-anchor='middle' fill='" + textColor + "'>" + text + "</text></svg>"
+    );
+    return new kakao.maps.MarkerImage(
+      "data:image/svg+xml;charset=UTF-8," + svg,
+      new kakao.maps.Size(34, 42),
+      { offset: new kakao.maps.Point(17, 42) }
+    );
+  }
+
+  function showShopOnMap(shop) {
+    if (!mapReady || !shop) return;
+    var lat = parseFloat(shop.lat);
+    var lng = parseFloat(shop.lng);
+    if (!isFinite(lat) || !isFinite(lng)) {
+      mapEl.classList.add("d-none");
+      noCoordsEl.classList.remove("d-none");
+      return;
+    }
+    mapEl.classList.remove("d-none");
+    noCoordsEl.classList.add("d-none");
+    var pos = new kakao.maps.LatLng(lat, lng);
+    if (marker) marker.setMap(null);
+    marker = new kakao.maps.Marker({ position: pos, map: map, image: markerImage(shop.kind || "parts") });
+    if (infoWindow) infoWindow.close();
+    infoWindow = new kakao.maps.InfoWindow({
+      content: "<div style='padding:6px 8px;font-size:12px;line-height:1.4;min-width:160px'><strong>" + esc(shop.name) + "</strong><br>" + esc(shop.address) + "<br>" + esc(shop.phone) + "</div>",
+    });
+    infoWindow.open(map, marker);
+    map.relayout();
+    map.setCenter(pos);
+    map.setLevel(3);
+  }
+
+  function openFromButton(btn) {
+    pendingShop = {
+      id: btn.dataset.shopId,
+      name: btn.dataset.shopName || "",
+      lat: btn.dataset.shopLat || "",
+      lng: btn.dataset.shopLng || "",
+      address: btn.dataset.shopAddress || "",
+      phone: btn.dataset.shopPhone || "",
+      kind: btn.dataset.shopKind || "parts",
+      partsAsUrl: btn.dataset.partsAsUrl || "",
+    };
+    subEl.textContent = pendingShop.name;
+    if (fullLinkEl && pendingShop.partsAsUrl) fullLinkEl.href = pendingShop.partsAsUrl;
+    var modal = bootstrap.Modal.getOrCreateInstance(modalEl);
+    modal.show();
+  }
+
+  document.querySelectorAll(".gn-parts-map-open").forEach(function (btn) {
+    btn.addEventListener("click", function () {
+      openFromButton(btn);
+    });
+  });
+
+  modalEl.addEventListener("shown.bs.modal", function () {
+    if (!mapReady) {
+      kakao.maps.load(function () {
+        map = new kakao.maps.Map(mapEl, { center: new kakao.maps.LatLng(36.5, 127.8), level: 13 });
+        mapReady = true;
+        showShopOnMap(pendingShop);
+      });
+    } else {
+      showShopOnMap(pendingShop);
+    }
+  });
+})();
+</script>
+{% endif %}
 {% endblock %}

@@ -5,6 +5,11 @@
     <div class="card border shadow-sm p-4" style="border-radius: 10px;">
         <form method="post" enctype="multipart/form-data" action="">
             {% csrf_token %}
+            <div class="gn-hp-wrap" aria-hidden="true">{{ form.company_url }}</div>
+            <style>.gn-hp-wrap{position:absolute;left:-9999px;width:1px;height:1px;overflow:hidden;opacity:0;pointer-events:none;}</style>
+            {% if form.non_field_errors %}
+            <div class="alert alert-danger py-2 small">{{ form.non_field_errors.0 }}</div>
+            {% endif %}
             <div class="mb-3">
                 <label for="id_post_type" class="form-label fw-bold">게시유형 <span class="text-danger">*</span></label>
                 {{ form.post_type }}

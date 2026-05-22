@@ -6,6 +6,7 @@ from django.urls import reverse
 from django.utils.http import url_has_allowed_host_and_scheme
 from django.db.models import Q, Min, Max, Avg, Count, F, Sum
 from django.db.models.functions import Coalesce
+from django.template.loader import render_to_string
 from django.utils import timezone
 from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.decorators import login_required
@@ -43,6 +44,12 @@ from .listing_filters import (
     exclude_attachment_like_from_non_attachment_tabs,
     filter_attachment_tab,
 )
+from .index_listing import (
+    parse_index_params,
+    build_index_equipment_queryset,
+    INDEX_INITIAL_COUNT,
+    VALID_CATEGORIES,
+)
 
 
 def _image_hash_from_upload(uploaded_file):
@@ -77,6 +84,32 @@ def _get_profile_phone_verified(user):
     except Profile.DoesNotExist:
         profile = Profile.objects.create(user=user)
     return getattr(profile, 'phone_verified', False)
+
+
+def _social_auth_login_url(provider, next_url=''):
+    """소셜 로그인 URL. process=login 및 로그인 후 복귀 경로(next) 유지."""
+    params = {'process': 'login'}
+    if next_url:
+        params['next'] = next_url
+    return f'/accounts/{provider}/login/?' + urlencode(params)
+
+
+def _redirect_after_login(request, next_url='', default='index'):
+    next_url = (next_url or '').strip()
+    if next_url and url_has_allowed_host_and_scheme(next_url, allowed_hosts={request.get_host()}):
+        return redirect(next_url)
+    return redirect(default)
+
+
+def _require_phone_verified_strict(request):
+    """로그인 + 휴대폰 본인인증 필수(스태프 제외). 업체 자진등록·현장 자재 등 공개 등록용."""
+    if not request.user.is_authenticated:
+        return redirect(reverse('login') + '?next=' + quote(request.get_full_path(), safe=''))
+    if request.user.is_staff or request.user.is_superuser:
+        return None
+    if not _get_profile_phone_verified(request.user):
+        return redirect(reverse('phone_verify') + '?next=' + quote(request.get_full_path(), safe=''))
+    return None
 
 
 def _user_has_social_account(user):
@@ -263,249 +296,29 @@ def _redirect_repaired_index_query(request):
     return redirect(target)
 
 
-# [1] 메인 페이지 (키워드 + 정렬만)
-def index(request):
-    repaired = _redirect_repaired_index_query(request)
-    if repaired is not None:
-        return repaired
-
-    query = (request.GET.get('q', '') or '').strip()
-    sort = (request.GET.get('sort', '') or 'new').strip().lower()
-    if sort not in ('price_asc', 'price_desc', 'year_desc', 'new'):
-        sort = 'new'
-    filter_category = (request.GET.get('category', '') or '').strip().lower()  # excavator, forklift, dump, loader, etc
-    valid_categories = ('excavator', 'forklift', 'dump', 'loader', 'crane', 'attachment', 'other')
-    # ?category= (빈 값) → "전체" 명시: 세션에 저장된 기종을 쓰지 않음
-    if 'category' in request.GET and not (request.GET.get('category') or '').strip():
-        request.session.pop('last_equipment_category', None)
-    # URL에 category 키가 없으면(예: / 또는 리다이렉트로 쿼리만 남은 경우) 직전 기종을 유지해 기종이 섞여 보이지 않게 함
-    elif 'category' not in request.GET:
-        last_category = (request.session.get('last_equipment_category') or '').strip().lower()
-        if last_category in valid_categories:
-            filter_category = last_category
-    # 검색어는 있는데 위에서도 비어 있으면(예외 경로) 세션 기종 유지
-    elif not filter_category and query:
-        last_category = (request.session.get('last_equipment_category') or '').strip().lower()
-        if last_category in valid_categories:
-            filter_category = last_category
-    # 그래도 category가 비어있다면, 검색어에 카테고리 키워드가 있는 경우 자동으로 매핑한다.
-    if not filter_category and query:
-        q = query.lower()
-        if any(k in q for k in ("굴삭기", "excavator")):
-            filter_category = "excavator"
-        elif any(k in q for k in ("지게차", "forklift", "리프트")):
-            filter_category = "forklift"
-        elif any(k in q for k in ("덤프트럭", "덤프", "dump truck", "dump")):
-            filter_category = "dump"
-        elif any(k in q for k in ("로더", "휠로더", "wheel loader", "loader")):
-            filter_category = "loader"
-        elif any(k in q for k in ("크레인", "crane")):
-            filter_category = "crane"
-        elif any(k in q for k in ("어태치", "attachment")):
-            filter_category = "attachment"
-    if filter_category in valid_categories:
-        request.session['last_equipment_category'] = filter_category
-
-    # 상세 검색용 파라미터 (굴삭기/지게차 전용)
-    maker = (request.GET.get('maker', '') or '').strip()
-    sub_type = (request.GET.get('sub_type', '') or '').strip()
-    weight_class = (request.GET.get('weight_class', '') or '').strip()
-    model = (request.GET.get('model', '') or '').strip()
-    year_min = (request.GET.get('year_min') or '').strip()
-    year_max = (request.GET.get('year_max') or '').strip()
-    region_sido = (request.GET.get('region_sido', '') or '').strip()
-    region_sigungu = (request.GET.get('region_sigungu', '') or '').strip()
-    mast_type = (request.GET.get('mast_type', '') or '').strip()
-    premium_only = request.GET.get('premium_only') == '1'
-    # 상세검색 실행 후에는 목록 화면에서 상세검색 바를 숨기고 정렬만 남긴다.
-    hide_advanced_filters = request.GET.get('expand') == '1' or any(
-        bool(v) for v in (
-            maker,
-            sub_type,
-            weight_class,
-            model,
-            year_min,
-            year_max,
-            region_sido,
-            region_sigungu,
-            mast_type,
-        )
-    )
-
-    # 목록/검색: NORMAL만 노출(EXPIRED_HIDDEN 제외). 상세 직접 URL은 별도 허용.
-    equipment_list = Equipment.objects.visible()
-    if filter_category in valid_categories:
-        if filter_category == "attachment":
-            equipment_list = filter_attachment_tab(equipment_list)
-        else:
-            equipment_list = equipment_list.filter(equipment_type=filter_category)
-    # 굴삭기 탭: 어태치먼트(sub_type)는 기본 목록에서 제외(세부검색에서 EXC_ATTACHMENT 선택 시만 포함)
-    if filter_category == "excavator" and sub_type != "EXC_ATTACHMENT":
-        equipment_list = equipment_list.exclude(sub_type="EXC_ATTACHMENT")
-    # 지게차·덤프·로더 탭: DB 오분류로 굴삭기가 섞이지 않도록 EXC_*·모델 패턴 제외
-    equipment_list = exclude_excavator_misclassified_for_non_excavator_tabs(
-        equipment_list, filter_category
-    )
-    # 채버켓 등 어태치: 다른 기종 탭에 나오지 않고 어태치먼트 탭에서만 보이도록
-    equipment_list = exclude_attachment_like_from_non_attachment_tabs(
-        equipment_list, filter_category
-    )
-
-    if query:
-        lookups = (
-            Q(model_name__icontains=query) |
-            Q(manufacturer__icontains=query) |
-            Q(current_location__icontains=query)
-        )
-        q_num = query.replace(',', '').replace('만원', '').replace('원', '').strip()
-        if q_num.isdigit():
-            lookups |= Q(listing_price=int(q_num))
-            # 네 자리 숫자면 년식으로도 검색 (예: 2015 → 2015년식)
-            if len(q_num) == 4 and 1980 <= int(q_num) <= 2030:
-                lookups |= Q(year_manufactured=int(q_num))
-        equipment_list = equipment_list.filter(lookups).distinct()
-
-    # ── 상세 필터 (굴삭기/지게차) ────────────────────────────────
-    if maker:
-        equipment_list = equipment_list.filter(manufacturer__iexact=maker)
-
-    if model:
-        equipment_list = equipment_list.filter(model_name__icontains=model)
-
-    # 연식 범위
-    if year_min:
-        try:
-            year_min_int = int(year_min)
-            equipment_list = equipment_list.filter(year_manufactured__gte=year_min_int)
-        except (TypeError, ValueError):
-            pass
-    if year_max:
-        try:
-            year_max_int = int(year_max)
-            equipment_list = equipment_list.filter(year_manufactured__lte=year_max_int)
-        except (TypeError, ValueError):
-            pass
-
-    # 지역 (시/도, 시/군/구)
-    if region_sido:
-        equipment_list = equipment_list.filter(region_sido=region_sido)
-    if region_sigungu:
-        equipment_list = equipment_list.filter(region_sigungu=region_sigungu)
-
-    # 카테고리별 세부 필터
-    if filter_category == 'excavator':
-        # 타이어 03W 5~6: 예전 (sub OR 레거시) ∧ (weight OR 레거시) 는
-        # 모델명 "06w" 등 레거시 패턴만 맞은 크롤러·미니까지 같이 걸려 목록이 섞임 →
-        # (코드 정확 일치) ∨ (레거시 패턴 ∧ 체인 코드 아님) 으로 한 번에 필터.
-        if (
-            sub_type
-            and weight_class
-            and _is_excavator_tire_5_6_filter(sub_type, weight_class)
-        ):
-            exact_tire_56 = Q(sub_type=sub_type, weight_class=weight_class)
-            legacy_tire_56 = (
-                _legacy_excavator_tire_5_6_q()
-                & ~Q(sub_type="EXC_CRAWLER")
-                & ~Q(sub_type="EXC_ATTACHMENT")
-                & ~Q(weight_class__startswith="EXC_CR")
-                & ~Q(weight_class__startswith="EXC_ATT")
-            )
-            equipment_list = equipment_list.filter(exact_tire_56 | legacy_tire_56)
-        else:
-            ATT_TO_CR_MAP = {
-                'EXC_ATT_LT_1': 'EXC_CR_LE_3_5',
-                'EXC_ATT_LE_2': 'EXC_CR_LE_2',
-                'EXC_ATT_LE_3_5': 'EXC_CR_LE_3_5',
-                'EXC_ATT_LE_6_5': 'EXC_CR_LE_6_5',
-                'EXC_ATT_LE_16': 'EXC_CR_LE_16',
-                'EXC_ATT_EQ_20': 'EXC_CR_EQ_20',
-                'EXC_ATT_GE_30': 'EXC_CR_GE_30',
-            }
-            if sub_type == 'EXC_CRAWLER':
-                equipment_list = equipment_list.filter(
-                    Q(sub_type='EXC_CRAWLER') |
-                    (Q(sub_type='') & Q(weight_class__startswith='EXC_CR_'))
-                )
-            elif sub_type:
-                equipment_list = equipment_list.filter(sub_type=sub_type)
-
-            if weight_class:
-                if sub_type == 'EXC_ATTACHMENT':
-                    cr_code = ATT_TO_CR_MAP.get(weight_class)
-                    if cr_code:
-                        equipment_list = equipment_list.filter(
-                            Q(weight_class=weight_class)
-                            | Q(weight_class=cr_code)
-                            | Q(weight_class='')
-                        )
-                    else:
-                        equipment_list = equipment_list.filter(
-                            Q(weight_class=weight_class) | Q(weight_class='')
-                        )
-                else:
-                    cr_code = ATT_TO_CR_MAP.get(weight_class)
-                    if cr_code:
-                        equipment_list = equipment_list.filter(
-                            Q(weight_class=weight_class) | Q(weight_class=cr_code)
-                        )
-                    else:
-                        equipment_list = equipment_list.filter(weight_class=weight_class)
-        # 타이어 06W/08W: 체인 미니가 타이어+대톤수로 잘못 저장된 행 제외(검색 UX)
-        mislabeled_q = _exclude_mislabeled_mini_crawler_in_tire_heavy_search(sub_type, weight_class)
-        if mislabeled_q is not None:
-            equipment_list = equipment_list.exclude(mislabeled_q)
-    elif filter_category == 'forklift':
-        if sub_type:
-            equipment_list = equipment_list.filter(sub_type=sub_type)
-        if weight_class:
-            equipment_list = equipment_list.filter(weight_class=weight_class)
-        if mast_type:
-            equipment_list = equipment_list.filter(mast_type=mast_type)
-    # 덤프트럭: 제조사(maker)는 위에서 적용됨, 톤수는 코드 정확 일치
-    elif filter_category == 'dump':
-        if weight_class:
-            equipment_list = equipment_list.filter(weight_class=weight_class)
-    # 로더/크레인/어태치먼트/기타: 중량 자유 입력(icontains)
-    elif filter_category in ('loader', 'crane', 'attachment', 'other'):
-        if weight_class:
-            equipment_list = equipment_list.filter(weight_class__icontains=weight_class)
-
-    # 정렬: price_asc / price_desc / year_desc / new(기본, 끌어올리기 반영)
-    if sort == 'price_asc':
-        equipment_list = equipment_list.order_by('listing_price')
-    elif sort == 'price_desc':
-        equipment_list = equipment_list.order_by('-listing_price')
-    elif sort == 'year_desc':
-        equipment_list = equipment_list.order_by('-year_manufactured')
-    else:
-        equipment_list = equipment_list.annotate(
-            effective_order=Coalesce(F('last_bumped_at'), F('created_at'))
-        ).order_by('-effective_order')
-
-    premium_author_ids = set(get_premium_user_ids())
-    if premium_only:
-        equipment_list = equipment_list.filter(author_id__in=premium_author_ids)
-
-    # 목록 상단 노출용 총 건수/라벨
-    total_count = equipment_list.count()
+def _index_list_card_context(request, params, equipment_chunk, premium_author_ids, favorited_ids):
+    """목록 카드 partial 렌더용 공통 컨텍스트."""
+    query = params['query']
+    hide_advanced_filters = params['hide_advanced_filters']
+    filter_category = params['filter_category']
     has_detail_filters = any(
         bool(v) for v in (
-            maker,
-            sub_type,
-            weight_class,
-            model,
-            year_min,
-            year_max,
-            region_sido,
-            region_sigungu,
-            mast_type,
+            params['maker'],
+            params['sub_type'],
+            params['weight_class'],
+            params['model'],
+            params['year_min'],
+            params['year_max'],
+            params['region_sido'],
+            params['region_sigungu'],
+            params['mast_type'],
         )
     )
-    if premium_only and not query and not has_detail_filters:
+    if params['premium_only'] and not query and not has_detail_filters:
         total_count_label = "유료회원"
     elif query or has_detail_filters:
         total_count_label = "검색결과"
-    elif filter_category in valid_categories:
+    elif filter_category in VALID_CATEGORIES:
         category_label_map = {
             "excavator": "굴삭기",
             "forklift": "지게차",
@@ -518,65 +331,127 @@ def index(request):
         total_count_label = category_label_map.get(filter_category, "전체")
     else:
         total_count_label = "전체"
+    return {
+        'equipment_list': equipment_chunk,
+        'premium_author_ids': premium_author_ids,
+        'favorited_equipment_ids': favorited_ids,
+        'equipment_detail_next_q': quote(request.get_full_path(), safe=''),
+        'total_count_label': total_count_label,
+    }
 
-    equipment_list = equipment_list.select_related('author__profile')
 
-    # 기본 최신 목록에서만 유료 회원 매물을 상단 우선 배치
-    # (상세검색/정렬 결과에서는 사용자가 선택한 정렬 순서를 그대로 유지)
-    if sort == 'new' and not hide_advanced_filters and not query:
-        equipment_list = list(equipment_list)
-        equipment_list = [e for e in equipment_list if e.author_id in premium_author_ids] + [
-            e for e in equipment_list if e.author_id not in premium_author_ids
-        ]
-    premium_author_ids = list(premium_author_ids)  # 템플릿에서 프리미엄 배지용
+def index_load_more(request):
+    """더보기: offset부터 per_page개 카드 HTML(JSON) 반환."""
+    params = parse_index_params(request)
+    if params['hide_advanced_filters']:
+        return JsonResponse({'error': 'not_available'}, status=400)
 
+    try:
+        offset = max(INDEX_INITIAL_COUNT, int(request.GET.get('offset', str(INDEX_INITIAL_COUNT))))
+    except (TypeError, ValueError):
+        offset = INDEX_INITIAL_COUNT
+
+    per_page = params['list_per_page']
+    qs = build_index_equipment_queryset(request, params)
+    total_count = qs.count()
+    chunk = list(qs[offset:offset + per_page])
+
+    premium_author_ids = list(get_premium_user_ids())
     favorited_ids = set()
     if request.user.is_authenticated:
-        favorited_ids = set(EquipmentFavorite.objects.filter(user=request.user).values_list('equipment_id', flat=True))
+        favorited_ids = set(
+            EquipmentFavorite.objects.filter(user=request.user).values_list('equipment_id', flat=True)
+        )
 
-    # 유료 회원 매물: 첫 화면 로테이션(캐러셀 슬라이드당 6건, 여러 슬라이드 자동 순환), 우측 고정 배너용
+    card_ctx = _index_list_card_context(request, params, chunk, premium_author_ids, favorited_ids)
+    html_mobile = ''.join(
+        render_to_string('equipment/partials/index_card_mobile.html', {**card_ctx, 'equipment': eq}, request=request)
+        for eq in chunk
+    )
+    html_pc = ''.join(
+        render_to_string('equipment/partials/index_card_pc.html', {**card_ctx, 'equipment': eq}, request=request)
+        for eq in chunk
+    )
+    new_offset = offset + len(chunk)
+    return JsonResponse({
+        'html_mobile': html_mobile,
+        'html_pc': html_pc,
+        'offset': new_offset,
+        'has_more': new_offset < total_count,
+        'total_count': total_count,
+        'loaded_count': len(chunk),
+    })
+
+
+# [1] 메인 페이지 (키워드 + 정렬만)
+def index(request):
+    repaired = _redirect_repaired_index_query(request)
+    if repaired is not None:
+        return repaired
+
+    params = parse_index_params(request)
+    query = params['query']
+    sort = params['sort']
+    filter_category = params['filter_category']
+    hide_advanced_filters = params['hide_advanced_filters']
+    list_per_page = params['list_per_page']
+    maker = params['maker']
+    sub_type = params['sub_type']
+    weight_class = params['weight_class']
+    model = params['model']
+    year_min = params['year_min']
+    year_max = params['year_max']
+    region_sido = params['region_sido']
+    region_sigungu = params['region_sigungu']
+    mast_type = params['mast_type']
+    premium_only = params['premium_only']
+
+    qs = build_index_equipment_queryset(request, params)
+    total_count = qs.count()
+    if hide_advanced_filters:
+        equipment_list = list(qs)
+    else:
+        equipment_list = list(qs[:INDEX_INITIAL_COUNT])
+
+    premium_author_ids = list(get_premium_user_ids())
+    favorited_ids = set()
+    if request.user.is_authenticated:
+        favorited_ids = set(
+            EquipmentFavorite.objects.filter(user=request.user).values_list('equipment_id', flat=True)
+        )
+
+    card_ctx = _index_list_card_context(request, params, equipment_list, premium_author_ids, favorited_ids)
+    total_count_label = card_ctx['total_count_label']
+
     premium_rotation_list = get_premium_equipment_rotation(limit=18, equipment_type=filter_category or None)
     premium_rotation_chunks = [
         premium_rotation_list[i : i + 6]
         for i in range(0, len(premium_rotation_list), 6)
         if premium_rotation_list[i : i + 6]
     ]
-    # 더보기 목록:
-    # - 일반 화면: 21번째부터 per_page개(40/80)
-    # - 상세검색 결과 화면: 21번째부터 전부 한줄 목록으로 즉시 노출
-    try:
-        list_per_page = int(request.GET.get('per_page', '40'))
-    except (TypeError, ValueError):
-        list_per_page = 40
-    if list_per_page not in (40, 80):
-        list_per_page = 40
-    if hide_advanced_filters:
-        # 상세검색 결과에서는 카드형 대신 목록형으로 전체 노출
-        slice_rest = "0:"
-    else:
-        # 일반 화면 더보기: 21번째부터 선택 개수(40/80)만 노출
-        slice_rest = f"20:{20 + list_per_page}"  # "20:60" or "20:100"
 
-    # 정렬 링크에서 기존 GET 파라미터 유지용 (sort 제외)
     get_copy = request.GET.copy()
     if 'sort' in get_copy:
         get_copy.pop('sort')
     index_query_base = get_copy.urlencode()
 
+    list_offset = INDEX_INITIAL_COUNT if not hide_advanced_filters else total_count
+    has_more_list = (not hide_advanced_filters) and (total_count > INDEX_INITIAL_COUNT)
+
     return render(request, 'equipment/index.html', {
         'equipment_list': equipment_list,
         'list_per_page': list_per_page,
-        'slice_rest': slice_rest,
+        'list_offset': list_offset,
+        'has_more_list': has_more_list,
         'query': query,
         'sort': sort,
         'total_count': total_count,
         'total_count_label': total_count_label,
-        'filter_category': filter_category if filter_category in valid_categories else '',
+        'filter_category': filter_category if filter_category in VALID_CATEGORIES else '',
         'favorited_equipment_ids': favorited_ids,
         'premium_rotation_list': premium_rotation_list,
         'premium_rotation_chunks': premium_rotation_chunks,
         'premium_author_ids': premium_author_ids,
-        # 상세 검색 상태 유지용
         'filter_maker': maker,
         'filter_sub_type': sub_type,
         'filter_weight_class': weight_class,
@@ -640,19 +515,17 @@ def premium_experts_test_view(request):
 # [2] 로그인 관련
 def user_login(request):
     if request.user.is_authenticated:
-        return redirect(request.GET.get('next') or 'index')
+        return _redirect_after_login(request, request.GET.get('next', ''))
     if request.method == 'POST':
         username = (request.POST.get('username') or '').strip()
         password = request.POST.get('password') or ''
         if not username or not password:
             messages.error(request, '아이디와 비밀번호를 입력하세요.')
-            next_url = request.GET.get('next', '')
-            from urllib.parse import quote
-            _base = '/accounts/{}/login/'
+            next_url = request.POST.get('next') or request.GET.get('next', '')
             return render(request, 'registration/login.html', {
                 'next_url': next_url,
-                'kakao_login_url': _base.format('kakao') + ('?next=' + quote(next_url) if next_url else ''),
-                'naver_login_url': _base.format('naver') + ('?next=' + quote(next_url) if next_url else ''),
+                'kakao_login_url': _social_auth_login_url('kakao', next_url),
+                'naver_login_url': _social_auth_login_url('naver', next_url),
             })
         user = authenticate(request, username=username, password=password)
         # 보완 로그인은 활성 계정에만 제한한다.
@@ -671,14 +544,12 @@ def user_login(request):
                 messages.error(request, '관리자 계정은 관리자 페이지에서만 로그인할 수 있습니다.')
                 return redirect('/admin/login/')
             login(request, user)
-            next_url = request.GET.get('next') or 'index'
-            return redirect(next_url)
+            next_url = request.POST.get('next') or request.GET.get('next', '')
+            return _redirect_after_login(request, next_url)
         messages.error(request, '아이디 또는 비밀번호가 올바르지 않습니다.')
     next_url = request.GET.get('next') or request.POST.get('next', '') or ''
-    from urllib.parse import quote
-    _base = '/accounts/{}/login/'
-    kakao_login_url = _base.format('kakao') + ('?next=' + quote(next_url) if next_url else '')
-    naver_login_url = _base.format('naver') + ('?next=' + quote(next_url) if next_url else '')
+    kakao_login_url = _social_auth_login_url('kakao', next_url)
+    naver_login_url = _social_auth_login_url('naver', next_url)
     return render(request, 'registration/login.html', {
         'next_url': next_url,
         'kakao_login_url': kakao_login_url,
@@ -1882,11 +1753,28 @@ def finance(request):
     })
 
 
+def _get_kakao_map_js_key():
+    key = (getattr(settings, "KAKAO_MAP_JS_KEY", "") or "").strip()
+    if key:
+        return key
+    try:
+        from allauth.socialaccount.models import SocialApp
+        return (
+            SocialApp.objects.filter(provider="kakao")
+            .values_list("client_id", flat=True)
+            .first()
+            or ""
+        ).strip()
+    except Exception:
+        return ""
+
+
 def parts_as(request):
     """부품/AS 센터 지도 + 목록 검색 페이지."""
     region = (request.GET.get('region', '') or '').strip()
     equipment_type = (request.GET.get('equipment_type', 'all') or 'all').strip().lower()
     shop_kind = (request.GET.get('shop_kind', 'all') or 'all').strip().lower()
+    focus_shop_id = request.GET.get('shop', '').strip()
 
     equipment_type_choices = [
         ("all", "전체"),
@@ -1904,21 +1792,11 @@ def parts_as(request):
         PartsShop.objects.exclude(region="").values_list("region", flat=True).distinct().order_by("region")
     )
 
-    kakao_map_js_key = (getattr(settings, "KAKAO_MAP_JS_KEY", "") or "").strip()
-    if not kakao_map_js_key:
-        try:
-            from allauth.socialaccount.models import SocialApp
-            kakao_map_js_key = (
-                SocialApp.objects.filter(provider="kakao")
-                .values_list("client_id", flat=True)
-                .first()
-                or ""
-            ).strip()
-        except Exception:
-            kakao_map_js_key = ""
+    kakao_map_js_key = _get_kakao_map_js_key()
 
     return render(request, 'equipment/parts_as.html', {
         'region': region,
+        'focus_shop_id': focus_shop_id,
         'selected_equipment_type': equipment_type if equipment_type in equipment_label_by_key else "all",
         'selected_shop_kind': shop_kind or "all",
         'equipment_type_choices': equipment_type_choices,
@@ -1930,8 +1808,13 @@ def parts_as(request):
     })
 
 
+@login_required(login_url='/login/')
 def parts_as_register(request):
-    """업체 자진 등록 폼."""
+    """업체 자진 등록(로그인 + 휴대폰 본인인증 필수)."""
+    redirect_resp = _require_phone_verified_strict(request)
+    if redirect_resp:
+        return redirect_resp
+
     equipment_type_options = [
         ("excavator", "굴삭기"),
         ("dump", "덤프트럭"),
@@ -1982,7 +1865,7 @@ def parts_as_register(request):
                 note=note,
             )
             messages.success(request, "업체 등록이 완료되었습니다.")
-            return redirect("parts_as_register")
+            return redirect("parts_as")
 
     return render(request, "equipment/parts_as_register.html", {
         "equipment_type_options": equipment_type_options,
@@ -2345,6 +2228,7 @@ def equipment_detail(request, pk):
         'premium_sidebar_expert_title': premium_sidebar_expert_title,
         'author_other_listings': author_other_listings,
         'nearby_parts_shops': nearby_parts_shops,
+        'kakao_map_js_key': _get_kakao_map_js_key(),
         'can_bump': can_bump,
         'next_bump_at': next_bump_at,
     })

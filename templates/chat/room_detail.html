@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% load humanize %}
+{% load humanize i18n_extras %}
 {% block content %}
 <div class="container py-2 py-md-4 d-flex flex-column gn-chat-room-wrap" style="max-width: 720px; min-height: calc(100vh - 120px); padding-bottom: env(safe-area-inset-bottom, 0);">
     <div class="card border-0 shadow-sm rounded-3 flex-grow-1 d-flex flex-column overflow-hidden mb-0 gn-chat-card">
@@ -26,21 +26,20 @@
             {% for msg in chat_messages %}
             <div class="d-flex mb-2 {% if msg.sender_id == user.id %}justify-content-end{% else %}justify-content-start{% endif %}">
                 <div class="rounded-3 px-3 py-2 {% if msg.sender_id == user.id %}text-end{% endif %}" style="max-width: 75%; {% if msg.sender_id == user.id %}background: var(--gn-accent); color: #0f172a;{% else %}background: var(--gn-border); color: var(--gn-text);{% endif %} border-radius: 12px;">
-                    <div class="small text-muted mb-0">{% if msg.sender_id == user.id %}{% if LANG == 'en' %}Me{% else %}나{% endif %}{% else %}{{ msg.sender.username }}{% endif %}</div>
-                    {# XSS 방지: 채팅 메시지는 절대 |safe 사용 금지, 기본 escape 유지 #}
+                    <div class="small text-muted mb-0">{% if msg.sender_id == user.id %}{{ LANG|tr:"chat_me" }}{% else %}{{ msg.sender.username }}{% endif %}</div>
                     <div class="mb-0" style="white-space: pre-wrap;">{{ msg.message }}</div>
                     <div class="small opacity-75">{{ msg.created_at|date:"m/d H:i" }}</div>
                 </div>
             </div>
             {% empty %}
-            <p class="text-muted text-center small">{% if LANG == 'en' %}Send a message.{% else %}메시지를 입력해 보세요.{% endif %}</p>
+            <p class="text-muted text-center small">{{ LANG|tr:"chat_send_hint" }}</p>
             {% endfor %}
         </div>
         <div class="card-footer border-top py-3 gn-chat-input-wrap" style="background: var(--gn-card); border-color: var(--gn-border); position: sticky; bottom: 0; z-index: 10; padding-bottom: calc(0.75rem + env(safe-area-inset-bottom, 0));">
             <form method="post" action="" class="d-flex gap-2">
                 {% csrf_token %}
-                <input type="text" name="message" class="form-control rounded-3" placeholder="{% if LANG == 'en' %}Type a message...{% else %}메시지를 입력하세요{% endif %}" maxlength="1000" required autocomplete="off">
-                <button type="submit" class="btn rounded-3 text-dark fw-bold" style="background: var(--gn-accent); min-width: 70px;">{% if LANG == 'en' %}Send{% else %}전송{% endif %}</button>
+                <input type="text" name="message" class="form-control rounded-3" placeholder="{{ LANG|tr:'chat_send_ph' }}" maxlength="1000" required autocomplete="off">
+                <button type="submit" class="btn rounded-3 text-dark fw-bold" style="background: var(--gn-accent); min-width: 70px;">{{ LANG|tr:"chat_send" }}</button>
             </form>
         </div>
     </div>

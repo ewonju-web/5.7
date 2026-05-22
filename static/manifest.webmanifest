@@ -1,0 +1,37 @@
+{
+  "name": "굴삭기나라",
+  "short_name": "굴삭기나라",
+  "description": "중고 굴삭기·건설기계 매물·구인구직",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#374151",
+  "theme_color": "#374151",
+  "lang": "ko",
+  "icons": [
+    {
+      "src": "/static/img/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/static/img/apple-touch-icon.png",
+      "sizes": "180x180",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/static/img/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/static/img/icon-maskable-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ]
+}

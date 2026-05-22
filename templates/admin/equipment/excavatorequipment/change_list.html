@@ -1,0 +1,140 @@
+{% extends "admin/change_list.html" %}
+
+{% block extrastyle %}
+{{ block.super }}
+<style>
+  .gn-admin-excavator-filters {
+    background: #f5f5f5;
+    border: 1px solid #ddd;
+    border-radius: 10px;
+    padding: 14px 16px 12px;
+    margin-top: 12px;
+    margin-bottom: 16px;
+  }
+  .gn-admin-excavator-filters h3 {
+    margin: 0 0 10px;
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: #333;
+  }
+  .gn-admin-excavator-filters-row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    gap: 10px 12px;
+  }
+  .gn-admin-excavator-filters .gn-af-item label {
+    display: block;
+    font-size: 0.75rem;
+    color: #555;
+    margin-bottom: 4px;
+  }
+  .gn-admin-excavator-filters select {
+    min-width: 130px;
+    padding: 6px 8px;
+    border: 1px solid #ccc;
+    border-radius: 6px;
+    background: #fff;
+    font-size: 0.85rem;
+  }
+  .gn-admin-excavator-filters .gn-af-btn {
+    padding: 7px 18px;
+    background: #fbc02d;
+    border: 1px solid #f9a825;
+    border-radius: 6px;
+    font-weight: 600;
+    cursor: pointer;
+    font-size: 0.85rem;
+  }
+  .gn-admin-excavator-filters .gn-af-clear {
+    font-size: 0.8rem;
+    color: #666;
+    margin-left: 8px;
+  }
+  .gn-admin-excavator-filters .gn-af-active {
+    font-size: 0.8rem;
+    color: #1a237e;
+    margin-top: 8px;
+  }
+</style>
+{% endblock %}
+
+{% block search %}
+{{ block.super }}
+<div class="gn-admin-excavator-filters">
+  <h3>상세검색 (사이트와 동일)</h3>
+  <form method="get" action="">
+    {% for key, val in excavator_preserved_params %}
+    <input type="hidden" name="{{ key }}" value="{{ val }}">
+    {% endfor %}
+    <div class="gn-admin-excavator-filters-row">
+      <div class="gn-af-item">
+        <label for="gn-af-maker">제조사</label>
+        <select name="xsf_maker" id="gn-af-maker">
+          <option value="">전체</option>
+          {% for m in excavator_manufacturers %}
+          <option value="{{ m }}" {% if excavator_filter.maker == m %}selected{% endif %}>{{ m }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="gn-af-item">
+        <label for="gn-af-sub-type">종류</label>
+        <select name="xsf_sub_type" id="gn-af-sub-type">
+          <option value="">전체</option>
+          <option value="EXC_TIRE" {% if excavator_filter.sub_type == 'EXC_TIRE' %}selected{% endif %}>타이어식</option>
+          <option value="EXC_CRAWLER" {% if excavator_filter.sub_type == 'EXC_CRAWLER' %}selected{% endif %}>크롤러식(체인)</option>
+          <option value="EXC_ATTACHMENT" {% if excavator_filter.sub_type == 'EXC_ATTACHMENT' %}selected{% endif %}>어테치먼트</option>
+        </select>
+      </div>
+      <div class="gn-af-item">
+        <label for="gn-af-weight">장비중량</label>
+        <select name="xsf_weight_class" id="gn-af-weight">
+          <option value="">전체</option>
+          <option value="EXC_TIRE_LE_6" {% if excavator_filter.weight_class == 'EXC_TIRE_LE_6' %}selected{% endif %}>03W 5~6 ton</option>
+          <option value="EXC_TIRE_LE_17" {% if excavator_filter.weight_class == 'EXC_TIRE_LE_17' %}selected{% endif %}>06W 12~16 ton</option>
+          <option value="EXC_TIRE_LE_21" {% if excavator_filter.weight_class == 'EXC_TIRE_LE_21' %}selected{% endif %}>08W 20~22 ton</option>
+          <option value="EXC_CR_LT_1" {% if excavator_filter.weight_class == 'EXC_CR_LT_1' %}selected{% endif %}>1 ton 미만</option>
+          <option value="EXC_CR_LE_2" {% if excavator_filter.weight_class == 'EXC_CR_LE_2' %}selected{% endif %}>2 ton 미만</option>
+          <option value="EXC_CR_LE_3_5" {% if excavator_filter.weight_class == 'EXC_CR_LE_3_5' %}selected{% endif %}>3.5 ton 미만</option>
+          <option value="EXC_CR_LE_6_5" {% if excavator_filter.weight_class == 'EXC_CR_LE_6_5' %}selected{% endif %}>5~6 ton 02급</option>
+          <option value="EXC_CR_LE_16" {% if excavator_filter.weight_class == 'EXC_CR_LE_16' %}selected{% endif %}>12~16 ton 06급</option>
+          <option value="EXC_CR_EQ_20" {% if excavator_filter.weight_class == 'EXC_CR_EQ_20' %}selected{% endif %}>20~22 ton 08급</option>
+          <option value="EXC_CR_GE_30" {% if excavator_filter.weight_class == 'EXC_CR_GE_30' %}selected{% endif %}>30~50 ton 10급 이상</option>
+          <option value="EXC_ATT_LE_3_5" {% if excavator_filter.weight_class == 'EXC_ATT_LE_3_5' %}selected{% endif %}>3.5톤 이하</option>
+          <option value="EXC_ATT_LE_6_5" {% if excavator_filter.weight_class == 'EXC_ATT_LE_6_5' %}selected{% endif %}>6.5톤 이하</option>
+          <option value="EXC_ATT_LE_16" {% if excavator_filter.weight_class == 'EXC_ATT_LE_16' %}selected{% endif %}>16톤 이하</option>
+          <option value="EXC_ATT_EQ_20" {% if excavator_filter.weight_class == 'EXC_ATT_EQ_20' %}selected{% endif %}>20톤</option>
+          <option value="EXC_ATT_GE_30" {% if excavator_filter.weight_class == 'EXC_ATT_GE_30' %}selected{% endif %}>30톤 이상</option>
+        </select>
+      </div>
+      <div class="gn-af-item">
+        <label for="gn-af-year-min">년식(시작)</label>
+        <select name="xsf_year_min" id="gn-af-year-min">
+          <option value="">전체</option>
+          {% for y in excavator_filter_years %}
+          <option value="{{ y }}" {% if excavator_filter.year_min == y|stringformat:"s" %}selected{% endif %}>{{ y }}년</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="gn-af-item">
+        <label for="gn-af-year-max">년식(끝)</label>
+        <select name="xsf_year_max" id="gn-af-year-max">
+          <option value="">전체</option>
+          {% for y in excavator_filter_years %}
+          {% if y >= 2001 %}
+          <option value="{{ y }}" {% if excavator_filter.year_max == y|stringformat:"s" %}selected{% endif %}>{{ y }}년</option>
+          {% endif %}
+          {% endfor %}
+        </select>
+      </div>
+      <div class="gn-af-item">
+        <button type="submit" class="gn-af-btn">검색</button>
+        <a class="gn-af-clear" href="{{ excavator_filter_clear_url }}">필터 초기화</a>
+      </div>
+    </div>
+    {% if excavator_filter_active %}
+    <p class="gn-af-active">상세검색 적용 중 — 목록은 사이트 굴삭기 상세검색과 동일한 조건으로 필터됩니다.</p>
+    {% endif %}
+  </form>
+</div>
+{% endblock %}

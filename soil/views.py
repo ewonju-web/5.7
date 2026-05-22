@@ -1,8 +1,14 @@
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
+from django.contrib import messages
 from django.http import Http404
 from .models import SoilPost
 from .forms import SoilPostForm
+from .antispam import (
+    require_phone_for_soil_post,
+    check_soil_rate_limit,
+    bump_soil_rate_limit,
+)
 
 
 def soil_list(request):
@@ -50,14 +56,24 @@ def soil_list(request):
 
 @login_required(login_url='/login/')
 def soil_create(request):
-    """등록 (로그인 필수)."""
+    """등록 (로그인 + 휴대폰 인증 + 등록 제한)."""
+    redirect_resp = require_phone_for_soil_post(request)
+    if redirect_resp:
+        return redirect_resp
+
     if request.method == 'POST':
-        form = SoilPostForm(request.POST, request.FILES)
-        if form.is_valid():
-            post = form.save(commit=False)
-            post.author = request.user
-            post.save()
-            return redirect('soil_detail', pk=post.pk)
+        rate_msg = check_soil_rate_limit(request)
+        if rate_msg:
+            messages.error(request, rate_msg)
+            form = SoilPostForm(request.POST, request.FILES)
+        else:
+            form = SoilPostForm(request.POST, request.FILES)
+            if form.is_valid():
+                post = form.save(commit=False)
+                post.author = request.user
+                post.save()
+                bump_soil_rate_limit(request)
+                return redirect('soil_detail', pk=post.pk)
     else:
         form = SoilPostForm()
     return render(request, 'soil/soil_form.html', {'form': form, 'is_edit': False})

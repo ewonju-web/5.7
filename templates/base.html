@@ -1,9 +1,17 @@
 <!DOCTYPE html>
-<html lang="ko">
+<html lang="{{ LANG|default:'ko' }}">
 {% load static i18n_extras %}
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <meta name="theme-color" content="#374151">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="굴삭기나라">
+    <link rel="manifest" href="{% static 'manifest.webmanifest' %}">
+    <link rel="icon" type="image/png" sizes="192x192" href="{% static 'img/icon-192.png' %}">
+    <link rel="apple-touch-icon" sizes="180x180" href="{% static 'img/apple-touch-icon.png' %}">
     <title>{% block title %}굴삭기나라{% endblock %}</title>
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
@@ -276,7 +284,7 @@
             display: none;
             background: var(--gn-card);
             border-top: 1px solid var(--gn-border);
-            padding: 0.58rem 0 0.52rem;
+            padding: 0.58rem 0 calc(0.52rem + env(safe-area-inset-bottom, 0px));
             min-height: 3.35rem;
             position: fixed;
             bottom: 0;
@@ -297,10 +305,33 @@
         }
         .gn-mobile-bottom a:hover, .gn-mobile-bottom a.active { color: var(--gn-accent); }
         .gn-mobile-bottom .nav-icon { font-size: 1.55rem; display: block; margin-bottom: 3px; }
+        .gn-pwa-install {
+            display: none;
+            position: fixed;
+            left: 0.75rem;
+            right: 0.75rem;
+            bottom: calc(3.85rem + env(safe-area-inset-bottom, 0px));
+            z-index: 1030;
+            background: #1f2937;
+            color: #f9fafb;
+            border-radius: 12px;
+            padding: 0.65rem 0.85rem;
+            font-size: 0.82rem;
+            line-height: 1.35;
+            box-shadow: 0 8px 24px rgba(0,0,0,.22);
+            align-items: center;
+            gap: 0.5rem;
+        }
+        .gn-pwa-install.show { display: flex; }
+        .gn-pwa-install .gn-pwa-install-text { flex: 1; }
+        .gn-pwa-install .btn { white-space: nowrap; font-size: 0.78rem; padding: 0.25rem 0.55rem; }
+        @media (display-mode: standalone) {
+            .gn-pwa-install { display: none !important; }
+        }
         .gn-fab {
             display: none;
             position: fixed;
-            bottom: 4.55rem;
+            bottom: calc(4.55rem + env(safe-area-inset-bottom, 0px));
             right: 1.25rem;
             width: 58px;
             height: 58px;
@@ -316,11 +347,16 @@
         }
         .gn-fab:hover { color: #0c1929; background: var(--gn-accent-hover); }
         @media (max-width: 767.98px) {
+            /* rem 기반 UI 전역 가독성 (16px → 17px) */
+            html { font-size: 106.25%; }
             .gn-mobile-header { display: flex; }
             .gn-mobile-bottom { display: flex; }
             .navbar-gn .container { padding-top: 0; padding-bottom: 0; }
-            main { padding-bottom: 5rem; }
-            footer { padding-bottom: 5.25rem; }
+            main { padding-bottom: calc(5rem + env(safe-area-inset-bottom, 0px)); }
+            footer { padding-bottom: calc(5.25rem + env(safe-area-inset-bottom, 0px)); }
+            .gn-mobile-bottom a { font-size: 0.84rem; }
+            .gn-cat-pill { font-size: 0.96rem; }
+            .gn-cat-pill i { font-size: 1.1rem; }
         }
         @media (max-width: 767.98px) {
             .gn-fab { display: flex; }
@@ -494,42 +530,49 @@
         }
         /* 모바일: 햄버거 메뉴·검색 패널 글씨 살짝 확대 */
         @media (max-width: 767.98px) {
+            #gnServiceMenu .offcanvas-title {
+                font-size: 1.2rem;
+            }
+            #gnServiceMenu .offcanvas-header .btn {
+                font-size: 0.84rem;
+                padding: 0.32rem 0.58rem;
+            }
             .gn-service-section-title {
-                font-size: 0.88rem;
+                font-size: 0.92rem;
                 margin: 0.55rem 1rem 0.3rem;
             }
             .gn-service-item {
-                padding: 0.68rem 0.8rem;
-                gap: 0.65rem;
+                padding: 0.7rem 0.85rem;
+                gap: 0.68rem;
             }
             .gn-service-item-icon {
-                width: 36px;
-                height: 36px;
-                font-size: 1.28rem;
+                width: 38px;
+                height: 38px;
+                font-size: 1.32rem;
             }
             .gn-service-item-title {
-                font-size: 1.02rem;
+                font-size: 1.06rem;
             }
             .gn-service-item .small {
-                font-size: 0.88rem !important;
+                font-size: 0.92rem !important;
             }
             #gnServiceMenu .list-group-item {
-                font-size: 1.02rem;
-                padding-top: 0.65rem;
-                padding-bottom: 0.65rem;
+                font-size: 1.06rem;
+                padding-top: 0.68rem;
+                padding-bottom: 0.68rem;
             }
             .gn-search-offcanvas .offcanvas-title {
-                font-size: 1.15rem;
+                font-size: 1.18rem;
             }
             .gn-search-offcanvas .gn-search-bar input {
-                font-size: 0.98rem;
+                font-size: 1rem;
             }
             .gn-search-offcanvas .gn-search-btn {
-                font-size: 0.92rem;
+                font-size: 0.94rem;
                 padding: 0.45rem 1.05rem;
             }
             .gn-search-offcanvas .gn-search-hint {
-                font-size: 1rem;
+                font-size: 1.02rem;
             }
         }
     </style>
@@ -629,15 +672,15 @@
                     <div class="dropdown">
                         <button class="btn btn-outline-light btn-sm dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false" title="언어">{{ LANG|tr:"lang_label" }}</button>
                         <ul class="dropdown-menu dropdown-menu-end">
-                            <li><a class="dropdown-item" href="{% url 'set_language' %}?lang=ko&amp;next={{ request.get_full_path|urlencode }}">한국어</a></li>
-                            <li><a class="dropdown-item" href="{% url 'set_language' %}?lang=en&amp;next={{ request.get_full_path|urlencode }}">English</a></li>
-                            <li><a class="dropdown-item" href="{% url 'set_language' %}?lang=ru&amp;next={{ request.get_full_path|urlencode }}">Русский</a></li>
-                            <li><a class="dropdown-item" href="{% url 'set_language' %}?lang=vi&amp;next={{ request.get_full_path|urlencode }}">Tiếng Việt</a></li>
+                            {% language_menu as lang_choices %}
+                            {% for code, label in lang_choices %}
+                            <li><a class="dropdown-item{% if LANG == code %} active{% endif %}" href="{% url 'set_language' %}?lang={{ code }}&amp;next={{ request.get_full_path|urlencode }}">{{ label }}</a></li>
+                            {% endfor %}
                         </ul>
                     </div>
                     {% if user.is_authenticated %}
                         <a href="{% url 'chat_room_list' %}" class="nav-link d-none d-md-inline-block"><i class="bi bi-chat-dots me-1"></i>{{ LANG|tr:"nav_chat" }}{% if unread_total > 0 %} <span class="badge bg-danger rounded-pill ms-1" style="font-size: 0.65rem;">{{ unread_total }}</span>{% endif %}</a>
-                        <a href="{% url 'my_page' %}" class="nav-link d-none d-md-inline-block"><strong>{{ user.username }}</strong>님</a>
+                        <a href="{% url 'my_page' %}" class="nav-link d-none d-md-inline-block"><strong>{{ user.username }}</strong>{{ LANG|tr:"username_suffix" }}</a>
                         <a href="{% url 'logout' %}" class="btn btn-accent btn-sm">{{ LANG|tr:"nav_logout" }}</a>
                     {% else %}
                         <a href="{% url 'login' %}" class="btn btn-outline-light btn-sm">{{ LANG|tr:"nav_login" }}</a>
@@ -652,11 +695,11 @@
     <div class="offcanvas offcanvas-end" tabindex="-1" id="gnServiceMenu" aria-labelledby="gnServiceMenuLabel" style="background: var(--gn-card); color: var(--gn-text);">
         <div class="offcanvas-header border-bottom" style="border-color: var(--gn-border)!important;">
             <h5 class="offcanvas-title fw-bold" id="gnServiceMenuLabel">{{ LANG|tr:"service_all" }}</h5>
-            <div class="d-flex align-items-center gap-2">
-                <a href="{% url 'set_language' %}?lang=ko&amp;next={{ request.get_full_path|urlencode }}" class="btn btn-sm {% if LANG == 'ko' %}btn-warning text-dark{% else %}btn-outline-secondary{% endif %}">한국어</a>
-                <a href="{% url 'set_language' %}?lang=en&amp;next={{ request.get_full_path|urlencode }}" class="btn btn-sm {% if LANG == 'en' %}btn-warning text-dark{% else %}btn-outline-secondary{% endif %}">EN</a>
-                <a href="{% url 'set_language' %}?lang=ru&amp;next={{ request.get_full_path|urlencode }}" class="btn btn-sm {% if LANG == 'ru' %}btn-warning text-dark{% else %}btn-outline-secondary{% endif %}">RU</a>
-                <a href="{% url 'set_language' %}?lang=vi&amp;next={{ request.get_full_path|urlencode }}" class="btn btn-sm {% if LANG == 'vi' %}btn-warning text-dark{% else %}btn-outline-secondary{% endif %}">VI</a>
+            <div class="d-flex flex-wrap align-items-center gap-1" style="max-width: 70%;">
+                {% language_menu as lang_choices %}
+                {% for code, label in lang_choices %}
+                <a href="{% url 'set_language' %}?lang={{ code }}&amp;next={{ request.get_full_path|urlencode }}" class="btn btn-sm {% if LANG == code %}btn-warning text-dark{% else %}btn-outline-secondary{% endif %}" title="{{ label }}">{{ code|tr:"lang_short" }}</a>
+                {% endfor %}
             </div>
             <button type="button" class="btn-close btn-close-white" data-bs-dismiss="offcanvas" aria-label="닫기"></button>
         </div>
@@ -667,38 +710,38 @@
                     <a href="{% url 'index' %}?category=excavator" class="gn-service-item">
                         <div class="gn-service-item-icon"><i class="bi bi-truck-front-fill"></i></div>
                         <div>
-                            <div class="gn-service-item-title">굴삭기</div>
+                            <div class="gn-service-item-title">{{ LANG|tr:"cat_excavator" }}</div>
                             <div class="small text-muted">{{ LANG|tr:"service_attachment_sub" }}</div>
                         </div>
                     </a>
                     <a href="{% url 'index' %}?category=forklift" class="gn-service-item">
                         <div class="gn-service-item-icon"><i class="bi bi-box-seam-fill"></i></div>
                         <div>
-                            <div class="gn-service-item-title">지게차</div>
+                            <div class="gn-service-item-title">{{ LANG|tr:"cat_forklift" }}</div>
                         </div>
                     </a>
                     <a href="{% url 'index' %}?category=dump" class="gn-service-item">
                         <div class="gn-service-item-icon"><i class="bi bi-truck-flatbed"></i></div>
                         <div>
-                            <div class="gn-service-item-title">덤프트럭</div>
+                            <div class="gn-service-item-title">{{ LANG|tr:"cat_dump" }}</div>
                         </div>
                     </a>
                     <a href="{% url 'index' %}?category=loader" class="gn-service-item">
                         <div class="gn-service-item-icon"><i class="bi bi-box2-heart-fill"></i></div>
                         <div>
-                            <div class="gn-service-item-title">스키로더/로더</div>
+                            <div class="gn-service-item-title">{{ LANG|tr:"cat_loader" }}</div>
                         </div>
                     </a>
                     <a href="{% url 'index' %}?category=crane" class="gn-service-item">
                         <div class="gn-service-item-icon"><i class="bi bi-truck"></i></div>
                         <div>
-                            <div class="gn-service-item-title">크레인</div>
+                            <div class="gn-service-item-title">{{ LANG|tr:"cat_crane" }}</div>
                         </div>
                     </a>
                     <a href="{% url 'index' %}?category=other" class="gn-service-item">
                         <div class="gn-service-item-icon"><i class="bi bi-gear-wide-connected"></i></div>
                         <div>
-                            <div class="gn-service-item-title">기타 중장비</div>
+                            <div class="gn-service-item-title">{{ LANG|tr:"cat_other" }}</div>
                         </div>
                     </a>
                 </div>
@@ -727,6 +770,13 @@
                 </div>
             </div>
         </div>
+    </div>
+
+    <!-- 홈 화면 추가 시 브라우저 주소창 없이 앱처럼 사용 (당근 앱과 유사) -->
+    <div id="gn-pwa-install" class="gn-pwa-install" role="dialog" aria-label="홈 화면에 추가 안내" hidden>
+        <span class="gn-pwa-install-text">브라우저 아래 주소줄 없이 쓰려면 <strong>홈 화면에 추가</strong>해 주세요.</span>
+        <button type="button" class="btn btn-warning btn-sm fw-bold" id="gn-pwa-install-btn">추가하기</button>
+        <button type="button" class="btn btn-outline-light btn-sm" id="gn-pwa-install-close" aria-label="닫기">닫기</button>
     </div>
 
     <!-- 모바일 하단 네비 (카테고리 선택 시 유지) -->
@@ -798,513 +848,15 @@
         </div>
     </footer>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    {{ I18N_PAGE|json_script:"gn-i18n-page" }}
     <script>
       (function () {
         var lang = "{{ LANG|default:'ko'|escapejs }}";
         if (!lang || lang === "ko") return;
-
-        var dictionaries = {
-          en: {
-            "로그인": "Login",
-            "로그아웃": "Logout",
-            "회원가입": "Sign Up",
-            "매물등록": "Post Listing",
-            "매물 등록": "Post Listing",
-            "글쓰기": "Post",
-            "등록": "Register",
-            "등록하기": "Submit",
-            "수정": "Edit",
-            "수정하기": "Update",
-            "수정 저장": "Save Changes",
-            "삭제": "Delete",
-            "삭제하기": "Delete",
-            "취소": "Cancel",
-            "저장": "Save",
-            "검색": "Search",
-            "조회하기": "Apply Filters",
-            "검색초기화": "Reset Filters",
-            "더보기": "Load More",
-            "전화 상담하기": "Call Seller",
-            "연락처 정보 없음": "No Contact Info",
-            "내 매물입니다": "My Listing",
-            "채팅으로 문의하기": "Chat with Seller",
-            "찜하기": "Add Favorite",
-            "찜 해제": "Remove Favorite",
-            "매물 링크 복사": "Copy Link",
-            "한도 조회하기 (준비중)": "Check Limit (Soon)",
-            "전체": "All",
-            "굴삭기": "Excavator",
-            "지게차": "Forklift",
-            "덤프": "Dump Truck",
-            "로더": "Loader",
-            "어태치먼트": "Attachment",
-            "기타": "Other",
-            "추천 매물": "Featured Listings",
-            "제조사": "Maker",
-            "종류": "Type",
-            "형식": "Type",
-            "장비중량": "Weight Class",
-            "년식(시작)": "Year (From)",
-            "년식(끝)": "Year (To)",
-            "년식(마지막)": "Year (To)",
-            "팝니다": "For Sale",
-            "판매완료": "Sold",
-            "기종": "Category",
-            "모델명": "Model",
-            "연식": "Year",
-            "가동시간": "Operating hours",
-            "위치": "Location",
-            "모름": "Unknown",
-            "문의": "Contact",
-            "이미지 없음": "No image",
-            "등록된 매물이 없습니다.": "No listings available.",
-            "한줄 목록": "List View",
-            "40개씩 보기": "Show 40",
-            "80개씩 보기": "Show 80",
-            "기본 정보": "Basic Info",
-            "판매금액": "Price",
-            "매물등록일": "Posted On",
-            "매물 등록일": "Posted On",
-            "등록일": "Posted On",
-            "차량번호": "Vehicle Number",
-            "판매자": "Seller",
-            "연락처": "Contact",
-            "상세 설명": "Description",
-            "사진 보기": "Photos",
-            "비슷한 기종·년식 시세": "Similar Market Prices",
-            "비슷한 매물": "Similar Listings",
-            "최저가": "Lowest",
-            "최고가": "Highest",
-            "평균 시세": "Average",
-            "비슷한 매물 보기": "View Similar Listings",
-            "내용이 없습니다.": "No description.",
-            "모델명, 제조사, 지역, 가격": "Model, maker, location, price",
-            "목록으로 돌아가기": "Back to list",
-            "목록으로 가기": "Back to list",
-            "문의하기": "Contact",
-            "전화 걸기": "Call",
-            "연락처 없음": "No contact",
-            "카톡·채팅 문의": "Chat inquiry",
-            "내 매물": "My listing",
-            "링크 복사": "Copy link",
-            "클릭하면 크게 보기": "Click to enlarge",
-            "등록된 사진이 없습니다.": "No photos uploaded.",
-            "이미지 없음": "No image",
-            "이 판매자의 다른 매물": "Other listings by this seller",
-            "이 판매자의 전체 매물 보기": "View all listings by this seller",
-            "(유료 회원 전용)": "(Paid members only)",
-            "유료회원 매물": "Premium member listings",
-            "다음 끌어올리기:": "Next bump:",
-            "목록 최신순 상단 노출": "Shown at top by latest order",
-            "예상 한도 (최대)": "Estimated limit (max)",
-            "예상 월 납입액 (60개월 기준)": "Estimated monthly payment (60 months)",
-            "이 장비 금융 가능 금액 (예상)": "Estimated financeable amount",
-            "유료 금융상품 연동 준비중": "Paid financing integration coming soon",
-            "연 7.0% / 60개월 원리금 균등상환을 가정한 단순 예시입니다. 실제 승인 한도와 금리는 제휴 금융사 심사 결과에 따라 달라질 수 있습니다.": "A simple example based on 7.0% annual rate and 60-month equal payments. Actual limit and rate may vary by partner lender review.",
-            "같은 제조사·비슷한 년식의 다른 매물이 없어 시세를 산출할 수 없습니다.": "No comparable listings from the same brand and similar year to calculate market price.",
-            "원본 크기로 보기": "View original size",
-            "이전": "Previous",
-            "다음": "Next",
-            "확대 보기": "Enlarged view",
-            "마이페이지": "My Page",
-            "찜한 매물": "Favorites",
-            "내가 올린 매물": "My Listings",
-            "아직 등록한 매물이 없습니다.": "You haven't posted any listings yet.",
-            "회원 탈퇴": "Delete Account",
-            "정말 탈퇴하시겠습니까?": "Are you sure you want to delete your account?",
-            "정말 탈퇴합니다": "Yes, delete my account",
-            "할부/금융": "Finance/Installment",
-            "금융/할부": "Finance/Installment",
-            "필요자금 계산기": "Funding Calculator",
-            "필요자금 (원)": "Required Amount (KRW)",
-            "할부기간": "Installment Term",
-            "연이율 (%)": "Annual Interest Rate (%)",
-            "계산하기": "Calculate",
-            "대출금액": "Loan Amount",
-            "월 납입금": "Monthly Payment",
-            "총 납입금": "Total Payment",
-            "총 이자금액": "Total Interest",
-            "회차": "Installment No.",
-            "납입금": "Payment",
-            "원금": "Principal",
-            "이자": "Interest",
-            "잔액": "Balance",
-            "할부 상담 신청": "Installment Consultation",
-            "신청자 이름": "Applicant Name",
-            "희망 장비": "Desired Equipment",
-            "선택하세요": "Select",
-            "직접 입력": "Enter manually",
-            "희망 장비 직접 입력": "Enter Desired Equipment",
-            "구입 예산 (원)": "Purchase Budget (KRW)",
-            "희망 할부기간": "Desired Installment Term",
-            "메모 (선택사항)": "Memo (Optional)",
-            "상담 신청하기": "Submit Consultation",
-            "상담 대상 매물:": "Target Listing:",
-            "본 계산기는 참고용이며 실제 금리는 캐피탈사 심사에 따라 다를 수 있습니다.": "This calculator is for reference only; actual rates may vary based on financing review.",
-            "할부 상담 신청하기": "Apply for Installment Consultation",
-            "한도와 금리는 심사 결과에 따라 달라질 수 있습니다.": "Limit and rates may vary by review results.",
-            "부품 / AS 센터 찾기": "Find Parts / AS Center",
-            "업체 자진 등록": "Self Register Business",
-            "장비 유형 선택": "Select Equipment Type",
-            "업체 유형": "Business Type",
-            "전체 업체": "All Businesses",
-            "업체명 검색": "Search Business Name",
-            "업체명을 입력하세요": "Enter business name",
-            "지도보기": "Map View",
-            "목록보기": "List View",
-            "조건에 맞는 업체가 없습니다.": "No businesses match your filters.",
-            "주소 미등록": "Address not registered",
-            "연락처 없음": "No contact info",
-            "취급 제조사:": "Supported Brands:",
-            "영업시간:": "Business Hours:",
-            "정보 없음": "No data",
-            "굴삭기 유튜브 / 정보": "Excavator YouTube / Info",
-            "기종 + 목적을 동시에 선택해 필요한 영상만 빠르게 확인하세요.": "Select equipment and purpose together to quickly find relevant videos.",
-            "굴삭기 정비": "Excavator Maintenance",
-            "굴삭기 수리": "Excavator Repair",
-            "지게차 정비": "Forklift Maintenance",
-            "덤프트럭 정비": "Dump Truck Maintenance",
-            "굴삭기 점검": "Excavator Inspection",
-            "유튜브 보기": "View on YouTube",
-            "선택한 조건에 맞는 영상이 없습니다.": "No videos match the selected filters."
-            ,"등록안내": "Registration Guide"
-            ,"전체보기": "View All"
-            ,"지도": "Map"
-            ,"초기화": "Reset"
-            ,"AS센터": "AS Center"
-            ,"부품점": "Parts Shop"
-            ,"지역": "Region"
-            ,"제조사 선택 (복수 선택)": "Select Makers (Multiple)"
-            ,"정비 유형 (복수 선택)": "Service Type (Multiple)"
-            ,"개 업체": " businesses"
-          },
-          ru: {
-            "로그인": "Войти",
-            "로그아웃": "Выйти",
-            "회원가입": "Регистрация",
-            "매물등록": "Добавить объявление",
-            "매물 등록": "Добавить объявление",
-            "글쓰기": "Опубликовать",
-            "등록": "Регистрация",
-            "등록하기": "Отправить",
-            "수정": "Изменить",
-            "수정하기": "Обновить",
-            "수정 저장": "Сохранить",
-            "삭제": "Удалить",
-            "삭제하기": "Удалить",
-            "취소": "Отмена",
-            "저장": "Сохранить",
-            "검색": "Поиск",
-            "조회하기": "Применить",
-            "검색초기화": "Сбросить",
-            "더보기": "Показать еще",
-            "전화 상담하기": "Позвонить продавцу",
-            "연락처 정보 없음": "Нет контактов",
-            "내 매물입니다": "Моё объявление",
-            "채팅으로 문의하기": "Написать продавцу",
-            "찜하기": "В избранное",
-            "찜 해제": "Убрать из избранного",
-            "매물 링크 복사": "Копировать ссылку",
-            "한도 조회하기 (준비중)": "Проверка лимита (скоро)",
-            "전체": "Все",
-            "굴삭기": "Экскаватор",
-            "지게차": "Погрузчик",
-            "덤프": "Самосвал",
-            "로더": "Погрузчик",
-            "어태치먼트": "Навесное",
-            "기타": "Другое",
-            "제조사": "Производитель",
-            "종류": "Тип",
-            "장비중량": "Масса техники",
-            "년식(시작)": "Год (с)",
-            "년식(끝)": "Год (по)",
-            "마이페이지": "Моя страница",
-            "찜한 매물": "Избранные объявления",
-            "내가 올린 매물": "Мои объявления",
-            "아직 등록한 매물이 없습니다.": "У вас пока нет объявлений.",
-            "회원 탈퇴": "Удалить аккаунт",
-            "정말 탈퇴하시겠습니까?": "Вы уверены, что хотите удалить аккаунт?",
-            "정말 탈퇴합니다": "Да, удалить аккаунт",
-            "팝니다": "Продается",
-            "판매완료": "Продано",
-            "기본 정보": "Основная информация",
-            "판매금액": "Цена",
-            "매물등록일": "Дата размещения",
-            "매물 등록일": "Дата размещения",
-            "등록일": "Дата размещения",
-            "차량번호": "Номер машины",
-            "판매자": "Продавец",
-            "상세 설명": "Подробное описание",
-            "사진 보기": "Фото",
-            "비슷한 기종·년식 시세": "Похожие цены",
-            "비슷한 매물": "Похожие объявления",
-            "최저가": "Мин. цена",
-            "최고가": "Макс. цена",
-            "평균 시세": "Средняя цена",
-            "비슷한 매물 보기": "Смотреть похожие",
-            "내용이 없습니다.": "Описание отсутствует.",
-            "기종": "Категория",
-            "모델명": "Модель",
-            "연식": "Год выпуска",
-            "가동시간": "Наработка",
-            "위치": "Местоположение",
-            "모름": "Неизвестно",
-            "목록으로 가기": "Назад к списку",
-            "문의하기": "Связаться",
-            "전화 걸기": "Позвонить",
-            "연락처 없음": "Нет контактов",
-            "카톡·채팅 문의": "Чат с продавцом",
-            "내 매물": "Моё объявление",
-            "링크 복사": "Копировать ссылку",
-            "클릭하면 크게 보기": "Нажмите, чтобы увеличить",
-            "등록된 사진이 없습니다.": "Фотографии не добавлены.",
-            "이미지 없음": "Нет фото",
-            "이 판매자의 다른 매물": "Другие объявления продавца",
-            "이 판매자의 전체 매물 보기": "Смотреть все объявления продавца",
-            "(유료 회원 전용)": "(Только для платных участников)",
-            "유료회원 매물": "Объявления платных участников",
-            "다음 끌어올리기:": "Следующее поднятие:",
-            "목록 최신순 상단 노출": "Поднятие в верх списка",
-            "예상 한도 (최대)": "Оценочный лимит (макс.)",
-            "예상 월 납입액 (60개월 기준)": "Оценочный платеж в месяц (60 мес.)",
-            "이 장비 금융 가능 금액 (예상)": "Оценочная сумма финансирования",
-            "유료 금융상품 연동 준비중": "Интеграция финпродуктов скоро",
-            "연 7.0% / 60개월 원리금 균등상환을 가정한 단순 예시입니다. 실제 승인 한도와 금리는 제휴 금융사 심사 결과에 따라 달라질 수 있습니다.": "Пример при 7.0% годовых и 60 равных платежах. Реальный лимит и ставка зависят от решения партнёрской финкомпании.",
-            "같은 제조사·비슷한 년식의 다른 매물이 없어 시세를 산출할 수 없습니다.": "Нет похожих объявлений того же производителя и года для расчёта цены.",
-            "원본 크기로 보기": "Открыть оригинал",
-            "이전": "Назад",
-            "다음": "Далее",
-            "확대 보기": "Увеличенный просмотр",
-            "할부/금융": "Рассрочка/Финансы",
-            "금융/할부": "Финансы/Рассрочка",
-            "필요자금 계산기": "Калькулятор финансирования",
-            "필요자금 (원)": "Требуемая сумма (вон)",
-            "할부기간": "Срок рассрочки",
-            "연이율 (%)": "Годовая ставка (%)",
-            "계산하기": "Рассчитать",
-            "대출금액": "Сумма кредита",
-            "월 납입금": "Ежемесячный платеж",
-            "총 납입금": "Общая выплата",
-            "총 이자금액": "Общий процент",
-            "회차": "Платеж",
-            "납입금": "Платеж",
-            "원금": "Основной долг",
-            "이자": "Проценты",
-            "잔액": "Остаток",
-            "할부 상담 신청": "Заявка на рассрочку",
-            "신청자 이름": "Имя заявителя",
-            "희망 장비": "Желаемая техника",
-            "선택하세요": "Выберите",
-            "직접 입력": "Ввести вручную",
-            "희망 장비 직접 입력": "Введите желаемую технику",
-            "구입 예산 (원)": "Бюджет покупки (вон)",
-            "희망 할부기간": "Желаемый срок рассрочки",
-            "메모 (선택사항)": "Примечание (необязательно)",
-            "상담 신청하기": "Отправить заявку",
-            "상담 대상 매물:": "Объект заявки:",
-            "본 계산기는 참고용이며 실제 금리는 캐피탈사 심사에 따라 다를 수 있습니다.": "Калькулятор носит справочный характер; фактическая ставка зависит от проверки финкомпании.",
-            "할부 상담 신청하기": "Подать заявку на рассрочку",
-            "한도와 금리는 심사 결과에 따라 달라질 수 있습니다.": "Лимит и ставка могут отличаться по результатам проверки.",
-            "부품 / AS 센터 찾기": "Поиск запчастей / сервиса",
-            "업체 자진 등록": "Самостоятельная регистрация компании",
-            "장비 유형 선택": "Выбор типа техники",
-            "업체 유형": "Тип компании",
-            "전체 업체": "Все компании",
-            "업체명 검색": "Поиск по названию компании",
-            "업체명을 입력하세요": "Введите название компании",
-            "지도보기": "Карта",
-            "목록보기": "Список",
-            "조건에 맞는 업체가 없습니다.": "Нет компаний по выбранным условиям.",
-            "주소 미등록": "Адрес не указан",
-            "연락처 없음": "Нет контактов",
-            "취급 제조사:": "Поддерживаемые бренды:",
-            "영업시간:": "Время работы:",
-            "정보 없음": "Нет данных",
-            "굴삭기 유튜브 / 정보": "YouTube / Инфо по экскаваторам",
-            "기종 + 목적을 동시에 선택해 필요한 영상만 빠르게 확인하세요.": "Выберите тип техники и цель, чтобы быстро найти нужные видео.",
-            "굴삭기 정비": "Обслуживание экскаватора",
-            "굴삭기 수리": "Ремонт экскаватора",
-            "지게차 정비": "Обслуживание погрузчика",
-            "덤프트럭 정비": "Обслуживание самосвала",
-            "굴삭기 점검": "Проверка экскаватора",
-            "유튜브 보기": "Смотреть на YouTube",
-            "선택한 조건에 맞는 영상이 없습니다.": "Нет видео по выбранным условиям."
-            ,"등록안내": "Инфо о регистрации"
-            ,"전체보기": "Смотреть все"
-            ,"지도": "Карта"
-            ,"초기화": "Сброс"
-            ,"AS센터": "Сервисный центр"
-            ,"부품점": "Магазин запчастей"
-            ,"지역": "Регион"
-            ,"제조사 선택 (복수 선택)": "Выбор брендов (несколько)"
-            ,"정비 유형 (복수 선택)": "Тип обслуживания (несколько)"
-            ,"개 업체": " компаний"
-          },
-          vi: {
-            "로그인": "Đăng nhập",
-            "로그아웃": "Đăng xuất",
-            "회원가입": "Đăng ký",
-            "매물등록": "Đăng bán",
-            "매물 등록": "Đăng bán",
-            "글쓰기": "Đăng bài",
-            "등록": "Đăng ký",
-            "등록하기": "Gửi",
-            "수정": "Sửa",
-            "수정하기": "Cập nhật",
-            "수정 저장": "Lưu thay đổi",
-            "삭제": "Xóa",
-            "삭제하기": "Xóa",
-            "취소": "Hủy",
-            "저장": "Lưu",
-            "검색": "Tìm kiếm",
-            "조회하기": "Áp dụng",
-            "검색초기화": "Đặt lại",
-            "더보기": "Xem thêm",
-            "전화 상담하기": "Gọi người bán",
-            "연락처 정보 없음": "Không có liên hệ",
-            "내 매물입니다": "Tin của tôi",
-            "채팅으로 문의하기": "Nhắn tin cho người bán",
-            "찜하기": "Yêu thích",
-            "찜 해제": "Bỏ yêu thích",
-            "매물 링크 복사": "Sao chép liên kết",
-            "한도 조회하기 (준비중)": "Kiểm tra hạn mức (sắp có)",
-            "전체": "Tất cả",
-            "굴삭기": "Máy xúc",
-            "지게차": "Xe nâng",
-            "덤프": "Xe ben",
-            "로더": "Xe xúc",
-            "어태치먼트": "Phụ kiện",
-            "기타": "Khác",
-            "제조사": "Hãng",
-            "종류": "Loại",
-            "장비중량": "Trọng lượng",
-            "년식(시작)": "Năm SX (từ)",
-            "년식(끝)": "Năm SX (đến)",
-            "마이페이지": "Trang của tôi",
-            "찜한 매물": "Tin đã lưu",
-            "내가 올린 매물": "Tin tôi đã đăng",
-            "아직 등록한 매물이 없습니다.": "Bạn chưa đăng tin nào.",
-            "회원 탈퇴": "Xóa tài khoản",
-            "정말 탈퇴하시겠습니까?": "Bạn có chắc muốn xóa tài khoản?",
-            "정말 탈퇴합니다": "Tôi đồng ý xóa tài khoản",
-            "팝니다": "Đang bán",
-            "판매완료": "Đã bán",
-            "기본 정보": "Thông tin cơ bản",
-            "판매금액": "Giá bán",
-            "매물등록일": "Ngày đăng",
-            "매물 등록일": "Ngày đăng",
-            "등록일": "Ngày đăng",
-            "차량번호": "Biển số",
-            "판매자": "Người bán",
-            "상세 설명": "Mô tả chi tiết",
-            "사진 보기": "Xem ảnh",
-            "비슷한 기종·년식 시세": "Giá tham khảo",
-            "비슷한 매물": "Tin tương tự",
-            "최저가": "Thấp nhất",
-            "최고가": "Cao nhất",
-            "평균 시세": "Giá trung bình",
-            "비슷한 매물 보기": "Xem tin tương tự",
-            "내용이 없습니다.": "Chưa có mô tả.",
-            "기종": "Danh mục",
-            "모델명": "Model",
-            "연식": "Năm SX",
-            "가동시간": "Giờ hoạt động",
-            "위치": "Khu vực",
-            "모름": "Không rõ",
-            "목록으로 가기": "Quay lại danh sách",
-            "문의하기": "Liên hệ",
-            "전화 걸기": "Gọi điện",
-            "연락처 없음": "Không có liên hệ",
-            "카톡·채팅 문의": "Chat với người bán",
-            "내 매물": "Tin của tôi",
-            "링크 복사": "Sao chép liên kết",
-            "클릭하면 크게 보기": "Nhấn để xem lớn",
-            "등록된 사진이 없습니다.": "Chưa có ảnh được đăng.",
-            "이미지 없음": "Không có ảnh",
-            "이 판매자의 다른 매물": "Tin khác của người bán này",
-            "이 판매자의 전체 매물 보기": "Xem tất cả tin của người bán này",
-            "(유료 회원 전용)": "(Chỉ cho thành viên trả phí)",
-            "유료회원 매물": "Tin thành viên trả phí",
-            "다음 끌어올리기:": "Lần đẩy tiếp theo:",
-            "목록 최신순 상단 노출": "Hiển thị đầu danh sách mới nhất",
-            "예상 한도 (최대)": "Hạn mức dự kiến (tối đa)",
-            "예상 월 납입액 (60개월 기준)": "Khoản trả hàng tháng dự kiến (60 tháng)",
-            "이 장비 금융 가능 금액 (예상)": "Số tiền có thể tài trợ (dự kiến)",
-            "유료 금융상품 연동 준비중": "Đang chuẩn bị tích hợp gói tài chính trả phí",
-            "연 7.0% / 60개월 원리금 균등상환을 가정한 단순 예시입니다. 실제 승인 한도와 금리는 제휴 금융사 심사 결과에 따라 달라질 수 있습니다.": "Ví dụ đơn giản giả định lãi suất 7.0%/năm và trả góp đều trong 60 tháng. Hạn mức và lãi suất thực tế có thể thay đổi theo kết quả thẩm định.",
-            "같은 제조사·비슷한 년식의 다른 매물이 없어 시세를 산출할 수 없습니다.": "Không có tin cùng hãng và năm tương tự để tính giá thị trường.",
-            "원본 크기로 보기": "Xem kích thước gốc",
-            "이전": "Trước",
-            "다음": "Tiếp",
-            "확대 보기": "Xem phóng to",
-            "할부/금융": "Trả góp/Tài chính",
-            "금융/할부": "Tài chính/Trả góp",
-            "필요자금 계산기": "Máy tính nhu cầu vốn",
-            "필요자금 (원)": "Số tiền cần (KRW)",
-            "할부기간": "Kỳ hạn trả góp",
-            "연이율 (%)": "Lãi suất năm (%)",
-            "계산하기": "Tính toán",
-            "대출금액": "Số tiền vay",
-            "월 납입금": "Khoản trả hàng tháng",
-            "총 납입금": "Tổng tiền phải trả",
-            "총 이자금액": "Tổng tiền lãi",
-            "회차": "Kỳ",
-            "납입금": "Thanh toán",
-            "원금": "Gốc",
-            "이자": "Lãi",
-            "잔액": "Số dư",
-            "할부 상담 신청": "Đăng ký tư vấn trả góp",
-            "신청자 이름": "Tên người đăng ký",
-            "희망 장비": "Thiết bị mong muốn",
-            "선택하세요": "Vui lòng chọn",
-            "직접 입력": "Nhập trực tiếp",
-            "희망 장비 직접 입력": "Nhập thiết bị mong muốn",
-            "구입 예산 (원)": "Ngân sách mua (KRW)",
-            "희망 할부기간": "Kỳ hạn trả góp mong muốn",
-            "메모 (선택사항)": "Ghi chú (tùy chọn)",
-            "상담 신청하기": "Gửi đăng ký tư vấn",
-            "상담 대상 매물:": "Tin đăng tư vấn:",
-            "본 계산기는 참고용이며 실제 금리는 캐피탈사 심사에 따라 다를 수 있습니다.": "Công cụ tính chỉ mang tính tham khảo; lãi suất thực tế có thể khác theo kết quả thẩm định.",
-            "할부 상담 신청하기": "Đăng ký tư vấn trả góp",
-            "한도와 금리는 심사 결과에 따라 달라질 수 있습니다.": "Hạn mức và lãi suất có thể thay đổi theo kết quả thẩm định.",
-            "부품 / AS 센터 찾기": "Tìm trung tâm phụ tùng / AS",
-            "업체 자진 등록": "Doanh nghiệp tự đăng ký",
-            "장비 유형 선택": "Chọn loại thiết bị",
-            "업체 유형": "Loại doanh nghiệp",
-            "전체 업체": "Tất cả doanh nghiệp",
-            "업체명 검색": "Tìm theo tên doanh nghiệp",
-            "업체명을 입력하세요": "Nhập tên doanh nghiệp",
-            "지도보기": "Xem bản đồ",
-            "목록보기": "Xem danh sách",
-            "조건에 맞는 업체가 없습니다.": "Không có doanh nghiệp phù hợp điều kiện.",
-            "주소 미등록": "Chưa đăng ký địa chỉ",
-            "연락처 없음": "Không có liên hệ",
-            "취급 제조사:": "Hãng hỗ trợ:",
-            "영업시간:": "Giờ làm việc:",
-            "정보 없음": "Không có thông tin",
-            "굴삭기 유튜브 / 정보": "YouTube / Thông tin máy xúc",
-            "기종 + 목적을 동시에 선택해 필요한 영상만 빠르게 확인하세요.": "Chọn đồng thời loại thiết bị và mục đích để tìm video cần thiết nhanh hơn.",
-            "굴삭기 정비": "Bảo dưỡng máy xúc",
-            "굴삭기 수리": "Sửa chữa máy xúc",
-            "지게차 정비": "Bảo dưỡng xe nâng",
-            "덤프트럭 정비": "Bảo dưỡng xe ben",
-            "굴삭기 점검": "Kiểm tra máy xúc",
-            "유튜브 보기": "Xem trên YouTube",
-            "선택한 조건에 맞는 영상이 없습니다.": "Không có video phù hợp điều kiện đã chọn."
-            ,"등록안내": "Hướng dẫn đăng ký"
-            ,"전체보기": "Xem tất cả"
-            ,"지도": "Bản đồ"
-            ,"초기화": "Đặt lại"
-            ,"AS센터": "Trung tâm AS"
-            ,"부품점": "Cửa hàng phụ tùng"
-            ,"지역": "Khu vực"
-            ,"제조사 선택 (복수 선택)": "Chọn hãng (nhiều lựa chọn)"
-            ,"정비 유형 (복수 선택)": "Loại bảo dưỡng (nhiều lựa chọn)"
-            ,"개 업체": " doanh nghiệp"
-          }
-        };
-
-        var dict = dictionaries[lang] || {};
+        var dataEl = document.getElementById("gn-i18n-page");
+        if (!dataEl) return;
+        var dict = {};
+        try { dict = JSON.parse(dataEl.textContent); } catch (e) { return; }
         if (!Object.keys(dict).length) return;
 
         function normalize(s) {
@@ -1313,7 +865,6 @@
 
         function replaceTextInElement(el) {
           if (!el) return;
-
           if (el.tagName === "INPUT") {
             var t = (el.type || "").toLowerCase();
             if (t === "submit" || t === "button") {
@@ -1322,7 +873,6 @@
             }
             return;
           }
-
           var nodes = Array.prototype.slice.call(el.childNodes || []);
           var hasTextNode = false;
           nodes.forEach(function (node) {
@@ -1334,7 +884,6 @@
               node.nodeValue = node.nodeValue.replace(node.nodeValue.trim(), dict[raw]);
             }
           });
-
           if (!hasTextNode) {
             var whole = normalize(el.textContent);
             if (dict[whole]) el.textContent = dict[whole];
@@ -1363,28 +912,14 @@
 
         function applyTranslations() {
           var selector = [
-            "button",
-            "a",
-            "input[type='submit']",
-            "input[type='button']",
-            "label",
-            "th",
-            "td",
-            "span",
-            "p",
-            "h1,h2,h3,h4,h5,h6",
-            ".badge",
-            ".btn",
-            ".form-label",
-            ".form-text",
-            ".text-muted",
-            ".section-title"
+            "button", "a", "input[type='submit']", "input[type='button']",
+            "label", "th", "td", "span", "p", "h1,h2,h3,h4,h5,h6",
+            ".badge", ".btn", ".form-label", ".form-text", ".text-muted", ".section-title"
           ].join(",");
           document.querySelectorAll(selector).forEach(function (el) {
             replaceTextInElement(el);
             translateAttributes(el);
           });
-
           var walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT, {
             acceptNode: function (node) {
               var parent = node.parentElement;
@@ -1403,12 +938,13 @@
           }
         }
 
-        // 즉시 1회 + 렌더 완료 시점들에서 재시도
         applyTranslations();
         document.addEventListener("DOMContentLoaded", applyTranslations);
         window.addEventListener("load", applyTranslations);
         setTimeout(applyTranslations, 300);
+        setTimeout(applyTranslations, 800);
       })();
+    </script>
     </script>
     <script>
       (function () {
@@ -1459,6 +995,60 @@
           document.addEventListener("DOMContentLoaded", bindAllPhoneInputs);
         } else {
           bindAllPhoneInputs();
+        }
+      })();
+    </script>
+    <script>
+      (function () {
+        var DISMISS_KEY = "gn_pwa_install_dismissed";
+        var isStandalone = window.matchMedia("(display-mode: standalone)").matches
+          || window.navigator.standalone === true;
+        if (isStandalone) return;
+
+        var banner = document.getElementById("gn-pwa-install");
+        var installBtn = document.getElementById("gn-pwa-install-btn");
+        var closeBtn = document.getElementById("gn-pwa-install-close");
+        if (!banner || !installBtn || !closeBtn) return;
+
+        var deferredPrompt = null;
+        var isMobile = window.matchMedia("(max-width: 767.98px)").matches;
+
+        function hideBanner() {
+          banner.classList.remove("show");
+          banner.hidden = true;
+        }
+
+        function showBanner() {
+          if (localStorage.getItem(DISMISS_KEY) === "1" || !isMobile) return;
+          banner.hidden = false;
+          banner.classList.add("show");
+        }
+
+        window.addEventListener("beforeinstallprompt", function (e) {
+          e.preventDefault();
+          deferredPrompt = e;
+          showBanner();
+        });
+
+        installBtn.addEventListener("click", function () {
+          if (deferredPrompt) {
+            deferredPrompt.prompt();
+            deferredPrompt.userChoice.finally(function () {
+              deferredPrompt = null;
+              hideBanner();
+            });
+            return;
+          }
+          alert("크롬: 주소창 옆 ⋮ 메뉴 → 「홈 화면에 추가」\n\n삼성 인터넷: 하단 ≡ → 「현재 페이지 추가」 → 「홈 화면」\n\niPhone Safari: 공유 버튼 → 「홈 화면에 추가」");
+        });
+
+        closeBtn.addEventListener("click", function () {
+          localStorage.setItem(DISMISS_KEY, "1");
+          hideBanner();
+        });
+
+        if (isMobile && !localStorage.getItem(DISMISS_KEY)) {
+          setTimeout(showBanner, 2500);
         }
       })();
     </script>

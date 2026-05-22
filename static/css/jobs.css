@@ -779,12 +779,12 @@ h1.job-title,
   line-height: 1.2;
 }
 .job-cat-badge-hiring {
-  background: #FEF9C3;
-  color: #854D0E;
+  background: #FEF9C3 !important;
+  color: #111827 !important;
 }
 .job-cat-badge-seeking {
-  background: #DCFCE7;
-  color: #15803D;
+  background: #DCFCE7 !important;
+  color: #1a1a1a !important;
 }
 .job-pay-cell {
   font-weight: 700;
@@ -862,8 +862,8 @@ h1.job-title,
     display: block;
     width: 100%;
   }
-  .job-table-v2 thead.job-table-head {
-    display: none;
+  .job-table-v2 thead {
+    display: none !important;
   }
   .job-table-v2 tbody {
     display: block;
@@ -943,9 +943,31 @@ h1.job-title,
   .job-table-v2 tbody tr.job-row > td.job-td-actions {
     display: none !important;
   }
+  .job-td-mobile-title > .d-flex {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0;
+  }
+  .job-td-mobile-title .flex-grow-1 {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+  }
+  .job-td-mobile-title .job-mobile-badge-line {
+    order: 1;
+    margin-top: 0;
+    margin-bottom: 0.4rem;
+  }
+  .job-td-mobile-title .job-mobile-title-row {
+    order: 2;
+    margin-bottom: 0.35rem;
+  }
+  .job-td-mobile-title > .d-flex > .job-badge-urgent {
+    order: 0;
+    margin-bottom: 0.35rem;
+  }
   .job-mobile-title-row {
     display: block;
-    margin-bottom: 0.35rem;
     padding-right: 4.2rem;
   }
   .job-mobile-title-row .job-title-v2 {
@@ -970,6 +992,21 @@ h1.job-title,
     gap: 0.45rem;
     flex-wrap: nowrap;
     margin-bottom: 0.3rem;
+  }
+  .job-mobile-badge-line .job-cat-badge {
+    font-size: 0.94rem;
+    padding: 0.28rem 0.62rem;
+    line-height: 1.25;
+    letter-spacing: -0.01em;
+    color: #1a1a1a !important;
+  }
+  .job-mobile-badge-line .job-cat-badge-hiring {
+    background: #fef9c3 !important;
+    color: #1a1a1a !important;
+  }
+  .job-mobile-badge-line .job-cat-badge-seeking {
+    background: #dcfce7 !important;
+    color: #1a1a1a !important;
   }
   .job-mobile-pay-badge {
     display: inline-block;

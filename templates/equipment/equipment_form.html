@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 {% block content %}
-<div class="container py-4" style="max-width: 720px;">
+<div class="container py-4 gn-equipment-form-page">
     <h2 class="section-title mb-4">{% if mode == "edit" %}매물 수정{% else %}매물 등록{% endif %}</h2>
     {% if mode == "create" %}
     <p class="small mb-3 gn-form-notice-strong">
@@ -27,7 +27,7 @@
                     <div class="col-12 min-width-0">
                         <label class="form-label fw-bold">기종 선택 <span class="text-danger">(필수)</span></label>
                         <div id="equipment-type-select" class="d-none" aria-hidden="true">{{ form.equipment_type }}</div>
-                        <div class="gn-equipment-type-btns mt-1" style="display:flex;flex-wrap:nowrap;overflow-x:auto;width:100%;min-width:0;-webkit-overflow-scrolling:touch;" role="group" aria-label="기종 선택">
+                        <div class="gn-equipment-type-btns mt-1" role="group" aria-label="기종 선택">
                             <button type="button" class="gn-cat-pill gn-equipment-type-btn" data-value="excavator"><i class="bi bi-truck-front-fill"></i><span>굴삭기</span></button>
                             <button type="button" class="gn-cat-pill gn-equipment-type-btn" data-value="forklift"><i class="bi bi-box-seam-fill"></i><span>지게차</span></button>
                             <button type="button" class="gn-cat-pill gn-equipment-type-btn" data-value="dump"><i class="bi bi-truck-flatbed"></i><span>덤프트럭</span></button>
@@ -96,53 +96,8 @@
                             <option value="기타">기타</option>
                         </select>
                     </div>
-                    <div id="detail-fields" class="row g-3 col-12 mt-0">
-                        <div class="col-md-4 d-none" id="exc-sub-type-wrapper">
-                            <label class="form-label fw-bold">종류</label>
-                            <select id="exc-sub-type-select" class="form-select">
-                                <option value="">선택</option>
-                                <option value="EXC_TIRE">타이어식</option>
-                                <option value="EXC_CRAWLER">크롤러식(체인)</option>
-                                <option value="EXC_ATTACHMENT">어테치먼트</option>
-                            </select>
-                        </div>
-                        <div class="col-md-4 d-none" id="exc-weight-class-wrapper">
-                            <label class="form-label fw-bold">장비중량</label>
-                            <select id="exc-weight-class-select" class="form-select">
-                                <option value="">선택</option>
-                                <!-- 타이어식: 03W/06W/08W -->
-                                <option value="EXC_TIRE_LE_6" data-group="tire">03W 5~6 ton</option>
-                                <option value="EXC_TIRE_LE_17" data-group="tire">06W 12~16 ton</option>
-                                <option value="EXC_TIRE_LE_21" data-group="tire">08W 20~22 ton</option>
-                                <!-- 크롤러식 -->
-                                <option value="EXC_CR_LT_1" data-group="crawler">1 ton 미만</option>
-                                <option value="EXC_CR_LE_2" data-group="crawler">2 ton 미만</option>
-                                <option value="EXC_CR_LE_3_5" data-group="crawler">3.5 ton 미만</option>
-                                <option value="EXC_CR_LE_6_5" data-group="crawler">5~6 ton 02급</option>
-                                <option value="EXC_CR_LE_16" data-group="crawler">12~16 ton 06급</option>
-                                <option value="EXC_CR_EQ_20" data-group="crawler">20~22 ton 08급</option>
-                                <option value="EXC_CR_GE_30" data-group="crawler">30~50 ton 10급 이상</option>
-                                <!-- 어테치먼트 -->
-                                <option value="EXC_ATT_LT_1" data-group="attachment">1톤 미만 (어테치)</option>
-                                <option value="EXC_ATT_LE_2" data-group="attachment">2톤 이하 (어테치)</option>
-                                <option value="EXC_ATT_LE_3_5" data-group="attachment">3.5톤 이하 (어테치)</option>
-                                <option value="EXC_ATT_LE_6_5" data-group="attachment">6.5톤 이하 (어테치)</option>
-                                <option value="EXC_ATT_LE_16" data-group="attachment">16톤 이하 (어테치)</option>
-                                <option value="EXC_ATT_EQ_20" data-group="attachment">20톤 (어테치)</option>
-                            </select>
-                        </div>
-                        <div class="col-6 col-md-4" id="exc-month-wrapper">
-                            <label class="form-label">제작월</label>
-                            <input type="hidden" name="month_manufactured" id="id_month_manufactured" value="{{ form.month_manufactured.value|default:'' }}">
-                            <input type="text" id="id_month_manufactured_ui" class="form-control" inputmode="numeric" pattern="[0-9]*" maxlength="2" placeholder="1~12 (선택)" autocomplete="off" value="{{ form.month_manufactured.value|default:'' }}">
-                        </div>
-                        <div class="col-6 col-md-4" id="exc-op-hours-wrapper">
-                            <label class="form-label">가동시간(hr)</label>
-                            <input type="hidden" name="operating_hours" id="id_operating_hours" value="{{ form.operating_hours.value|default:'' }}">
-                            <input type="text" id="id_operating_hours_ui" class="form-control" inputmode="numeric" pattern="[0-9]*" maxlength="8" placeholder="가동시간 (선택)" autocomplete="off" value="{{ form.operating_hours.value|default:'' }}">
-                        </div>
-                    </div>
-                    <div id="forklift-fields" class="row g-3 col-12 d-none">
+                    <div id="detail-fields" class="d-none" aria-hidden="true"></div>
+                    <div id="forklift-fields" class="d-none" aria-hidden="true">
                         <div class="col-md-4 d-none" id="fk-sub-type-wrapper">
                             <label class="form-label fw-bold">형식 (지게차)</label>
                             <select id="fk-sub-type-select" class="form-select">
@@ -183,7 +138,7 @@
                         </div>
                     </div>
                     <!-- 덤프/로더/크레인/어태치먼트/기타: 톤수 (제조사·모델명·년월·지역·가격은 공통) -->
-                    <div id="simple-type-fields" class="row g-3 col-12 d-none align-items-end">
+                    <div id="simple-type-fields" class="d-none" aria-hidden="true">
                         <div class="col-6 col-md-4" id="dump-weight-wrapper">
                             <label class="form-label fw-bold">톤수 (덤프트럭) <span class="text-muted small">(선택)</span></label>
                             <select name="weight_class" id="id_weight_class_dump" class="form-select" disabled>
@@ -200,27 +155,69 @@
                             <input type="text" name="weight_class" id="id_weight_class_simple" class="form-control" placeholder="예) 5톤, 25CBM" maxlength="30" value="{{ form.initial.weight_class|default:form.weight_class.value|default:'' }}" disabled>
                         </div>
                     </div>
-                    {# 덤프·로더 등: 톤수 다음 → 가격 → 제작년도·제작월(한 줄) #}
-                    <div id="price-field-anchor" class="d-none" aria-hidden="true"></div>
-                    <div class="col-12 col-md-6" id="price-field-wrapper">
-                        <label class="form-label fw-bold">가격(만원) <span class="text-danger">(필수)</span></label>
-                        {{ form.listing_price }}
+                    <div id="gn-row-price-type-weight" class="row g-3 col-12">
+                        <div id="price-field-anchor" class="d-none" aria-hidden="true"></div>
+                        <div class="col-12 col-md-4" id="price-field-wrapper">
+                            <label class="form-label fw-bold">가격(만원) <span class="text-danger">(필수)</span></label>
+                            {{ form.listing_price }}
+                        </div>
+                        <div class="col-md-4 d-none" id="exc-sub-type-wrapper">
+                            <label class="form-label fw-bold">종류</label>
+                            <select id="exc-sub-type-select" class="form-select">
+                                <option value="">선택</option>
+                                <option value="EXC_TIRE">타이어식</option>
+                                <option value="EXC_CRAWLER">크롤러식(체인)</option>
+                                <option value="EXC_ATTACHMENT">어테치먼트</option>
+                            </select>
+                        </div>
+                        <div class="col-md-4 d-none" id="exc-weight-class-wrapper">
+                            <label class="form-label fw-bold">장비중량</label>
+                            <select id="exc-weight-class-select" class="form-select">
+                                <option value="">선택</option>
+                                <!-- 타이어식: 03W/06W/08W -->
+                                <option value="EXC_TIRE_LE_6" data-group="tire">03W 5~6 ton</option>
+                                <option value="EXC_TIRE_LE_17" data-group="tire">06W 12~16 ton</option>
+                                <option value="EXC_TIRE_LE_21" data-group="tire">08W 20~22 ton</option>
+                                <!-- 크롤러식 -->
+                                <option value="EXC_CR_LT_1" data-group="crawler">1 ton 미만</option>
+                                <option value="EXC_CR_LE_2" data-group="crawler">2 ton 미만</option>
+                                <option value="EXC_CR_LE_3_5" data-group="crawler">3.5 ton 미만</option>
+                                <option value="EXC_CR_LE_6_5" data-group="crawler">5~6 ton 02급</option>
+                                <option value="EXC_CR_LE_16" data-group="crawler">12~16 ton 06급</option>
+                                <option value="EXC_CR_EQ_20" data-group="crawler">20~22 ton 08급</option>
+                                <option value="EXC_CR_GE_30" data-group="crawler">30~50 ton 10급 이상</option>
+                                <!-- 어테치먼트 -->
+                                <option value="EXC_ATT_LT_1" data-group="attachment">1톤 미만 (어테치)</option>
+                                <option value="EXC_ATT_LE_2" data-group="attachment">2톤 이하 (어테치)</option>
+                                <option value="EXC_ATT_LE_3_5" data-group="attachment">3.5톤 이하 (어테치)</option>
+                                <option value="EXC_ATT_LE_6_5" data-group="attachment">6.5톤 이하 (어테치)</option>
+                                <option value="EXC_ATT_LE_16" data-group="attachment">16톤 이하 (어테치)</option>
+                                <option value="EXC_ATT_EQ_20" data-group="attachment">20톤 (어테치)</option>
+                            </select>
+                        </div>
                     </div>
-                    <div id="year-field-anchor" class="d-none" aria-hidden="true"></div>
-                    <div class="col-6 col-md-4" id="year-field-wrapper">
-                        <label class="form-label">제작년도</label>
-                        {{ form.year_manufactured }}
+                    <div id="gn-row-year-month-hours" class="row g-3 col-12">
+                        <div id="year-field-anchor" class="d-none" aria-hidden="true"></div>
+                        <div class="col-md-4" id="year-field-wrapper">
+                            <label class="form-label">제작년도</label>
+                            {{ form.year_manufactured }}
+                        </div>
+                        <div class="col-md-4" id="exc-month-wrapper">
+                            <label class="form-label">제작월</label>
+                            <input type="hidden" name="month_manufactured" id="id_month_manufactured" value="{{ form.month_manufactured.value|default:'' }}">
+                            <input type="text" id="id_month_manufactured_ui" class="form-control" inputmode="numeric" pattern="[0-9]*" maxlength="2" placeholder="1~12 (선택)" autocomplete="off" value="{{ form.month_manufactured.value|default:'' }}">
+                        </div>
+                        <div class="col-md-4" id="exc-op-hours-wrapper">
+                            <label class="form-label">가동시간(hr)</label>
+                            <input type="hidden" name="operating_hours" id="id_operating_hours" value="{{ form.operating_hours.value|default:'' }}">
+                            <input type="text" id="id_operating_hours_ui" class="form-control" inputmode="numeric" pattern="[0-9]*" maxlength="8" placeholder="가동시간 (선택)" autocomplete="off" value="{{ form.operating_hours.value|default:'' }}">
+                        </div>
+                        <div class="col-md-4 d-none" id="simple-month-wrapper">
+                            <label class="form-label">제작월</label>
+                            <input type="text" name="month_manufactured_ui_simple" id="id_month_manufactured_simple" class="form-control" inputmode="numeric" pattern="[0-9]*" maxlength="2" placeholder="1~12" autocomplete="off" value="{{ form.month_manufactured.value|default:'' }}">
+                        </div>
                     </div>
-                    <div class="col-6 col-md-4 d-none" id="simple-month-wrapper">
-                        <label class="form-label">제작월</label>
-                        <input type="text" name="month_manufactured_ui_simple" id="id_month_manufactured_simple" class="form-control" inputmode="numeric" pattern="[0-9]*" maxlength="2" placeholder="1~12" autocomplete="off" value="{{ form.month_manufactured.value|default:'' }}">
-                    </div>
-                    <div class="col-12">
-                        <label class="form-label">차량번호(장비번호) <span class="text-muted small">(선택)</span></label>
-                        {{ form.vehicle_number }}
-                        <p class="form-text small mb-0 mt-1 gn-form-notice-strong">추후 차량번호 조회로 연식/모델 자동 입력 예정</p>
-                    </div>
-                    <div class="col-12">
+                    <div class="col-12" id="gn-row-region">
                         <label class="form-label fw-bold">지역</label>
                         <div class="row g-2">
                             <div class="col-6 col-md-4">
@@ -240,6 +237,11 @@
                                 </select>
                             </div>
                         </div>
+                    </div>
+                    <div class="col-12" id="gn-row-vehicle">
+                        <label class="form-label">차량번호(장비번호) <span class="text-muted small">(선택)</span></label>
+                        {{ form.vehicle_number }}
+                        <p class="form-text small mb-0 mt-1 gn-form-notice-strong">추후 차량번호 조회로 연식/모델 자동 입력 예정</p>
                     </div>
                     <div class="col-12">
                         <label class="form-label">상세 설명 <span class="text-muted small">(최대 50자)</span></label>
@@ -451,7 +453,10 @@
     color: #4b5563 !important;
   }
 
-  /* 기종 버튼: 한 줄 배치, 좁은 화면에서는 가로 스크롤 */
+  .gn-equipment-form-page {
+    max-width: 720px;
+  }
+  /* 기종 버튼: 모바일은 가로 스크롤, PC는 한 줄에 넓게 균등 배치 */
   .min-width-0 { min-width: 0; }
   .gn-equipment-type-btns {
     display: flex;
@@ -473,10 +478,128 @@
     white-space: nowrap;
     padding: 0.4rem 0.65rem;
     font-size: 0.8rem;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.35rem;
     transition: background-color .18s ease, transform .18s ease, box-shadow .18s ease, color .18s ease, border-color .18s ease;
   }
   .gn-equipment-type-btns .gn-equipment-type-btn i {
     font-size: 0.95rem;
+  }
+  #gn-row-price-type-weight > [class*="col-"],
+  #gn-row-year-month-hours > [class*="col-"] {
+    min-width: 0;
+  }
+  @media (min-width: 768px) {
+    .gn-equipment-form-page {
+      max-width: 1000px;
+      font-size: 1.05rem;
+    }
+    #gn-row-price-type-weight > .col-md-4,
+    #gn-row-year-month-hours > .col-md-4 {
+      flex: 0 0 auto;
+      width: 33.333333%;
+    }
+    .gn-equipment-form-page .section-title {
+      font-size: 1.65rem;
+      margin-bottom: 1.5rem;
+    }
+    .gn-equipment-form-page > .small,
+    .gn-equipment-form-page .gn-form-notice-strong {
+      font-size: 1rem !important;
+      line-height: 1.55;
+    }
+    .gn-equipment-form-page .card-body {
+      padding: 1.75rem 2rem !important;
+    }
+    #equipment-form .form-label {
+      font-size: 1.05rem;
+      margin-bottom: 0.45rem;
+    }
+    #equipment-form .form-control,
+    #equipment-form .form-select {
+      font-size: 1.05rem;
+      min-height: 2.75rem;
+      padding: 0.55rem 0.85rem;
+    }
+    #equipment-form textarea.form-control {
+      font-size: 1.05rem;
+      min-height: 5.5rem;
+      line-height: 1.5;
+      padding: 0.65rem 0.85rem;
+    }
+    #equipment-form .form-text,
+    #equipment-form .text-muted.small,
+    #equipment-form p.small {
+      font-size: 0.95rem !important;
+      line-height: 1.5;
+    }
+    #equipment-form .photo-upload .btn {
+      font-size: 1.02rem;
+      padding: 0.5rem 1rem;
+    }
+    #equipment-form > .d-flex.gap-2.mt-4 .btn {
+      font-size: 1.1rem;
+      padding: 0.65rem 1.75rem !important;
+    }
+    .gn-equipment-type-btns {
+      overflow-x: visible;
+      gap: 0.5rem;
+      padding-bottom: 0;
+    }
+    .gn-equipment-type-btns .gn-equipment-type-btn {
+      flex: 1 1 0;
+      min-width: 0;
+      padding: 0.6rem 0.5rem;
+      font-size: 1rem;
+    }
+    .gn-equipment-type-btns .gn-equipment-type-btn i {
+      font-size: 1.12rem;
+    }
+  }
+  @media (min-width: 992px) {
+    .gn-equipment-form-page {
+      max-width: 1140px;
+      font-size: 1.08rem;
+    }
+    .gn-equipment-form-page .section-title {
+      font-size: 1.8rem;
+    }
+    .gn-equipment-form-page > .small,
+    .gn-equipment-form-page .gn-form-notice-strong {
+      font-size: 1.05rem !important;
+    }
+    #equipment-form .form-label {
+      font-size: 1.12rem;
+    }
+    #equipment-form .form-control,
+    #equipment-form .form-select {
+      font-size: 1.1rem;
+      min-height: 2.9rem;
+      padding: 0.6rem 0.9rem;
+    }
+    #equipment-form textarea.form-control {
+      font-size: 1.1rem;
+    }
+    #equipment-form .form-text,
+    #equipment-form .text-muted.small,
+    #equipment-form p.small {
+      font-size: 1rem !important;
+    }
+    #equipment-form > .d-flex.gap-2.mt-4 .btn {
+      font-size: 1.15rem;
+    }
+    .gn-equipment-type-btns {
+      gap: 0.65rem;
+    }
+    .gn-equipment-type-btns .gn-equipment-type-btn {
+      padding: 0.65rem 0.7rem;
+      font-size: 1.06rem;
+    }
+    .gn-equipment-type-btns .gn-equipment-type-btn i {
+      font-size: 1.18rem;
+    }
   }
   /* PC hover: 살짝 떠오르며 색·그림자 변화 */
   .gn-equipment-type-btns .gn-equipment-type-btn:hover {
@@ -653,6 +776,52 @@
   const yearFieldAnchor = document.getElementById('year-field-anchor');
   const priceFieldWrapper = document.getElementById('price-field-wrapper');
   const priceFieldAnchor = document.getElementById('price-field-anchor');
+  const rowPriceTypeWeight = document.getElementById('gn-row-price-type-weight');
+  const rowYearMonthHours = document.getElementById('gn-row-year-month-hours');
+  const fkOpHoursWrap = document.getElementById('fk-op-hours-wrapper');
+  const dumpWeightWrapper = document.getElementById('dump-weight-wrapper');
+  const otherWeightWrapper = document.getElementById('other-weight-wrapper');
+  const simpleMonthWrapper = document.getElementById('simple-month-wrapper');
+
+  function placeFieldInRow(row, el, colClass) {
+    if (!row || !el) return;
+    el.classList.remove('col-12', 'col-md-6', 'col-6', 'col-md-4');
+    (colClass || 'col-md-4').split(' ').forEach(function(c) {
+      if (c) el.classList.add(c);
+    });
+    row.appendChild(el);
+  }
+
+  function layoutEquipmentFormRows(val) {
+    if (!rowPriceTypeWeight || !rowYearMonthHours) return;
+    var isExcavator = (val === 'excavator');
+    var isForklift = (val === 'forklift');
+    var isOtherType = ['crane', 'loader', 'dump', 'attachment', 'other'].indexOf(val) !== -1;
+    var isDump = (val === 'dump');
+
+    placeFieldInRow(rowPriceTypeWeight, priceFieldWrapper, 'col-12 col-md-4');
+    if (isExcavator) {
+      placeFieldInRow(rowPriceTypeWeight, excSubTypeWrapper, 'col-md-4');
+      placeFieldInRow(rowPriceTypeWeight, excWeightWrapper, 'col-md-4');
+    } else if (isForklift) {
+      placeFieldInRow(rowPriceTypeWeight, fkSubTypeWrapper, 'col-md-4');
+      placeFieldInRow(rowPriceTypeWeight, fkWeightWrapper, 'col-md-4');
+    } else if (isOtherType) {
+      if (isDump && dumpWeightWrapper) placeFieldInRow(rowPriceTypeWeight, dumpWeightWrapper, 'col-md-4');
+      else if (otherWeightWrapper) placeFieldInRow(rowPriceTypeWeight, otherWeightWrapper, 'col-md-4');
+    }
+
+    placeFieldInRow(rowYearMonthHours, yearFieldWrapper, 'col-md-4');
+    if (isExcavator) {
+      placeFieldInRow(rowYearMonthHours, excMonthWrapper, 'col-md-4');
+      placeFieldInRow(rowYearMonthHours, excOpHoursWrapper, 'col-md-4');
+    } else if (isForklift) {
+      placeFieldInRow(rowYearMonthHours, excMonthWrapper, 'col-md-4');
+      if (fkOpHoursWrap) placeFieldInRow(rowYearMonthHours, fkOpHoursWrap, 'col-md-4');
+    } else if (isOtherType && simpleMonthWrapper) {
+      placeFieldInRow(rowYearMonthHours, simpleMonthWrapper, 'col-md-4');
+    }
+  }
 
   const fkSubTypeWrapper = document.getElementById('fk-sub-type-wrapper');
   const fkWeightWrapper = document.getElementById('fk-weight-class-wrapper');
@@ -707,9 +876,10 @@
     }
     function nudgeTypeScroller(targetBtn) {
       if (!typeScroller || !targetBtn) return;
+      if (window.matchMedia('(min-width: 768px)').matches) return;
+      if (typeScroller.scrollWidth <= typeScroller.clientWidth + 2) return;
       var cRect = typeScroller.getBoundingClientRect();
       var bRect = targetBtn.getBoundingClientRect();
-      // 선택한 버튼이 가려지지 않게 중앙 쪽으로 부드럽게 이동
       var delta = (bRect.left + (bRect.width / 2)) - (cRect.left + (cRect.width / 2));
       var nextLeft = Math.max(0, typeScroller.scrollLeft + delta);
       typeScroller.scrollTo({ left: nextLeft, behavior: 'smooth' });
@@ -734,16 +904,11 @@
       if (fkWeightWrapper) fkWeightWrapper.classList.toggle('d-none', !isForklift);
       if (fkMastWrapper) fkMastWrapper.classList.toggle('d-none', !isForklift);
 
-      // detail-fields(굴삭기) / forklift-fields(지게차) 표시
-      var detailFields = document.getElementById('detail-fields');
-      var forkliftFields = document.getElementById('forklift-fields');
-      var simpleTypeFields = document.getElementById('simple-type-fields');
       var opHoursExc = document.getElementById('id_operating_hours');
       var opHoursFk = document.getElementById('id_operating_hours_forklift');
-      if (detailFields) detailFields.classList.toggle('d-none', !isExcavator);
-      if (forkliftFields) forkliftFields.classList.toggle('d-none', !isForklift);
-      if (simpleTypeFields) simpleTypeFields.classList.toggle('d-none', !isOtherType);
-      var simpleMonthWrapper = document.getElementById('simple-month-wrapper');
+      if (excMonthWrapper) excMonthWrapper.classList.toggle('d-none', !(isExcavator || isForklift));
+      if (excOpHoursWrapper) excOpHoursWrapper.classList.toggle('d-none', !isExcavator);
+      if (fkOpHoursWrap) fkOpHoursWrap.classList.toggle('d-none', !isForklift);
       if (simpleMonthWrapper) simpleMonthWrapper.classList.toggle('d-none', !isOtherType);
       var monthExc = document.getElementById('id_month_manufactured');
       var monthSimple = document.getElementById('id_month_manufactured_simple');
@@ -752,8 +917,6 @@
       var weightExc = document.getElementById('id_weight_class');
       var weightSimple = document.getElementById('id_weight_class_simple');
       var weightDump = document.getElementById('id_weight_class_dump');
-      var dumpWeightWrapper = document.getElementById('dump-weight-wrapper');
-      var otherWeightWrapper = document.getElementById('other-weight-wrapper');
       if (weightExc) weightExc.disabled = isOtherType;
       if (dumpWeightWrapper) dumpWeightWrapper.classList.toggle('d-none', !isDump);
       if (otherWeightWrapper) otherWeightWrapper.classList.toggle('d-none', isDump);
@@ -784,67 +947,7 @@
         }
       }
 
-      // 굴삭기 등록 폼 배치:
-      // 가격 입력란을 위쪽으로 올리고,
-      // 제작년도 → 제작월 → 가동시간 순서가 유지되도록 필드 위치 재배치
-      if (isExcavator && detailFields) {
-        // 가격/제작년도는 detail-fields 위쪽(공통 row)으로 올린다.
-        if (priceFieldWrapper && detailFields.parentNode) {
-          detailFields.parentNode.insertBefore(priceFieldWrapper, detailFields);
-        }
-        if (yearFieldWrapper && detailFields.parentNode) {
-          detailFields.parentNode.insertBefore(yearFieldWrapper, detailFields);
-        }
-        // 제작월/가동시간은 detail-fields 내부에서 유지
-        if (excMonthWrapper) detailFields.appendChild(excMonthWrapper);
-        if (excOpHoursWrapper) detailFields.appendChild(excOpHoursWrapper);
-      } else {
-        if (modelFieldWrapper && modelFieldAnchor && modelFieldAnchor.parentNode) {
-          modelFieldAnchor.parentNode.insertBefore(modelFieldWrapper, modelFieldAnchor.nextSibling);
-        }
-        if (yearFieldWrapper && yearFieldAnchor && yearFieldAnchor.parentNode) {
-          yearFieldAnchor.parentNode.insertBefore(yearFieldWrapper, yearFieldAnchor.nextSibling);
-        }
-        if (priceFieldWrapper && priceFieldAnchor && priceFieldAnchor.parentNode) {
-          priceFieldAnchor.parentNode.insertBefore(priceFieldWrapper, priceFieldAnchor.nextSibling);
-        }
-        // 지게차: 제작월 입력이 굴삭기 전용 #detail-fields 안에 있어 함께 숨겨지므로,
-        // 제작년도 필드 바로 뒤로 옮겨 표시한다. (덤프 등 기타 기종은 simple 월 입력 사용)
-        if (isForklift && yearFieldWrapper && excMonthWrapper && yearFieldWrapper.parentNode) {
-          yearFieldWrapper.parentNode.insertBefore(excMonthWrapper, yearFieldWrapper.nextSibling);
-        } else if (isOtherType && detailFields && excMonthWrapper) {
-          detailFields.appendChild(excMonthWrapper);
-        }
-        // 지게차: 가격(만원)을 가동시간 입력란 옆(같은 행)으로 이동
-        var fkOpHoursWrap = document.getElementById('fk-op-hours-wrapper');
-        if (isForklift && forkliftFields && priceFieldWrapper && fkOpHoursWrap && fkOpHoursWrap.parentNode === forkliftFields) {
-          priceFieldWrapper.classList.remove('col-12', 'col-md-6');
-          priceFieldWrapper.classList.add('col-6', 'col-md-4');
-          forkliftFields.insertBefore(priceFieldWrapper, fkOpHoursWrap.nextSibling);
-        } else if (!isForklift && priceFieldWrapper && fkOpHoursWrap && priceFieldWrapper.parentNode === forkliftFields) {
-          priceFieldWrapper.classList.remove('col-6', 'col-md-4');
-          priceFieldWrapper.classList.add('col-12', 'col-md-6');
-          if (priceFieldAnchor && priceFieldAnchor.parentNode) {
-            priceFieldAnchor.parentNode.insertBefore(priceFieldWrapper, priceFieldAnchor.nextSibling);
-          }
-        }
-        // 덤프·로더·크레인 등: 가격을 톤수/중량과 같은 행(옆)으로 (가격을 앞에 두어 한눈에 보이게)
-        if (isOtherType && !isForklift && simpleTypeFields && priceFieldWrapper && dumpWeightWrapper && otherWeightWrapper) {
-          priceFieldWrapper.classList.remove('col-12', 'col-md-6');
-          priceFieldWrapper.classList.add('col-6', 'col-md-4');
-          if (isDump && dumpWeightWrapper.parentNode === simpleTypeFields) {
-            simpleTypeFields.insertBefore(priceFieldWrapper, dumpWeightWrapper);
-          } else if (!isDump && otherWeightWrapper.parentNode === simpleTypeFields) {
-            simpleTypeFields.insertBefore(priceFieldWrapper, otherWeightWrapper);
-          }
-        } else if (!isOtherType && !isExcavator && priceFieldWrapper && simpleTypeFields && priceFieldWrapper.parentNode === simpleTypeFields) {
-          priceFieldWrapper.classList.remove('col-6', 'col-md-4');
-          priceFieldWrapper.classList.add('col-12', 'col-md-6');
-          if (priceFieldAnchor && priceFieldAnchor.parentNode) {
-            priceFieldAnchor.parentNode.insertBefore(priceFieldWrapper, priceFieldAnchor.nextSibling);
-          }
-        }
-      }
+      layoutEquipmentFormRows(val);
 
       // 모델명 placeholder: 굴삭기 vs 지게차
       if (manufacturerInput && manufacturerInput.form && manufacturerInput.form.elements['model_name']) {

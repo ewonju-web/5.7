@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 {% load static i18n_extras %}
 {% block extra_css %}
-<link rel="stylesheet" href="{% static 'css/jobs.css' %}?v=20260507a">
+<link rel="stylesheet" href="{% static 'css/jobs.css' %}?v=20260519a">
 <style>
   .job-table-v2 .job-row,
   .job-table-v2 .job-row > td {
@@ -17,7 +17,7 @@
                 <span class="job-page-heading-bar" aria-hidden="true"></span>
                 구인구직
             </h2>
-            <a href="{% url 'job_create' %}" class="job-btn-write-outline">
+            <a href="{% if user.is_authenticated %}{% url 'job_create' %}{% else %}{% url 'login' %}?next={% url 'job_create' %}{% endif %}" class="job-btn-write-outline">
                 <i class="bi bi-pencil-square job-write-icon me-1" aria-hidden="true"></i>글쓰기
             </a>
         </div>
@@ -78,15 +78,15 @@
         <div class="card border job-list-table-card rounded-3 overflow-hidden shadow-none">
             <div class="table-responsive">
                 <table class="table table-hover mb-0 align-middle job-table-v2">
-                    <thead>
+                    <thead class="d-none d-md-table-header-group">
                         <tr class="job-table-head">
                             <th class="text-center py-3" style="width: 100px;">구분</th>
                             {% if show_pay_column %}
                             <th class="py-3">급여</th>
                             {% endif %}
                             <th class="py-3">제목 / 구인내용</th>
-                            <th class="py-3 d-none d-md-table-cell" style="min-width: 120px;">지역</th>
-                            <th class="text-center py-3 d-none d-lg-table-cell" style="width: 110px;">등록일</th>
+                            <th class="py-3" style="min-width: 120px;">지역</th>
+                            <th class="text-center py-3" style="width: 110px;">등록일</th>
                             <th class="text-end py-3" style="width: 140px;">액션</th>
                         </tr>
                     </thead>
@@ -105,18 +105,14 @@
                                 <span class="job-pay-cell">{% if job.pay %}{{ job.pay }}{% else %}-{% endif %}</span>
                             </td>
                             {% endif %}
-                            <td class="job-td-mobile-order-1 job-td-mobile-title" data-label="제목 / 구인내용">
+                            <td class="job-td-mobile-order-1 job-td-mobile-title" data-label="제목">
                                 <a href="{% url 'job_detail' job.pk %}" class="btn btn-sm job-btn-view job-mobile-view-btn d-md-none" onclick="event.stopPropagation();">보기</a>
                                 <div class="d-flex align-items-start flex-wrap gap-2">
-                                    {% if job.is_urgent_highlight %}
-                                    <span class="job-badge-urgent">급구</span>
-                                    {% endif %}
                                     <div class="flex-grow-1">
-                                        <div class="job-mobile-title-row d-md-none">
-                                            <div class="job-title-v2 mb-0">{{ job.title }}</div>
-                                        </div>
-                                        <div class="job-title-v2 d-none d-md-block">{{ job.title }}</div>
                                         <div class="job-mobile-badge-line d-md-none">
+                                            {% if job.is_urgent_highlight %}
+                                            <span class="job-badge-urgent">급구</span>
+                                            {% endif %}
                                             {% if job.job_type == 'HIRING' %}
                                             <span class="job-cat-badge job-cat-badge-hiring">사람구함</span>
                                             {% else %}
@@ -125,6 +121,15 @@
                                             {% if show_pay_column %}
                                             <span class="job-mobile-pay-badge">{% if job.pay %}{{ job.pay }}{% else %}-{% endif %}</span>
                                             {% endif %}
+                                        </div>
+                                        <div class="job-mobile-title-row d-md-none">
+                                            <div class="job-title-v2 mb-0">{{ job.title }}</div>
+                                        </div>
+                                        <div class="d-none d-md-flex align-items-start flex-wrap gap-2 w-100">
+                                            {% if job.is_urgent_highlight %}
+                                            <span class="job-badge-urgent">급구</span>
+                                            {% endif %}
+                                            <div class="job-title-v2 flex-grow-1">{{ job.title }}</div>
                                         </div>
                                     </div>
                                 </div>

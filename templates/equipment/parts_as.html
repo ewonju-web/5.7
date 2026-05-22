@@ -158,6 +158,9 @@
 <script src="https://dapi.kakao.com/v2/maps/sdk.js?appkey={{ kakao_map_js_key }}&autoload=false&libraries=clusterer"></script>
 <script>
   (function () {
+    const focusShopIdRaw = "{{ focus_shop_id|default:''|escapejs }}";
+    const initialFocusShopId = focusShopIdRaw ? Number(focusShopIdRaw) : null;
+
     const state = {
       equipmentType: "{{ selected_equipment_type|default:'all' }}",
       region: document.getElementById("regionInput").value || "",
@@ -396,6 +399,18 @@
       updateExcavatorBox();
       bindEvents();
       await fetchCenters();
+      if (initialFocusShopId && markersById.has(initialFocusShopId)) {
+        selectCenter(initialFocusShopId, true);
+        const layoutEl = document.querySelector(".gn-layout");
+        const mobileTabsEl = document.getElementById("mobileViewTabs");
+        if (layoutEl && mobileTabsEl && window.innerWidth <= 991) {
+          layoutEl.classList.add("mobile-map");
+          layoutEl.classList.remove("mobile-list");
+          mobileTabsEl.querySelectorAll(".gn-mobile-tab-btn").forEach((btn) => {
+            btn.classList.toggle("active", btn.dataset.mobileView === "map");
+          });
+        }
+      }
     });
   })();
 </script>

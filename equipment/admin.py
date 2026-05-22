@@ -4,11 +4,12 @@ from django.contrib.auth.admin import UserAdmin as DjangoUserAdmin
 from django.contrib.auth.models import User
 from django.utils.html import format_html
 from django.utils.formats import number_format
-from django.db.models import Count, Q
+from django.db.models import Count, Q, Prefetch
 from django.utils import timezone
 from django.conf import settings
 import json
 from urllib.parse import urlencode
+from django.urls import reverse
 from urllib.request import urlopen, Request
 from .models import (
     Equipment, EquipmentImage, Profile, JobPost, Part, PartImage, PartsShop, YoutubeContent,
@@ -16,6 +17,14 @@ from .models import (
     FinanceConsultation,
     ExcavatorEquipment, ForkliftEquipment, DumpEquipment, LoaderEquipment,
     CraneEquipment, AttachmentEquipment, OtherEquipment,
+)
+from django.contrib.admin.views.main import ERROR_FLAG
+from .index_listing import (
+    EXCAVATOR_ADMIN_QUERY_KEYS,
+    apply_excavator_detail_filters,
+    excavator_admin_filters_active,
+    excavator_admin_preserved_params,
+    parse_excavator_admin_filters,
 )
 
 
@@ -25,6 +34,10 @@ _EXCAVATOR_SUB_TYPE_LABELS = {
     "EXC_CRAWLER": "크롤러식(체인)",
     "EXC_ATTACHMENT": "어테치먼트",
 }
+_EXCAVATOR_MANUFACTURERS = (
+    "HD 현대", "두산", "볼보", "구보다", "얀마", "밥켓", "코츠마츠", "코벨코",
+    "히타치", "케터피라", "존디어", "SANY",
+)
 _EXCAVATOR_WEIGHT_CLASS_LABELS = {
     "EXC_TIRE_LE_6": "03W 5~6 ton",
     "EXC_TIRE_LE_17": "06W 12~16 ton",
@@ -107,7 +120,7 @@ class EquipmentImageAdmin(admin.ModelAdmin):
 @admin.register(Equipment)
 class EquipmentAdmin(admin.ModelAdmin):
     list_display = [
-        'id', 'equipment_type', 'model_name', 'manufacturer', 'year_manufactured', 'listing_price_display',
+        'id', 'representative_image_preview', 'equipment_type', 'model_name', 'manufacturer', 'year_manufactured', 'listing_price_display',
         'current_location', 'vehicle_number', 'listing_status', 'is_sold', 'author',
         'unclaimed_phone_norm', 'ownership_claimed_at', 'last_bumped_at', 'created_at',
     ]
@@ -146,6 +159,32 @@ class EquipmentAdmin(admin.ModelAdmin):
         return f"{number_format(obj.listing_price, use_l10n=True)}원"
     listing_price_display.short_description = '판매가'
 
+    def representative_image_preview(self, obj):
+        """목록용 대표사진(등록 순 첫 장)."""
+        first = None
+        if hasattr(obj, '_prefetched_objects_cache') and 'images' in obj._prefetched_objects_cache:
+            imgs = obj._prefetched_objects_cache['images']
+            first = imgs[0] if imgs else None
+        if first is None:
+            first = obj.images.order_by('id').first()
+        if not first or not getattr(first, 'image', None):
+            return "-"
+        try:
+            return format_html(
+                '<img src="{}" style="width:72px;height:54px;object-fit:cover;border-radius:6px;border:1px solid #ddd;" alt="대표">',
+                first.image.url,
+            )
+        except Exception:
+            return "-"
+
+    representative_image_preview.short_description = '대표사진'
+
+    def get_queryset(self, request):
+        qs = super().get_queryset(request)
+        return qs.prefetch_related(
+            Prefetch('images', queryset=EquipmentImage.objects.order_by('id'))
+        )
+
     def get_search_results(self, request, queryset, search_term):
         """
         기본 search_fields 결과 + 숫자 검색 보강.
@@ -183,8 +222,10 @@ class EquipmentTypeProxyAdmin(EquipmentAdmin):
 @admin.register(ExcavatorEquipment)
 class ExcavatorEquipmentAdmin(EquipmentTypeProxyAdmin):
     equipment_type_value = EquipmentType.EXCAVATOR
+    change_list_template = "admin/equipment/excavatorequipment/change_list.html"
     list_display = [
         "id",
+        "representative_image_preview",
         "equipment_type",
         "model_name",
         "manufacturer",
@@ -203,14 +244,58 @@ class ExcavatorEquipmentAdmin(EquipmentTypeProxyAdmin):
         "created_at",
     ]
     list_filter = (
-        "sub_type",
-        "weight_class",
         EquipmentOwnerFilter,
         "author",
         "listing_status",
         "is_sold",
-        "manufacturer",
     )
+
+    def _excavator_admin_filter_params(self, request):
+        cached = getattr(request, "_gn_excavator_admin_filters", None)
+        if cached is not None:
+            return cached
+        return parse_excavator_admin_filters(request)
+
+    def _strip_excavator_admin_query_params(self, request):
+        """ChangeList가 xsf_*를 모델 lookup으로 검증해 e=1 리다이렉트하는 것 방지."""
+        if not any(k in request.GET for k in EXCAVATOR_ADMIN_QUERY_KEYS):
+            return request
+        params = parse_excavator_admin_filters(request)
+        request._gn_excavator_admin_filters = params
+        stripped = request.GET.copy()
+        for key in EXCAVATOR_ADMIN_QUERY_KEYS:
+            stripped.pop(key, None)
+        if ERROR_FLAG in stripped:
+            stripped.pop(ERROR_FLAG, None)
+        request.GET = stripped
+        return request
+
+    def get_queryset(self, request):
+        qs = super().get_queryset(request)
+        params = self._excavator_admin_filter_params(request)
+        if excavator_admin_filters_active(params):
+            qs = apply_excavator_detail_filters(qs, **params)
+        return qs
+
+    def changelist_view(self, request, extra_context=None):
+        extra_context = extra_context or {}
+        params = parse_excavator_admin_filters(request)
+        request = self._strip_excavator_admin_query_params(request)
+        preserved = excavator_admin_preserved_params(request)
+        clear_url = reverse("admin:equipment_excavatorequipment_changelist")
+        if preserved:
+            clear_url = f"{clear_url}?{urlencode(preserved, doseq=True)}"
+        extra_context.update({
+            "excavator_filter": params,
+            "excavator_filter_active": excavator_admin_filters_active(params),
+            "excavator_manufacturers": _EXCAVATOR_MANUFACTURERS,
+            "excavator_filter_years": list(range(2000, 2027)),
+            "excavator_preserved_params": preserved,
+            "excavator_filter_clear_url": clear_url,
+            "excavator_sub_type_labels": _EXCAVATOR_SUB_TYPE_LABELS,
+            "excavator_weight_class_labels": _EXCAVATOR_WEIGHT_CLASS_LABELS,
+        })
+        return super().changelist_view(request, extra_context=extra_context)
 
     def excavator_sub_type_display(self, obj):
         code = (obj.sub_type or "").strip()

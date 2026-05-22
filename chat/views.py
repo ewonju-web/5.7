@@ -10,14 +10,15 @@ from django.utils.http import url_has_allowed_host_and_scheme
 from django.views.decorators.http import require_GET
 
 from equipment.models import Equipment
+from equipment.templatetags.i18n_extras import SUPPORTED_LANGS
 from .models import ChatRoom, ChatMessage
 
 
 @require_GET
 def set_language(request):
-    """세션에 언어(ko/en/ru/vi) 저장 후 안전한 URL로 리다이렉트."""
-    lang = request.GET.get('lang', 'ko')
-    if lang not in ('ko', 'en', 'ru', 'vi'):
+    """세션에 언어 저장 후 안전한 URL로 리다이렉트."""
+    lang = (request.GET.get('lang') or 'ko').strip().lower()
+    if lang not in SUPPORTED_LANGS:
         lang = 'ko'
     request.session['lang'] = lang
     next_url = (request.GET.get('next') or '').strip()
