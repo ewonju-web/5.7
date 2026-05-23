@@ -698,9 +698,9 @@
                         <div class="w-100 h-100 d-flex align-items-center justify-content-center text-muted small" style="background: #e9ecef;">이미지 없음</div>
                         {% endif %}
                     </a>
-                    <span class="position-absolute top-0 start-0 m-1 px-2 py-0 rounded text-white fw-bold" style="background: #c00; font-size: 0.8rem;">{% if equipment.is_sold %}판매완료{% else %}팝니다{% endif %}</span>
+                    <span class="position-absolute text-white {% if equipment.is_sold %}gn-badge-sold{% else %}gn-badge-sale{% endif %}">{% if equipment.is_sold %}판매완료{% else %}팝니다{% endif %}</span>
                     {% if equipment.author_id in premium_author_ids %}
-                    <span class="position-absolute top-0 start-0 m-1 mt-4 px-2 py-0 rounded text-white fw-bold" style="background: #e8a317; font-size: 0.7rem;"><i class="bi bi-star-fill"></i> 프리미엄</span>
+                    <span class="position-absolute gn-badge-premium text-white"><i class="bi bi-star-fill"></i> 프리미엄</span>
                     {% endif %}
                     {% if user.is_authenticated %}
                     <a href="{% url 'toggle_equipment_favorite' equipment.pk %}?next={{ request.get_full_path|urlencode }}" class="position-absolute top-0 end-0 m-1 text-decoration-none gn-card-fav" style="z-index: 3;" title="찜">
@@ -708,10 +708,10 @@
                     </a>
                     {% endif %}
                 </div>
-                <div class="card-body p-2 gn-list-card-body">
-                    <p class="gn-list-title mb-1">
-                        <span class="gn-list-title-bar">|</span>
-                        {% if equipment.model_name %}{{ equipment.model_name }}{% else %}모름{% endif %}
+                <div class="card-body gn-list-card-body">
+                    <p class="gn-list-title">
+                        <span class="gn-list-title-bar" aria-hidden="true"></span>
+                        <span class="gn-list-title-text">{% if equipment.model_name %}{{ equipment.model_name }}{% else %}모름{% endif %}</span>
                     </p>
                     <table class="table table-sm table-borderless mb-0 gn-list-spec">
                         <tbody>
@@ -758,9 +758,9 @@
                         <div class="w-100 h-100 d-flex align-items-center justify-content-center text-muted small" style="background: #e9ecef;">이미지 없음</div>
                         {% endif %}
                     </a>
-                    <span class="position-absolute top-0 start-0 m-1 px-2 py-0 rounded text-white fw-bold" style="background: #c00; font-size: 0.8rem;">{% if equipment.is_sold %}판매완료{% else %}팝니다{% endif %}</span>
+                    <span class="position-absolute text-white {% if equipment.is_sold %}gn-badge-sold{% else %}gn-badge-sale{% endif %}">{% if equipment.is_sold %}판매완료{% else %}팝니다{% endif %}</span>
                     {% if equipment.author_id in premium_author_ids %}
-                    <span class="position-absolute top-0 start-0 m-1 mt-4 px-2 py-0 rounded text-white fw-bold" style="background: #e8a317; font-size: 0.7rem;"><i class="bi bi-star-fill"></i> 프리미엄</span>
+                    <span class="position-absolute gn-badge-premium text-white"><i class="bi bi-star-fill"></i> 프리미엄</span>
                     {% endif %}
                     {% if user.is_authenticated %}
                     <a href="{% url 'toggle_equipment_favorite' equipment.pk %}?next={{ request.get_full_path|urlencode }}" class="position-absolute top-0 end-0 m-1 text-decoration-none gn-card-fav" style="z-index: 3;" title="찜">
@@ -768,10 +768,10 @@
                     </a>
                     {% endif %}
                 </div>
-                <div class="card-body p-2 gn-list-card-body">
-                    <p class="gn-list-title mb-1">
-                        <span class="gn-list-title-bar">|</span>
-                        {% if equipment.model_name %}{{ equipment.model_name }}{% else %}모름{% endif %}
+                <div class="card-body gn-list-card-body">
+                    <p class="gn-list-title">
+                        <span class="gn-list-title-bar" aria-hidden="true"></span>
+                        <span class="gn-list-title-text">{% if equipment.model_name %}{{ equipment.model_name }}{% else %}모름{% endif %}</span>
                     </p>
                     <table class="table table-sm table-borderless mb-0 gn-list-spec">
                         <tbody>
@@ -1680,6 +1680,7 @@
     box-shadow: none !important;
   }
   .gn-list-card .gn-list-card-img {
+    position: relative;
     height: auto;
     aspect-ratio: 4 / 3;
     min-height: 0;
@@ -1692,34 +1693,91 @@
     object-position: center center;
   }
   .gn-list-card:active { opacity: 0.95; }
-  /* 카드 본문: 여백·줄간격 축소해서 카드 높이 줄임 */
+  /* 팝니다: 이미지 좌상단 모서리 직사각형 (라운드 없음) */
+  .gn-list-card .gn-badge-sale,
+  .gn-list-card .gn-badge-sold {
+    top: 0;
+    left: 0;
+    margin: 0 !important;
+    z-index: 2;
+    display: inline-block;
+    padding: 0.2rem 0.42rem;
+    border-radius: 0;
+    font-size: 0.7rem;
+    font-weight: 600;
+    line-height: 1.25;
+    letter-spacing: -0.02em;
+    box-shadow: none;
+  }
+  .gn-list-card .gn-badge-sale {
+    background: rgba(210, 78, 88, 0.92) !important;
+  }
+  .gn-list-card .gn-badge-sold {
+    background: rgba(100, 108, 118, 0.9) !important;
+  }
+  .gn-list-card .gn-badge-premium {
+    top: 1.32rem;
+    left: 0;
+    margin: 0 !important;
+    z-index: 2;
+    padding: 0.16rem 0.38rem;
+    border-radius: 0;
+    font-size: 0.65rem;
+    font-weight: 600;
+    line-height: 1.2;
+    background: #e8a317 !important;
+    color: #1a1a1a !important;
+  }
+  /* 카드 본문: 위·아래 여백으로 안정감 (direct-nara 스타일) */
   .gn-list-card-body {
-    padding: 0.35rem 0.5rem !important;
+    padding: 0.55rem 0.55rem 0.65rem !important;
     display: flex;
     flex-direction: column;
     flex: 1 1 auto;
+    gap: 0.1rem;
   }
   .gn-list-card-body .gn-list-title {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
     font-size: 0.86rem;
     font-weight: 700;
-    line-height: 1.25;
-    margin-bottom: 0.2rem !important;
+    line-height: 1.35;
+    margin-bottom: 0.4rem !important;
+    margin-top: 0.05rem;
     color: #0f172a !important;
   }
+  /* 사진 아래 빨간 세로 한 줄 + 모델명 (| 문자 제거, 막대만) */
   .gn-list-card-body .gn-list-title-bar {
-    color: #c00;
-    border-left: 2px solid #c00;
-    padding-left: 4px;
-    margin-right: 4px;
+    display: inline-block;
+    width: 3px;
+    min-width: 3px;
+    height: 0.95em;
+    min-height: 13px;
+    align-self: center;
+    background: #d64552;
+    border: none;
+    border-radius: 1px;
+    padding: 0;
+    margin: 0;
+  }
+  .gn-list-card-body .gn-list-title-text {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-weight: 700;
+    color: #0f172a;
   }
   .gn-list-card-body .gn-list-spec {
     font-size: 0.8rem;
-    line-height: 1.2;
-    margin-bottom: 0 !important;
+    line-height: 1.35;
+    margin-bottom: 0.25rem !important;
   }
   .gn-list-card-body .gn-list-spec td {
-    padding-top: 0.1rem !important;
-    padding-bottom: 0.1rem !important;
+    padding-top: 0.2rem !important;
+    padding-bottom: 0.2rem !important;
     vertical-align: middle;
   }
   .gn-list-card-body .gn-list-label {
@@ -1735,13 +1793,14 @@
   }
   .gn-list-card-body .gn-list-price-row {
     margin-top: auto !important;
-    min-height: 1.95rem;
+    min-height: 2rem;
+    padding-top: 0.35rem;
   }
   .gn-list-card-body .gn-list-price {
     font-weight: 500;
     line-height: 1;
     margin-top: 0 !important;
-    color: #ff0000 !important;
+    color: #e53935 !important;
     display: inline-flex;
     align-items: flex-end;
     white-space: nowrap;
@@ -1756,11 +1815,27 @@
   }
   /* 모바일: 매물 카드 글씨 살짝 확대 (위 기본 규칙 이후에 적용) */
   @media (max-width: 767.98px) {
+    .gn-list-card-body {
+      padding: 0.62rem 0.58rem 0.72rem !important;
+    }
     .gn-list-card-body .gn-list-title {
       font-size: 0.96rem;
+      margin-bottom: 0.45rem !important;
+      gap: 0.4rem;
+    }
+    .gn-list-card-body .gn-list-title-bar {
+      width: 3px;
+      min-height: 14px;
     }
     .gn-list-card-body .gn-list-spec {
       font-size: 0.9rem;
+    }
+    .gn-list-card-body .gn-list-spec td {
+      padding-top: 0.24rem !important;
+      padding-bottom: 0.24rem !important;
+    }
+    .gn-list-card-body .gn-list-price-row {
+      padding-top: 0.4rem;
     }
     .gn-list-card-body .gn-list-price-num {
       font-size: 1.5rem;
