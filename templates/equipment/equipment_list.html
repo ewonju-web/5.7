@@ -805,9 +805,12 @@
         {% endfor %}
         </div>
         {% endif %}
-        <!-- 더보기 + 40/80개씩 보기 (21개 이상일 때만, 필터 결과 제외) -->
+        <!-- 더보기: 추가 매물 그리드 → 버튼 (모바일, 항상 목록 하단) -->
         {% if has_more_list %}
+        <div class="gn-more-list-wrap gn-more-list-wrap-mobile">
+        <div class="row row-cols-2 g-2 mb-0 gn-index-more-mobile" id="gnMoreListMobile"></div>
         <div class="d-flex flex-wrap align-items-center justify-content-center gap-2 my-3 gn-more-controls"
+             data-more-for="mobile"
              data-offset="{{ list_offset }}"
              data-per-page="{{ list_per_page }}"
              data-total="{{ total_count }}">
@@ -822,8 +825,8 @@
                 <i class="bi bi-chevron-down me-1"></i><span class="gn-btn-more-label">더보기</span>
             </button>
         </div>
-        <p class="text-center small text-muted mb-2 gn-more-status d-none" aria-live="polite"></p>
-        <div class="row row-cols-2 g-2 mb-4 gn-index-more-mobile" id="gnMoreListMobile"></div>
+        <p class="text-center small text-muted mb-4 gn-more-status gn-more-status-mobile d-none" aria-live="polite"></p>
+        </div>
         {% endif %}
     </div>
 
@@ -936,7 +939,10 @@
         {% endfor %}
         </div>
         {% if has_more_list %}
+        <div class="gn-more-list-wrap gn-more-list-wrap-pc">
+        <div class="row g-3 g-lg-4 mb-0 gn-index-more-pc" id="gnMoreListPc"></div>
         <div class="d-flex flex-wrap align-items-center justify-content-center gap-2 my-3 gn-more-controls d-none d-md-flex"
+             data-more-for="pc"
              data-offset="{{ list_offset }}"
              data-per-page="{{ list_per_page }}"
              data-total="{{ total_count }}">
@@ -951,7 +957,8 @@
                 <i class="bi bi-chevron-down me-1"></i><span class="gn-btn-more-label">더보기</span>
             </button>
         </div>
-        <div class="row g-3 g-lg-4 mb-4 gn-index-more-pc" id="gnMoreListPc"></div>
+        <p class="text-center small text-muted mb-4 gn-more-status gn-more-status-pc d-none" aria-live="polite"></p>
+        </div>
         {% endif %}
         {% endif %}
     </div>
@@ -2083,7 +2090,7 @@
     var controlsList = document.querySelectorAll('.gn-more-controls[data-offset]');
     if (!controlsList.length) return;
 
-    var statusEl = document.querySelector('.gn-more-status');
+    var statusEls = document.querySelectorAll('.gn-more-status');
     var loading = false;
 
     function primaryControls() {
@@ -2130,22 +2137,28 @@
           }
         }
       });
-      if (statusEl && offset >= total && total > 0) {
-        statusEl.textContent = '전체 ' + total.toLocaleString() + '건을 모두 불러왔습니다.';
-        statusEl.classList.remove('d-none');
+      if (offset >= total && total > 0) {
+        statusEls.forEach(function(el) {
+          el.textContent = '전체 ' + total.toLocaleString() + '건을 모두 불러왔습니다.';
+          el.classList.remove('d-none');
+        });
       }
     }
 
     function moveControlsBelowList() {
-      var container = controlsList[controlsList.length - 1];
-      var anchor = pcGrid || mobileGrid;
-      if (!container || !anchor || !anchor.parentElement) return;
-      anchor.parentElement.insertBefore(container, anchor.nextSibling);
-      if (statusEl && statusEl.parentElement) {
-        anchor.parentElement.insertBefore(statusEl, container.nextSibling);
-      }
-      container.classList.remove('my-3');
-      container.classList.add('mt-3', 'mb-4');
+      controlsList.forEach(function(container) {
+        var target = container.getAttribute('data-more-for');
+        var grid = target === 'pc' ? pcGrid : mobileGrid;
+        if (!grid || !container) return;
+        var wrap = grid.closest('.gn-more-list-wrap') || grid.parentElement;
+        if (!wrap) return;
+        wrap.appendChild(grid);
+        wrap.appendChild(container);
+        var statusEl = wrap.querySelector('.gn-more-status');
+        if (statusEl) wrap.appendChild(statusEl);
+        container.classList.remove('my-3');
+        container.classList.add('mt-3', 'mb-2');
+      });
     }
 
     function loadMore() {
@@ -2208,6 +2221,7 @@
       });
     });
 
+    moveControlsBelowList();
     updateMoreUi();
   })();
 
