@@ -1,10 +1,12 @@
 <!DOCTYPE html>
-<html lang="{{ LANG|default:'ko' }}">
+<html lang="{{ LANG|default:'ko' }}" translate="no" class="notranslate">
 {% load static i18n_extras %}
 <head>
     <meta charset="UTF-8">
+    <meta name="google" content="notranslate">
+    <meta http-equiv="Content-Language" content="{{ LANG|default:'ko' }}">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-    <meta name="theme-color" content="#F5A623">
+    <meta name="theme-color" content="#181E2E">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -528,14 +530,67 @@
             font-weight: 600;
             font-size: 0.95rem;
         }
+        .gn-service-register-wrap {
+            position: relative;
+            z-index: 2;
+            padding: 0.25rem 1rem 0.75rem;
+        }
+        .gn-service-register-btn {
+            display: block;
+            width: 100%;
+            padding: 0.75rem 1rem;
+            background: #F5A623;
+            color: #1f2937;
+            border: none;
+            border-radius: 10px;
+            font-weight: 700;
+            font-size: 1rem;
+            text-align: center;
+            text-decoration: none;
+        }
+        .gn-service-register-btn:hover,
+        .gn-service-register-btn:focus {
+            background: #e3a12d;
+            color: #1f2937;
+        }
+        /* 모바일 햄버거: 언어 드롭다운 (PC와 동일) */
+        #gnServiceMenu .offcanvas-header {
+            overflow: visible;
+            flex-wrap: nowrap;
+            gap: 0.5rem;
+        }
+        #gnServiceMenu .gn-mobile-lang-dropdown .dropdown-toggle {
+            min-width: 6.5rem;
+            max-width: 9.5rem;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            font-size: 0.82rem;
+            padding: 0.35rem 0.65rem;
+            border-color: var(--gn-border);
+            color: var(--gn-text);
+            background: var(--gn-card);
+        }
+        #gnServiceMenu .gn-mobile-lang-dropdown .dropdown-menu {
+            min-width: 10rem;
+            max-height: 16rem;
+            overflow-y: auto;
+            z-index: 1100;
+        }
+        #gnServiceMenu .gn-mobile-lang-dropdown .dropdown-item.active {
+            background: var(--gn-accent);
+            color: #0f172a;
+            font-weight: 600;
+        }
         /* 모바일: 햄버거 메뉴·검색 패널 글씨 살짝 확대 */
         @media (max-width: 767.98px) {
             #gnServiceMenu .offcanvas-title {
                 font-size: 1.2rem;
             }
-            #gnServiceMenu .offcanvas-header .btn {
-                font-size: 0.84rem;
-                padding: 0.32rem 0.58rem;
+            #gnServiceMenu .gn-mobile-lang-dropdown .dropdown-toggle {
+                font-size: 0.9rem;
+                padding: 0.4rem 0.7rem;
+                min-width: 7rem;
             }
             .gn-service-section-title {
                 font-size: 0.92rem;
@@ -552,6 +607,10 @@
             }
             .gn-service-item-title {
                 font-size: 1.06rem;
+            }
+            .gn-service-register-btn {
+                font-size: 1.06rem;
+                padding: 0.82rem 1rem;
             }
             .gn-service-item .small {
                 font-size: 0.92rem !important;
@@ -694,18 +753,21 @@
     <!-- 햄버거 메뉴: 전체 서비스 (모바일, 다크) -->
     <div class="offcanvas offcanvas-end" tabindex="-1" id="gnServiceMenu" aria-labelledby="gnServiceMenuLabel" style="background: var(--gn-card); color: var(--gn-text);">
         <div class="offcanvas-header border-bottom" style="border-color: var(--gn-border)!important;">
-            <h5 class="offcanvas-title fw-bold" id="gnServiceMenuLabel">{{ LANG|tr:"service_all" }}</h5>
-            <div class="d-flex flex-wrap align-items-center gap-1" style="max-width: 70%;">
-                {% language_menu as lang_choices %}
-                {% for code, label in lang_choices %}
-                <a href="{% url 'set_language' %}?lang={{ code }}&amp;next={{ request.get_full_path|urlencode }}" class="btn btn-sm {% if LANG == code %}btn-warning text-dark{% else %}btn-outline-secondary{% endif %}" title="{{ label }}">{{ code|tr:"lang_short" }}</a>
-                {% endfor %}
+            <h5 class="offcanvas-title fw-bold flex-grow-1 mb-0" id="gnServiceMenuLabel">{{ LANG|tr:"service_all" }}</h5>
+            <div class="dropdown gn-mobile-lang-dropdown shrink-0">
+                <button class="btn btn-outline-secondary btn-sm dropdown-toggle" type="button" data-bs-toggle="dropdown" data-bs-auto-close="true" data-bs-boundary="viewport" aria-expanded="false" aria-label="{{ LANG|tr:'lang_label' }}">{{ LANG|tr:"lang_label" }}</button>
+                <ul class="dropdown-menu dropdown-menu-end shadow-sm">
+                    {% language_menu as lang_choices %}
+                    {% for code, label in lang_choices %}
+                    <li><a class="dropdown-item{% if LANG == code %} active{% endif %}" href="{% url 'set_language' %}?lang={{ code }}&amp;next={{ request.get_full_path|urlencode }}">{{ label }}</a></li>
+                    {% endfor %}
+                </ul>
             </div>
-            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="offcanvas" aria-label="닫기"></button>
+            <button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="닫기"></button>
         </div>
         <div class="offcanvas-body px-0 pt-2 pb-3">
             <div>
-                <div class="gn-service-section-title">{{ LANG|tr:"service_trade" }}</div>
+                <div class="gn-service-section-title">{{ LANG|tr:"nav_market_view" }}</div>
                 <div class="gn-service-grid">
                     <a href="{% url 'index' %}?category=excavator" class="gn-service-item">
                         <div class="gn-service-item-icon"><i class="bi bi-truck-front-fill"></i></div>
@@ -749,11 +811,14 @@
 
             <hr class="my-2" style="border-color: var(--gn-border); opacity: .4;">
 
+            <div class="gn-service-register-wrap">
+                {% url 'equipment_create' as gn_equipment_create_url %}
+                <a href="{% if user.is_authenticated %}{{ gn_equipment_create_url }}{% else %}{% url 'login' %}?next={{ gn_equipment_create_url|urlencode }}{% endif %}" class="gn-service-register-btn" id="gnServiceRegisterLink">{{ LANG|tr:"nav_register" }}</a>
+            </div>
+
             <div class="px-3">
                 <div class="gn-service-section-title">{{ LANG|tr:"service_menu" }}</div>
                 <div class="list-group list-group-flush">
-                    <a href="{% url 'index' %}" class="list-group-item list-group-item-action" style="background: transparent; color: var(--gn-text); border-color: transparent;"><i class="bi bi-house me-2"></i>{{ LANG|tr:"service_market_home" }}</a>
-                    <a href="{% url 'index' %}?category=" class="list-group-item list-group-item-action" style="background: transparent; color: var(--gn-text); border-color: transparent;"><i class="bi bi-grid me-2"></i>{{ LANG|tr:"nav_market_view" }}</a>
                     <a href="{% url 'job_list' %}" class="list-group-item list-group-item-action" style="background: transparent; color: var(--gn-text); border-color: transparent;"><i class="bi bi-briefcase me-2"></i>{{ LANG|tr:"nav_jobs" }}</a>
                     <a href="{% url 'finance' %}" class="list-group-item list-group-item-action" style="background: transparent; color: var(--gn-text); border-color: transparent;"><i class="bi bi-cash-coin me-2"></i>{{ LANG|tr:"nav_attachment" }}</a>
                     <a href="{% url 'excavator_info' %}" class="list-group-item list-group-item-action" style="background: transparent; color: var(--gn-text); border-color: transparent;"><i class="bi bi-youtube me-2"></i>{{ LANG|tr:"nav_youtube" }}</a>
@@ -771,6 +836,27 @@
             </div>
         </div>
     </div>
+    <script>
+    (function () {
+        var link = document.getElementById('gnServiceRegisterLink');
+        var menu = document.getElementById('gnServiceMenu');
+        if (!link || !menu) return;
+        link.addEventListener('click', function (e) {
+            var href = link.getAttribute('href');
+            if (!href || href === '#') return;
+            e.preventDefault();
+            var oc = window.bootstrap && bootstrap.Offcanvas.getInstance(menu);
+            if (oc) {
+                menu.addEventListener('hidden.bs.offcanvas', function () {
+                    window.location.assign(href);
+                }, { once: true });
+                oc.hide();
+            } else {
+                window.location.assign(href);
+            }
+        });
+    })();
+    </script>
 
     <!-- 홈 화면 추가 시 브라우저 주소창 없이 앱처럼 사용 (당근 앱과 유사) -->
     <div id="gn-pwa-install" class="gn-pwa-install" role="dialog" aria-label="홈 화면에 추가 안내" hidden>
