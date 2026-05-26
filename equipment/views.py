@@ -94,11 +94,28 @@ def _social_auth_login_url(provider, next_url=''):
     return f'/accounts/{provider}/login/?' + urlencode(params)
 
 
-def _redirect_after_login(request, next_url='', default='index'):
-    next_url = (next_url or '').strip()
+def _login_next_url(request, explicit_next=''):
+    """로그인 후 복귀 경로 — next 파라미터 우선, 없으면 로그인 직전 페이지(매물보기 강제 이동 방지)."""
+    next_url = (explicit_next or '').strip()
     if next_url and url_has_allowed_host_and_scheme(next_url, allowed_hosts={request.get_host()}):
+        return next_url
+    referer = (request.META.get('HTTP_REFERER') or '').strip()
+    if referer and url_has_allowed_host_and_scheme(referer, allowed_hosts={request.get_host()}):
+        from urllib.parse import urlparse
+        path = urlparse(referer).path or '/'
+        skip_prefixes = ('/login', '/join', '/signup', '/accounts/', '/admin/login')
+        if not any(path.startswith(p) for p in skip_prefixes):
+            return referer
+    return ''
+
+
+def _redirect_after_login(request, next_url='', default='index'):
+    next_url = _login_next_url(request, next_url)
+    if next_url:
         return redirect(next_url)
-    return redirect(default)
+    if default:
+        return redirect(default)
+    return redirect('index')
 
 
 def _require_phone_verified_strict(request):
@@ -547,7 +564,10 @@ def user_login(request):
             next_url = request.POST.get('next') or request.GET.get('next', '')
             return _redirect_after_login(request, next_url)
         messages.error(request, '아이디 또는 비밀번호가 올바르지 않습니다.')
-    next_url = request.GET.get('next') or request.POST.get('next', '') or ''
+    next_url = _login_next_url(
+        request,
+        request.GET.get('next') or request.POST.get('next', '') or '',
+    )
     kakao_login_url = _social_auth_login_url('kakao', next_url)
     naver_login_url = _social_auth_login_url('naver', next_url)
     return render(request, 'registration/login.html', {
@@ -2421,7 +2441,10 @@ def equipment_delete(request, pk):
         next_url = request.GET.get('next', '')
         return render(request, 'equipment/equipment_delete_confirm.html', {'equipment': equipment, 'next_url': next_url})
     next_url = request.POST.get('next') or request.GET.get('next') or ''
-    if next_url and url_has_allowed_host_and_scheme(next_url):
+    if next_url and url_has_allowed_host_and_scheme(
+        next_url,
+        allowed_hosts={request.get_host()},
+    ):
         redirect_to = next_url
     else:
         redirect_to = reverse('my_page')

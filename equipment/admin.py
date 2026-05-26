@@ -17,6 +17,7 @@ from .models import (
     FinanceConsultation,
     ExcavatorEquipment, ForkliftEquipment, DumpEquipment, LoaderEquipment,
     CraneEquipment, AttachmentEquipment, OtherEquipment,
+    VisitSession, VisitPageLog, VisitorCount, VisitorLog,
 )
 from django.contrib.admin.views.main import ERROR_FLAG
 from .index_listing import (
@@ -849,6 +850,174 @@ class CustomAuthUserAdmin(DjangoUserAdmin):
         return d.strftime("%Y-%m-%d %H:%M") if d else "-"
 
     joined_display.short_description = "가입일"
+
+
+def _format_duration(seconds):
+    if seconds is None:
+        return "-"
+    seconds = int(seconds)
+    if seconds < 60:
+        return f"{seconds}초"
+    minutes, sec = divmod(seconds, 60)
+    if minutes < 60:
+        return f"{minutes}분 {sec}초"
+    hours, minutes = divmod(minutes, 60)
+    return f"{hours}시간 {minutes}분"
+
+
+class VisitPageLogInline(admin.TabularInline):
+    model = VisitPageLog
+    extra = 0
+    can_delete = False
+    fields = ("viewed_at", "path_display", "duration_display", "referer_short")
+    readonly_fields = ("viewed_at", "path_display", "duration_display", "referer_short")
+    ordering = ("viewed_at",)
+
+    @admin.display(description="경로")
+    def path_display(self, obj):
+        if obj.query_string:
+            return f"{obj.path}?{obj.query_string}"
+        return obj.path
+
+    @admin.display(description="체류")
+    def duration_display(self, obj):
+        return _format_duration(obj.duration_seconds)
+
+    @admin.display(description="유입/이전")
+    def referer_short(self, obj):
+        ref = (obj.referer or "").strip()
+        if not ref:
+            return "—"
+        return ref if len(ref) <= 80 else ref[:77] + "…"
+
+
+@admin.register(VisitSession)
+class VisitSessionAdmin(admin.ModelAdmin):
+    list_display = (
+        "started_at",
+        "visitor_display",
+        "ip_address",
+        "landing_path",
+        "last_path",
+        "page_view_count",
+        "duration_display",
+        "referer_short",
+    )
+    list_filter = ("started_at",)
+    search_fields = (
+        "ip_address",
+        "landing_path",
+        "last_path",
+        "referer",
+        "user__username",
+        "user__first_name",
+    )
+    readonly_fields = (
+        "django_session_key",
+        "user",
+        "ip_address",
+        "user_agent",
+        "referer",
+        "landing_path",
+        "last_path",
+        "started_at",
+        "last_seen_at",
+        "duration_seconds",
+        "page_view_count",
+    )
+    date_hierarchy = "started_at"
+    inlines = (VisitPageLogInline,)
+    list_per_page = 50
+
+    @admin.display(description="방문자")
+    def visitor_display(self, obj):
+        if obj.user_id:
+            name = (obj.user.first_name or "").strip()
+            return f"{name or obj.user.username} ({obj.user.username})"
+        return f"비회원 · {obj.ip_address}"
+
+    @admin.display(description="체류")
+    def duration_display(self, obj):
+        return _format_duration(obj.duration_seconds)
+
+    @admin.display(description="유입 URL")
+    def referer_short(self, obj):
+        ref = (obj.referer or "").strip()
+        if not ref:
+            return "직접 접속"
+        return ref if len(ref) <= 60 else ref[:57] + "…"
+
+
+@admin.register(VisitPageLog)
+class VisitPageLogAdmin(admin.ModelAdmin):
+    list_display = (
+        "viewed_at",
+        "path_display",
+        "visitor_display",
+        "ip_address",
+        "duration_display",
+        "referer_short",
+        "session",
+    )
+    list_filter = ("viewed_at",)
+    search_fields = ("path", "ip_address", "referer", "user__username")
+    readonly_fields = (
+        "session",
+        "path",
+        "query_string",
+        "referer",
+        "user",
+        "ip_address",
+        "viewed_at",
+        "duration_seconds",
+    )
+    date_hierarchy = "viewed_at"
+    list_per_page = 100
+    list_select_related = ("user", "session")
+
+    @admin.display(description="경로")
+    def path_display(self, obj):
+        if obj.query_string:
+            return f"{obj.path}?{obj.query_string}"
+        return obj.path
+
+    @admin.display(description="방문자")
+    def visitor_display(self, obj):
+        if obj.user_id:
+            return obj.user.username
+        return f"비회원 · {obj.ip_address}"
+
+    @admin.display(description="체류")
+    def duration_display(self, obj):
+        return _format_duration(obj.duration_seconds)
+
+    @admin.display(description="유입/이전")
+    def referer_short(self, obj):
+        ref = (obj.referer or "").strip()
+        if not ref:
+            return "—"
+        return ref if len(ref) <= 60 else ref[:57] + "…"
+
+
+@admin.register(VisitorCount)
+class VisitorCountAdmin(admin.ModelAdmin):
+    list_display = ("date", "count", "session_count")
+    readonly_fields = ("date", "count", "session_count")
+    date_hierarchy = "date"
+
+
+@admin.register(VisitorLog)
+class VisitorLogAdmin(admin.ModelAdmin):
+    list_display = ("visit_date", "ip_address", "referer_short")
+    list_filter = ("visit_date",)
+    search_fields = ("ip_address", "referer")
+    readonly_fields = ("ip_address", "visit_date", "referer")
+    date_hierarchy = "visit_date"
+
+    @admin.display(description="유입")
+    def referer_short(self, obj):
+        ref = (obj.referer or "").strip()
+        return ref if len(ref) <= 80 else ref[:77] + "…"
 
 
 try:

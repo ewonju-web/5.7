@@ -11,9 +11,48 @@
   .gn-search-card { background:#fff; border:1px solid var(--gn-border); border-radius:12px; padding:1rem; margin-bottom:.85rem; box-shadow:var(--gn-shadow); }
   .gn-pill-wrap, .gn-chip-wrap { display:flex; flex-wrap:wrap; gap:.45rem; }
   .gn-search-card .small.text-muted { color:#334155 !important; font-weight:700; }
-  .gn-pill-btn, .gn-filter-chip { border-radius:999px; border:1px solid #d1d5db; background:#fff; color:#475569; font-size:.92rem; font-weight:700; padding:.4rem .85rem; }
-  .gn-pill-btn:hover, .gn-filter-chip:hover { background:#374151; color:#e8a317; border-color:#374151; }
-  .gn-pill-btn.active, .gn-filter-chip.active { background:#374151; color:#e8a317; border-color:#374151; }
+  /* 장비 유형·제조사·정비 유형: 회색 기본 + 호버 떠오름 + 선택 시 노란색(첫 화면 기종) */
+  #equipmentTypePills .gn-pill-btn,
+  #manufacturerChips .gn-filter-chip,
+  #repairTypeChips .gn-filter-chip {
+    border-radius: 999px;
+    border: 1px solid #e2e8f0;
+    background: #f1f5f9;
+    color: #334155;
+    font-size: .92rem;
+    font-weight: 600;
+    padding: .42rem .88rem;
+    transition: background-color .18s ease, transform .18s ease, box-shadow .18s ease, color .18s ease, border-color .18s ease;
+  }
+  @media (hover: hover) {
+    #equipmentTypePills .gn-pill-btn:hover,
+    #manufacturerChips .gn-filter-chip:hover,
+    #repairTypeChips .gn-filter-chip:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 16px rgba(0, 0, 0, .08);
+      background: #e2e8f0;
+      color: #1e293b;
+      border-color: #cbd5e1;
+    }
+    #equipmentTypePills .gn-pill-btn.active:hover,
+    #manufacturerChips .gn-filter-chip.active:hover,
+    #repairTypeChips .gn-filter-chip.active:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 16px rgba(232, 163, 23, .3);
+      background: linear-gradient(135deg, var(--gn-accent) 0%, #ffcc40 100%);
+      color: #111827;
+      border-color: rgba(248, 250, 252, .95);
+    }
+  }
+  #equipmentTypePills .gn-pill-btn.active,
+  #manufacturerChips .gn-filter-chip.active,
+  #repairTypeChips .gn-filter-chip.active {
+    background: linear-gradient(135deg, var(--gn-accent) 0%, #ffcc40 100%);
+    color: #111827;
+    border-color: rgba(248, 250, 252, .95);
+    font-weight: 700;
+    box-shadow: 0 4px 10px rgba(232, 163, 23, .25);
+  }
   .gn-excavator-detail {
     overflow: hidden;
     max-height: 0;

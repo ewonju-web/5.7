@@ -313,6 +313,81 @@ class VisitorSession(models.Model):
         verbose_name_plural = "6. 방문 세션 상태"
 
 
+class VisitSession(models.Model):
+    """사이트 방문 세션 — 어드민에서 유입·경로·체류 시간 확인용."""
+    django_session_key = models.CharField(max_length=40, db_index=True, verbose_name="세션 키")
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="visit_sessions",
+        verbose_name="회원",
+    )
+    ip_address = models.GenericIPAddressField(verbose_name="IP")
+    user_agent = models.CharField(max_length=300, blank=True, verbose_name="브라우저")
+    referer = models.TextField(blank=True, verbose_name="유입 URL")
+    landing_path = models.CharField(max_length=500, verbose_name="첫 방문 경로")
+    last_path = models.CharField(max_length=500, blank=True, verbose_name="마지막 경로")
+    started_at = models.DateTimeField(auto_now_add=True, db_index=True, verbose_name="시작")
+    last_seen_at = models.DateTimeField(db_index=True, verbose_name="마지막 활동")
+    duration_seconds = models.PositiveIntegerField(default=0, verbose_name="체류(초)")
+    page_view_count = models.PositiveIntegerField(default=0, verbose_name="페이지 수")
+
+    class Meta:
+        verbose_name = "방문 세션"
+        verbose_name_plural = "7. 방문 세션(경로·체류)"
+        ordering = ["-last_seen_at"]
+        indexes = [
+            models.Index(fields=["-started_at"]),
+            models.Index(fields=["django_session_key", "-last_seen_at"]),
+        ]
+
+    def __str__(self):
+        who = self.user.username if self.user_id else self.ip_address
+        return f"{who} · {self.landing_path}"
+
+
+class VisitPageLog(models.Model):
+    """세션 내 페이지별 조회."""
+    session = models.ForeignKey(
+        VisitSession,
+        on_delete=models.CASCADE,
+        related_name="page_views",
+        verbose_name="방문 세션",
+    )
+    path = models.CharField(max_length=500, verbose_name="경로")
+    query_string = models.CharField(max_length=500, blank=True, verbose_name="쿼리")
+    referer = models.TextField(blank=True, verbose_name="이전/유입 URL")
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        verbose_name="회원",
+    )
+    ip_address = models.GenericIPAddressField(verbose_name="IP")
+    viewed_at = models.DateTimeField(auto_now_add=True, db_index=True, verbose_name="조회 시각")
+    duration_seconds = models.PositiveIntegerField(
+        null=True,
+        blank=True,
+        verbose_name="체류(초)",
+        help_text="다음 페이지로 이동할 때까지 머문 시간",
+    )
+
+    class Meta:
+        verbose_name = "페이지 조회"
+        verbose_name_plural = "8. 페이지 조회 로그"
+        ordering = ["-viewed_at"]
+        indexes = [
+            models.Index(fields=["-viewed_at"]),
+            models.Index(fields=["path", "-viewed_at"]),
+        ]
+
+    def __str__(self):
+        return self.path
+
+
 # --- 강제 한글화 ---
 User._meta.verbose_name = "회원"
 User._meta.verbose_name_plural = "회원(User) 계정 관리"

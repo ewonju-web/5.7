@@ -23,9 +23,9 @@
                 {% endfor %}
             </div>
             <div class="small text-muted fw-bold mb-2">게시글 유형</div>
-            <div class="d-flex flex-wrap gap-2">
+            <div class="d-flex flex-wrap gap-2 gn-soil-type-wrap">
                 {% for key, label in post_type_tabs %}
-                <a href="{% url 'soil_list' %}?material={{ selected_material }}&type={{ key }}" class="btn btn-sm rounded-pill {% if selected_post_type == key %}btn-warning{% else %}btn-outline-secondary{% endif %}">{{ label }}</a>
+                <a href="{% url 'soil_list' %}?material={{ selected_material }}&type={{ key }}" class="gn-soil-filter-pill {% if selected_post_type == key %}active{% endif %}">{{ label }}</a>
                 {% endfor %}
             </div>
         </div>
@@ -74,14 +74,51 @@
 .gn-soil-material-scroll::-webkit-scrollbar {
     height: 0;
 }
-.gn-soil-material-scroll .gn-cat-pill {
+.gn-soil-material-scroll .gn-cat-pill,
+.gn-soil-type-wrap .gn-soil-filter-pill {
     margin-right: 0;
     flex: 0 0 auto;
+    border-radius: 999px;
+    border: 1px solid #e2e8f0;
+    background: #f1f5f9;
+    color: #334155;
+    font-size: .92rem;
+    font-weight: 600;
+    padding: .42rem .88rem;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    transition: background-color .18s ease, transform .18s ease, box-shadow .18s ease, color .18s ease, border-color .18s ease;
 }
-.gn-soil-material-scroll .gn-cat-pill:hover {
-    background: #374151;
-    color: #e8a317;
-    border-color: #374151;
+.gn-soil-type-wrap .gn-soil-filter-pill {
+    font-size: .88rem;
+    padding: .38rem .82rem;
+}
+@media (hover: hover) {
+    .gn-soil-material-scroll .gn-cat-pill:hover,
+    .gn-soil-type-wrap .gn-soil-filter-pill:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 16px rgba(0, 0, 0, .08);
+        background: #e2e8f0;
+        color: #1e293b;
+        border-color: #cbd5e1;
+    }
+    .gn-soil-material-scroll .gn-cat-pill.active:hover,
+    .gn-soil-type-wrap .gn-soil-filter-pill.active:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 16px rgba(232, 163, 23, .3);
+        background: linear-gradient(135deg, var(--gn-accent) 0%, #ffcc40 100%);
+        color: #111827;
+        border-color: rgba(248, 250, 252, .95);
+    }
+}
+.gn-soil-material-scroll .gn-cat-pill.active,
+.gn-soil-type-wrap .gn-soil-filter-pill.active {
+    background: linear-gradient(135deg, var(--gn-accent) 0%, #ffcc40 100%);
+    color: #111827;
+    border-color: rgba(248, 250, 252, .95);
+    font-weight: 700;
+    box-shadow: 0 4px 10px rgba(232, 163, 23, .25);
 }
 .gn-soil-desc-strong {
     color: #334155 !important;

@@ -212,7 +212,7 @@
             border-top: 1px solid var(--gn-border);
         }
         @media (max-width: 767.98px) {
-            footer { padding-bottom: 5rem; }
+            footer { padding-bottom: calc(1.25rem + env(safe-area-inset-bottom, 0px)); }
             .footer-visitor-row { display: flex !important; flex-wrap: wrap; justify-content: center; gap: 0.5rem; }
             .footer-visitor-row .col-auto { width: 100%; text-align: center !important; }
         }
@@ -312,7 +312,7 @@
             position: fixed;
             left: 0.75rem;
             right: 0.75rem;
-            bottom: calc(3.85rem + env(safe-area-inset-bottom, 0px));
+            bottom: calc(1rem + env(safe-area-inset-bottom, 0px));
             z-index: 1030;
             background: #1f2937;
             color: #f9fafb;
@@ -333,7 +333,7 @@
         .gn-fab {
             display: none;
             position: fixed;
-            bottom: calc(4.55rem + env(safe-area-inset-bottom, 0px));
+            bottom: calc(1.25rem + env(safe-area-inset-bottom, 0px));
             right: 1.25rem;
             width: 58px;
             height: 58px;
@@ -352,11 +352,8 @@
             /* rem 기반 UI 전역 가독성 (16px → 17px) */
             html { font-size: 106.25%; }
             .gn-mobile-header { display: flex; }
-            .gn-mobile-bottom { display: flex; }
             .navbar-gn .container { padding-top: 0; padding-bottom: 0; }
-            main { padding-bottom: calc(5rem + env(safe-area-inset-bottom, 0px)); }
-            footer { padding-bottom: calc(5.25rem + env(safe-area-inset-bottom, 0px)); }
-            .gn-mobile-bottom a { font-size: 0.84rem; }
+            main { padding-bottom: env(safe-area-inset-bottom, 0px); }
             .gn-cat-pill { font-size: 0.96rem; }
             .gn-cat-pill i { font-size: 1.1rem; }
         }
@@ -504,6 +501,35 @@
             gap: 0.75rem;
             padding: 0.5rem 1rem 1rem;
         }
+        .gn-service-nav-grid .gn-service-item-title {
+            line-height: 1.25;
+        }
+        .gn-service-item.gn-service-item-accent {
+            border-color: rgba(232, 163, 23, .55);
+            background: #fffdf5;
+        }
+        .gn-service-item.gn-service-item-accent .gn-service-item-icon {
+            background: linear-gradient(135deg, var(--gn-accent) 0%, #ffcc40 100%);
+        }
+        #gnServiceMenu .gn-service-account-block .list-group-item {
+            display: flex;
+            align-items: center;
+            padding-top: 0.65rem;
+            padding-bottom: 0.65rem;
+        }
+        #gnServiceMenu .gn-service-account-block .list-group-item > i.bi {
+            flex-shrink: 0;
+            width: 32px;
+            height: 32px;
+            margin-right: 0.65rem !important;
+            border-radius: 10px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.1rem;
+            color: #0f172a;
+            background: linear-gradient(135deg, var(--gn-accent) 0%, #ffcc40 100%);
+        }
         .gn-service-item {
             display: flex;
             align-items: center;
@@ -553,23 +579,73 @@
             background: #e3a12d;
             color: #1f2937;
         }
-        /* 모바일 햄버거: 언어 드롭다운 (PC와 동일) */
+        /* 모바일 햄버거: 상단바 — 첫 화면 메뉴바와 동일 회색 */
         #gnServiceMenu .offcanvas-header {
             overflow: visible;
             flex-wrap: nowrap;
             gap: 0.5rem;
+            align-items: center;
+            background: var(--gn-nav);
+            color: #fff;
+            padding: 0.72rem 1rem;
+            border-bottom: 1px solid rgba(255, 255, 255, .08) !important;
+            box-shadow: 0 1px 0 rgba(255, 255, 255, .06);
+        }
+        #gnServiceMenu .gn-service-menu-brand {
+            flex-shrink: 0;
+            text-decoration: none;
+            line-height: 0;
+        }
+        #gnServiceMenu .gn-service-menu-logo {
+            height: 36px;
+            width: auto;
+            display: block;
+            background: rgba(255, 255, 255, .96);
+            border-radius: 9px;
+            padding: 2px 6px;
+        }
+        #gnServiceMenu .gn-service-menu-actions {
+            display: flex;
+            align-items: center;
+            gap: 0.35rem;
+            margin-left: auto;
+            flex-shrink: 0;
+        }
+        #gnServiceMenu .gn-service-menu-login {
+            font-size: 0.82rem;
+            font-weight: 600;
+            padding: 0.35rem 0.65rem;
+            white-space: nowrap;
+            border-radius: 8px;
         }
         #gnServiceMenu .gn-mobile-lang-dropdown .dropdown-toggle {
-            min-width: 6.5rem;
-            max-width: 9.5rem;
+            min-width: 5.5rem;
+            max-width: 8rem;
             white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
             font-size: 0.82rem;
             padding: 0.35rem 0.65rem;
-            border-color: var(--gn-border);
-            color: var(--gn-text);
-            background: var(--gn-card);
+            border-color: rgba(255, 255, 255, .35);
+            color: #fff;
+            background: rgba(255, 255, 255, .1);
+        }
+        #gnServiceMenu .gn-mobile-lang-dropdown .dropdown-toggle:hover,
+        #gnServiceMenu .gn-mobile-lang-dropdown .dropdown-toggle:focus {
+            background: rgba(255, 255, 255, .18);
+            color: #fff;
+            border-color: rgba(255, 255, 255, .5);
+        }
+        #gnServiceMenu .gn-service-menu-login {
+            border-color: rgba(255, 255, 255, .35);
+            color: #fff;
+            background: rgba(255, 255, 255, .1);
+        }
+        #gnServiceMenu .gn-service-menu-login:hover,
+        #gnServiceMenu .gn-service-menu-login:focus {
+            background: rgba(255, 255, 255, .18);
+            color: #fff;
+            border-color: rgba(255, 255, 255, .5);
         }
         #gnServiceMenu .gn-mobile-lang-dropdown .dropdown-menu {
             min-width: 10rem;
@@ -584,13 +660,17 @@
         }
         /* 모바일: 햄버거 메뉴·검색 패널 글씨 살짝 확대 */
         @media (max-width: 767.98px) {
-            #gnServiceMenu .offcanvas-title {
-                font-size: 1.2rem;
+            #gnServiceMenu .gn-service-menu-logo {
+                height: 38px;
             }
             #gnServiceMenu .gn-mobile-lang-dropdown .dropdown-toggle {
-                font-size: 0.9rem;
-                padding: 0.4rem 0.7rem;
-                min-width: 7rem;
+                font-size: 0.88rem;
+                padding: 0.38rem 0.62rem;
+                min-width: 5.8rem;
+            }
+            #gnServiceMenu .gn-service-menu-login {
+                font-size: 0.88rem;
+                padding: 0.38rem 0.7rem;
             }
             .gn-service-section-title {
                 font-size: 0.92rem;
@@ -742,7 +822,7 @@
                         <a href="{% url 'my_page' %}" class="nav-link d-none d-md-inline-block"><strong>{{ user.username }}</strong>{{ LANG|tr:"username_suffix" }}</a>
                         <a href="{% url 'logout' %}" class="btn btn-accent btn-sm">{{ LANG|tr:"nav_logout" }}</a>
                     {% else %}
-                        <a href="{% url 'login' %}" class="btn btn-outline-light btn-sm">{{ LANG|tr:"nav_login" }}</a>
+                        <a href="{% url 'login' %}?next={{ request.get_full_path|urlencode }}" class="btn btn-outline-light btn-sm">{{ LANG|tr:"nav_login" }}</a>
                         <a href="{% url 'join_choice' %}" class="btn btn-accent btn-sm">{{ LANG|tr:"nav_signup" }}</a>
                     {% endif %}
                 </div>
@@ -752,99 +832,77 @@
 
     <!-- 햄버거 메뉴: 전체 서비스 (모바일, 다크) -->
     <div class="offcanvas offcanvas-end" tabindex="-1" id="gnServiceMenu" aria-labelledby="gnServiceMenuLabel" style="background: var(--gn-card); color: var(--gn-text);">
-        <div class="offcanvas-header border-bottom" style="border-color: var(--gn-border)!important;">
-            <h5 class="offcanvas-title fw-bold flex-grow-1 mb-0" id="gnServiceMenuLabel">{{ LANG|tr:"service_all" }}</h5>
-            <div class="dropdown gn-mobile-lang-dropdown shrink-0">
-                <button class="btn btn-outline-secondary btn-sm dropdown-toggle" type="button" data-bs-toggle="dropdown" data-bs-auto-close="true" data-bs-boundary="viewport" aria-expanded="false" aria-label="{{ LANG|tr:'lang_label' }}">{{ LANG|tr:"lang_label" }}</button>
-                <ul class="dropdown-menu dropdown-menu-end shadow-sm">
-                    {% language_menu as lang_choices %}
-                    {% for code, label in lang_choices %}
-                    <li><a class="dropdown-item{% if LANG == code %} active{% endif %}" href="{% url 'set_language' %}?lang={{ code }}&amp;next={{ request.get_full_path|urlencode }}">{{ label }}</a></li>
-                    {% endfor %}
-                </ul>
+        <div class="offcanvas-header border-bottom">
+            <span id="gnServiceMenuLabel" class="visually-hidden">굴삭기나라</span>
+            <a href="{% url 'index' %}?category=" class="gn-service-menu-brand gn-service-offcanvas-link" aria-label="굴삭기나라 홈">
+                <img src="{% static 'img/logo-navbar-ko.png' %}" alt="굴삭기나라" class="gn-service-menu-logo">
+            </a>
+            <div class="gn-service-menu-actions">
+                <div class="dropdown gn-mobile-lang-dropdown">
+                    <button class="btn btn-sm dropdown-toggle" type="button" data-bs-toggle="dropdown" data-bs-auto-close="true" data-bs-boundary="viewport" aria-expanded="false" aria-label="{{ LANG|tr:'lang_label' }}">{{ LANG|tr:"lang_label" }}</button>
+                    <ul class="dropdown-menu dropdown-menu-end shadow-sm">
+                        {% language_menu as lang_choices %}
+                        {% for code, label in lang_choices %}
+                        <li><a class="dropdown-item{% if LANG == code %} active{% endif %}" href="{% url 'set_language' %}?lang={{ code }}&amp;next={{ request.get_full_path|urlencode }}">{{ label }}</a></li>
+                        {% endfor %}
+                    </ul>
+                </div>
+                {% if not user.is_authenticated %}
+                <a href="{% url 'login' %}?next={{ request.get_full_path|urlencode }}" class="btn btn-sm gn-service-menu-login gn-service-offcanvas-link">{{ LANG|tr:"nav_login" }}</a>
+                {% endif %}
+                <button type="button" class="btn-close btn-close-white ms-1" data-bs-dismiss="offcanvas" aria-label="닫기"></button>
             </div>
-            <button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="닫기"></button>
         </div>
         <div class="offcanvas-body px-0 pt-2 pb-3">
-            <div>
-                <div class="gn-service-section-title">{{ LANG|tr:"nav_market_view" }}</div>
-                <div class="gn-service-grid">
-                    <a href="{% url 'index' %}?category=excavator" class="gn-service-item">
-                        <div class="gn-service-item-icon"><i class="bi bi-truck-front-fill"></i></div>
-                        <div>
-                            <div class="gn-service-item-title">{{ LANG|tr:"cat_excavator" }}</div>
-                            <div class="small text-muted">{{ LANG|tr:"service_attachment_sub" }}</div>
-                        </div>
-                    </a>
-                    <a href="{% url 'index' %}?category=forklift" class="gn-service-item">
-                        <div class="gn-service-item-icon"><i class="bi bi-box-seam-fill"></i></div>
-                        <div>
-                            <div class="gn-service-item-title">{{ LANG|tr:"cat_forklift" }}</div>
-                        </div>
-                    </a>
-                    <a href="{% url 'index' %}?category=dump" class="gn-service-item">
-                        <div class="gn-service-item-icon"><i class="bi bi-truck-flatbed"></i></div>
-                        <div>
-                            <div class="gn-service-item-title">{{ LANG|tr:"cat_dump" }}</div>
-                        </div>
-                    </a>
-                    <a href="{% url 'index' %}?category=loader" class="gn-service-item">
-                        <div class="gn-service-item-icon"><i class="bi bi-box2-heart-fill"></i></div>
-                        <div>
-                            <div class="gn-service-item-title">{{ LANG|tr:"cat_loader" }}</div>
-                        </div>
-                    </a>
-                    <a href="{% url 'index' %}?category=crane" class="gn-service-item">
-                        <div class="gn-service-item-icon"><i class="bi bi-truck"></i></div>
-                        <div>
-                            <div class="gn-service-item-title">{{ LANG|tr:"cat_crane" }}</div>
-                        </div>
-                    </a>
-                    <a href="{% url 'index' %}?category=other" class="gn-service-item">
-                        <div class="gn-service-item-icon"><i class="bi bi-gear-wide-connected"></i></div>
-                        <div>
-                            <div class="gn-service-item-title">{{ LANG|tr:"cat_other" }}</div>
-                        </div>
-                    </a>
-                </div>
+            {% url 'equipment_create' as gn_equipment_create_url %}
+            <div class="gn-service-grid gn-service-nav-grid">
+                <a href="{% url 'index' %}?category=" class="gn-service-item gn-service-offcanvas-link">
+                    <div class="gn-service-item-icon"><i class="bi bi-grid"></i></div>
+                    <div><div class="gn-service-item-title">{{ LANG|tr:"nav_market_view" }}</div></div>
+                </a>
+                <a href="{% if user.is_authenticated %}{{ gn_equipment_create_url }}{% else %}{% url 'login' %}?next={{ gn_equipment_create_url|urlencode }}{% endif %}" class="gn-service-item gn-service-item-accent gn-service-offcanvas-link">
+                    <div class="gn-service-item-icon"><i class="bi bi-plus-lg"></i></div>
+                    <div><div class="gn-service-item-title">{{ LANG|tr:"nav_register" }}</div></div>
+                </a>
+                <a href="{% url 'job_list' %}" class="gn-service-item gn-service-offcanvas-link">
+                    <div class="gn-service-item-icon"><i class="bi bi-briefcase"></i></div>
+                    <div><div class="gn-service-item-title">{{ LANG|tr:"nav_jobs" }}</div></div>
+                </a>
+                <a href="{% url 'finance' %}" class="gn-service-item gn-service-offcanvas-link">
+                    <div class="gn-service-item-icon"><i class="bi bi-cash-coin"></i></div>
+                    <div><div class="gn-service-item-title">{{ LANG|tr:"nav_attachment" }}</div></div>
+                </a>
+                <a href="{% url 'excavator_info' %}" class="gn-service-item gn-service-offcanvas-link">
+                    <div class="gn-service-item-icon"><i class="bi bi-youtube"></i></div>
+                    <div><div class="gn-service-item-title">{{ LANG|tr:"nav_youtube" }}</div></div>
+                </a>
+                <a href="{% url 'parts_as' %}" class="gn-service-item gn-service-offcanvas-link">
+                    <div class="gn-service-item-icon"><i class="bi bi-gear"></i></div>
+                    <div><div class="gn-service-item-title">{{ LANG|tr:"service_parts_as_shop" }}</div></div>
+                </a>
+                <a href="{% url 'soil_list' %}" class="gn-service-item soil-nav-mobile gn-service-offcanvas-link">
+                    <div class="gn-service-item-icon"><i class="bi bi-droplet-half"></i></div>
+                    <div><div class="gn-service-item-title">{{ LANG|tr:"nav_soil" }}</div></div>
+                </a>
             </div>
-
-            <hr class="my-2" style="border-color: var(--gn-border); opacity: .4;">
-
-            <div class="gn-service-register-wrap">
-                {% url 'equipment_create' as gn_equipment_create_url %}
-                <a href="{% if user.is_authenticated %}{{ gn_equipment_create_url }}{% else %}{% url 'login' %}?next={{ gn_equipment_create_url|urlencode }}{% endif %}" class="gn-service-register-btn" id="gnServiceRegisterLink">{{ LANG|tr:"nav_register" }}</a>
-            </div>
-
-            <div class="px-3">
-                <div class="gn-service-section-title">{{ LANG|tr:"service_menu" }}</div>
+            {% if user.is_authenticated %}
+            <div class="px-3 mt-2 gn-service-account-block">
+                <div class="gn-service-section-title">계정</div>
                 <div class="list-group list-group-flush">
-                    <a href="{% url 'job_list' %}" class="list-group-item list-group-item-action" style="background: transparent; color: var(--gn-text); border-color: transparent;"><i class="bi bi-briefcase me-2"></i>{{ LANG|tr:"nav_jobs" }}</a>
-                    <a href="{% url 'finance' %}" class="list-group-item list-group-item-action" style="background: transparent; color: var(--gn-text); border-color: transparent;"><i class="bi bi-cash-coin me-2"></i>{{ LANG|tr:"nav_attachment" }}</a>
-                    <a href="{% url 'excavator_info' %}" class="list-group-item list-group-item-action" style="background: transparent; color: var(--gn-text); border-color: transparent;"><i class="bi bi-youtube me-2"></i>{{ LANG|tr:"nav_youtube" }}</a>
-                    <a href="{% url 'parts_as' %}" class="list-group-item list-group-item-action" style="background: transparent; color: var(--gn-text); border-color: transparent;"><i class="bi bi-gear me-2"></i>{{ LANG|tr:"service_parts_as_shop" }}</a>
-                    <a href="{% url 'soil_list' %}" class="list-group-item list-group-item-action soil-nav-mobile" style="background: transparent; color: var(--gn-text); border-color: transparent;"><i class="bi bi-droplet-half me-2"></i>현장 자재 나눔</a>
-                    {% if user.is_authenticated %}
-                    <a href="{% url 'chat_room_list' %}" class="list-group-item list-group-item-action" style="background: transparent; color: var(--gn-text); border-color: transparent;"><i class="bi bi-chat-dots me-2"></i>{{ LANG|tr:"nav_chat" }}{% if unread_total > 0 %} <span class="badge bg-danger rounded-pill ms-1" style="font-size: 0.65rem;">{{ unread_total }}</span>{% endif %}</a>
-                    <a href="{% url 'my_page' %}" class="list-group-item list-group-item-action" style="background: transparent; color: var(--gn-text); border-color: transparent;"><i class="bi bi-person me-2"></i>{{ LANG|tr:"nav_mypage" }}</a>
-                    <a href="/accounts/3rdparty/" class="list-group-item list-group-item-action" style="background: transparent; color: var(--gn-text); border-color: transparent;"><i class="bi bi-person-check me-2"></i>{{ LANG|tr:"service_social_connect" }}</a>
-                    <a href="{% url 'logout' %}" class="list-group-item list-group-item-action" style="background: transparent; color: var(--gn-text); border-color: transparent;"><i class="bi bi-box-arrow-right me-2"></i>{{ LANG|tr:"nav_logout" }}</a>
-                    {% else %}
-                    <a href="{% url 'login' %}" class="list-group-item list-group-item-action" style="background: transparent; color: var(--gn-text); border-color: transparent;"><i class="bi bi-box-arrow-in-right me-2"></i>{{ LANG|tr:"nav_login" }}</a>
-                    {% endif %}
+                    <a href="{% url 'chat_room_list' %}" class="list-group-item list-group-item-action gn-service-offcanvas-link" style="background: transparent; color: var(--gn-text); border-color: transparent;"><i class="bi bi-chat-dots me-2"></i>{{ LANG|tr:"nav_chat" }}{% if unread_total > 0 %} <span class="badge bg-danger rounded-pill ms-1" style="font-size: 0.65rem;">{{ unread_total }}</span>{% endif %}</a>
+                    <a href="{% url 'my_page' %}" class="list-group-item list-group-item-action gn-service-offcanvas-link" style="background: transparent; color: var(--gn-text); border-color: transparent;"><i class="bi bi-person me-2"></i>{{ LANG|tr:"nav_mypage" }}</a>
+                    <a href="/accounts/3rdparty/" class="list-group-item list-group-item-action gn-service-offcanvas-link" style="background: transparent; color: var(--gn-text); border-color: transparent;"><i class="bi bi-person-check me-2"></i>{{ LANG|tr:"service_social_connect" }}</a>
+                    <a href="{% url 'logout' %}" class="list-group-item list-group-item-action gn-service-offcanvas-link" style="background: transparent; color: var(--gn-text); border-color: transparent;"><i class="bi bi-box-arrow-right me-2"></i>{{ LANG|tr:"nav_logout" }}</a>
                 </div>
             </div>
+            {% endif %}
         </div>
     </div>
     <script>
     (function () {
-        var link = document.getElementById('gnServiceRegisterLink');
         var menu = document.getElementById('gnServiceMenu');
-        if (!link || !menu) return;
-        link.addEventListener('click', function (e) {
-            var href = link.getAttribute('href');
-            if (!href || href === '#') return;
-            e.preventDefault();
+        if (!menu) return;
+        function navigateAfterClose(href) {
             var oc = window.bootstrap && bootstrap.Offcanvas.getInstance(menu);
             if (oc) {
                 menu.addEventListener('hidden.bs.offcanvas', function () {
@@ -854,6 +912,14 @@
             } else {
                 window.location.assign(href);
             }
+        }
+        menu.addEventListener('click', function (e) {
+            var link = e.target.closest('a.gn-service-offcanvas-link[href]');
+            if (!link || !menu.contains(link)) return;
+            var href = link.getAttribute('href');
+            if (!href || href === '#') return;
+            e.preventDefault();
+            navigateAfterClose(href);
         });
     })();
     </script>
@@ -864,14 +930,6 @@
         <button type="button" class="btn btn-warning btn-sm fw-bold" id="gn-pwa-install-btn">추가하기</button>
         <button type="button" class="btn btn-outline-light btn-sm" id="gn-pwa-install-close" aria-label="닫기">닫기</button>
     </div>
-
-    <!-- 모바일 하단 네비 (카테고리 선택 시 유지) -->
-    <nav class="gn-mobile-bottom">
-        <a href="{% url 'index' %}{% if request.GET.category %}?category={{ request.GET.category }}{% endif %}" class="{% if request.resolver_match.url_name == 'index' %}active{% endif %}"><i class="bi bi-house-fill nav-icon"></i>{{ LANG|tr:"mobile_home" }}</a>
-        <a href="{% url 'index' %}{% if request.GET.category %}?category={{ request.GET.category }}{% endif %}"><i class="bi bi-grid nav-icon"></i>{{ LANG|tr:"mobile_listings" }}</a>
-        <a href="{% url 'job_list' %}"><i class="bi bi-briefcase nav-icon"></i>{{ LANG|tr:"mobile_jobs" }}</a>
-        <a href="{% url 'my_page' %}"><i class="bi bi-person nav-icon"></i>{{ LANG|tr:"mobile_my" }}</a>
-    </nav>
 
     <main>
         {% if messages %}
