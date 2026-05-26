@@ -1025,3 +1025,143 @@ h1.job-title,
     margin-top: 0 !important;
   }
 }
+
+/* 자격증 시험 — 유형 뱃지 */
+.exam-cat-badge {
+  display: inline-block;
+  padding: 0.28rem 0.65rem;
+  border-radius: 999px;
+  font-size: 0.82rem;
+  font-weight: 700;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+.exam-cat-badge-question {
+  background: #f97316;
+  color: #fff;
+}
+.exam-cat-badge-summary {
+  background: #16a34a;
+  color: #fff;
+}
+.exam-cat-badge-skill_tip {
+  background: #2563eb;
+  color: #fff;
+}
+.exam-cat-badge-review {
+  background: #ec4899;
+  color: #fff;
+}
+.exam-cat-badge-video {
+  background: #dc2626;
+  color: #fff;
+}
+.exam-video-play-icon {
+  color: #dc2626;
+  font-size: 0.85em;
+  margin-right: 0.15rem;
+}
+.gn-exam-detail-page .exam-video-embed {
+  background: #000;
+  border-radius: 12px;
+  overflow: hidden;
+}
+.gn-exam-detail-page .exam-video-embed iframe {
+  width: 100%;
+  height: 100%;
+  border: 0;
+}
+.gn-exam-detail-page .exam-comment-list {
+  margin: 0;
+  padding: 0;
+}
+.gn-exam-detail-page .exam-comment-item:last-child {
+  border-bottom: none !important;
+  margin-bottom: 0 !important;
+  padding-bottom: 0 !important;
+}
+.gn-exam-detail-page .exam-comment-body {
+  font-size: 0.95rem;
+  color: #1f2937;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+/* 수험생 채팅방 */
+.student-chat-room-card .student-chat-room-icon {
+  width: 48px;
+  height: 48px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.35rem;
+  background: linear-gradient(135deg, var(--job-accent, #e8a317) 0%, #ffcc40 100%);
+  color: #1f2937;
+}
+.student-chat-page .student-chat-shell {
+  max-width: 720px;
+  margin: 0 auto;
+}
+.student-chat-messages {
+  height: min(62vh, 520px);
+  overflow-y: auto;
+  padding: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+  border-color: var(--job-border, #e5e7eb) !important;
+}
+.student-chat-msg {
+  display: flex;
+  flex-direction: column;
+  max-width: 82%;
+}
+.student-chat-msg-mine {
+  align-self: flex-end;
+  align-items: flex-end;
+}
+.student-chat-msg-other {
+  align-self: flex-start;
+  align-items: flex-start;
+}
+.student-chat-nick {
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: #64748b;
+  margin-bottom: 0.2rem;
+}
+.student-chat-bubble {
+  padding: 0.55rem 0.85rem;
+  border-radius: 14px;
+  font-size: 0.92rem;
+  line-height: 1.45;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+.student-chat-msg-mine .student-chat-bubble {
+  background: linear-gradient(135deg, var(--job-accent, #e8a317) 0%, #ffcc40 100%);
+  color: #111827;
+  border-bottom-right-radius: 4px;
+}
+.student-chat-msg-other .student-chat-bubble {
+  background: #f1f5f9;
+  color: #1e293b;
+  border: 1px solid #e2e8f0;
+  border-bottom-left-radius: 4px;
+}
+.student-chat-time {
+  font-size: 0.7rem;
+  color: #94a3b8;
+  margin-top: 0.15rem;
+}
+.student-chat-system {
+  align-self: center;
+  font-size: 0.78rem;
+  color: #94a3b8;
+  text-align: center;
+  padding: 0.15rem 0.5rem;
+}
+.student-chat-form textarea {
+  resize: none;
+}

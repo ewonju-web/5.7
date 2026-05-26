@@ -1,0 +1,112 @@
+{% extends "base.html" %}
+{% load static i18n_extras %}
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/jobs.css' %}?v=20260527d">
+<style>
+  .exam-table-v2 .exam-row,
+  .exam-table-v2 .exam-row > td { cursor: pointer; }
+</style>
+{% endblock %}
+{% block content %}
+<div class="container py-4 job-list-page-v2">
+    <div class="job-list-shell rounded-3 px-2 px-md-3 py-3 py-md-4">
+        <div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-3">
+            <h2 class="job-page-heading mb-0">
+                <span class="job-page-heading-bar" aria-hidden="true"></span>
+                구인구직 · 자격증 시험
+            </h2>
+            <a href="{% if user.is_authenticated %}{% url 'exam_create' %}{% else %}{% url 'login' %}?next={% url 'exam_create' %}{% endif %}" class="job-btn-write-outline">
+                <i class="bi bi-pencil-square job-write-icon me-1" aria-hidden="true"></i>글쓰기
+            </a>
+        </div>
+
+        <div class="job-search-panel border rounded-3 bg-white p-3 p-md-4 mb-3">
+            {% include "equipment/_jobs_section_tabs.html" %}
+
+            <form action="{% url 'exam_list' %}" method="get" class="job-filter-form">
+                <div class="job-filter-grid">
+                    <div class="job-filter-fields-row">
+                        <div class="job-filter-field">
+                            <label class="form-label small mb-1" style="color:#334155;font-weight:800;">기종</label>
+                            <select name="equipment" class="form-select form-select-sm job-select-rounded">
+                                {% for val, label in exam_equipment_choices %}
+                                <option value="{{ val }}" {% if filter_equipment == val %}selected{% endif %}>{{ label }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="job-filter-field">
+                            <label class="form-label small mb-1" style="color:#334155;font-weight:800;">유형</label>
+                            <select name="category" class="form-select form-select-sm job-select-rounded">
+                                <option value="">전체</option>
+                                {% for val, label in exam_category_choices %}
+                                <option value="{{ val }}" {% if filter_category == val %}selected{% endif %}>{{ label }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="job-filter-actions">
+                            <button type="submit" class="job-btn-search-light"><i class="bi bi-search me-1 d-none d-sm-inline" aria-hidden="true"></i>검색</button>
+                            <a href="{% url 'exam_list' %}" class="job-btn-reset-light">초기화</a>
+                        </div>
+                    </div>
+                </div>
+            </form>
+        </div>
+
+        <div class="card border job-list-table-card rounded-3 overflow-hidden shadow-none">
+            <div class="table-responsive">
+                <table class="table table-hover mb-0 align-middle exam-table-v2 job-table-v2">
+                    <thead class="d-none d-md-table-header-group">
+                        <tr class="job-table-head">
+                            <th class="text-center py-3" style="width: 110px;">유형</th>
+                            <th class="py-3">제목</th>
+                            <th class="text-center py-3" style="width: 100px;">기종</th>
+                            <th class="text-center py-3" style="width: 110px;">날짜</th>
+                            <th class="text-end py-3" style="width: 100px;">액션</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for post in exam_list %}
+                        <tr class="exam-row job-row" data-href="{% url 'exam_detail' post.pk %}">
+                            <td class="text-center job-td-mobile-order-2 d-none d-md-table-cell" data-label="유형">
+                                <span class="exam-cat-badge exam-cat-badge-{{ post.category }}">{{ post.get_category_display }}</span>
+                            </td>
+                            <td class="job-td-mobile-order-1 job-td-mobile-title" data-label="제목">
+                                <a href="{% url 'exam_detail' post.pk %}" class="btn btn-sm job-btn-view job-mobile-view-btn d-md-none" onclick="event.stopPropagation();">보기</a>
+                                <div class="d-md-none text-muted small mb-1">
+                                    <span class="exam-cat-badge exam-cat-badge-{{ post.category }}">{{ post.get_category_display }}</span>
+                                    <span class="ms-1">{{ post.get_equipment_display }}</span>
+                                    · {{ post.created_at|date:"Y-m-d" }}
+                                    · 조회 {{ post.views }}
+                                </div>
+                                <div class="job-title-v2">
+                                    {% if post.category == 'video' %}<span class="exam-video-play-icon" aria-hidden="true">▶</span> {% endif %}{{ post.title }}
+                                </div>
+                            </td>
+                            <td class="text-center small d-none d-md-table-cell">{{ post.get_equipment_display }}</td>
+                            <td class="text-center text-muted small d-none d-lg-table-cell">{{ post.created_at|date:"Y-m-d" }}</td>
+                            <td class="text-end align-middle job-td-actions job-td-mobile-order-4 d-none d-md-table-cell" onclick="event.stopPropagation();">
+                                <a href="{% url 'exam_detail' post.pk %}" class="btn btn-sm job-btn-view" onclick="event.stopPropagation();">보기</a>
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr class="job-empty-row">
+                            <td colspan="5" class="text-center py-5 text-muted">등록된 자격증 시험 글이 없습니다.</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+<script>
+(function(){
+    document.querySelectorAll('.exam-row').forEach(function(row) {
+        row.addEventListener('click', function(e) {
+            if (e.target.closest('a, button')) return;
+            window.location.href = row.dataset.href;
+        });
+    });
+})();
+</script>
+{% endblock %}

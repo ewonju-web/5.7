@@ -469,6 +469,59 @@ class JobPost(models.Model):
                 return True
         return False
 
+
+class ExamPost(models.Model):
+    CATEGORY_CHOICES = [
+        ('question', '기출문제'),
+        ('summary', '학과요약'),
+        ('skill_tip', '실기팁'),
+        ('review', '합격후기'),
+        ('video', '시험동영상'),
+    ]
+    EQUIPMENT_CHOICES = [
+        ('excavator', '굴삭기'),
+        ('forklift', '지게차'),
+        ('crane', '기중기'),
+        ('common', '공통'),
+    ]
+    author = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+    title = models.CharField(max_length=200)
+    content = models.TextField()
+    category = models.CharField(max_length=20, choices=CATEGORY_CHOICES)
+    equipment = models.CharField(max_length=20, choices=EQUIPMENT_CHOICES)
+    file = models.FileField(upload_to='exam_files/', blank=True, null=True)
+    youtube_url = models.URLField(
+        blank=True,
+        null=True,
+        help_text='유튜브 URL (시험동영상 유형일 때 입력)',
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    views = models.PositiveIntegerField(default=0)
+
+    class Meta:
+        verbose_name = '자격증 시험 글'
+        verbose_name_plural = '자격증 시험'
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return self.title
+
+
+class ExamComment(models.Model):
+    post = models.ForeignKey(ExamPost, on_delete=models.CASCADE, related_name='comments')
+    author = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+    content = models.TextField()
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = '자격증 시험 댓글'
+        verbose_name_plural = '자격증 시험 댓글'
+        ordering = ['created_at']
+
+    def __str__(self):
+        return f'{self.post_id} · {self.author_id}'
+
+
 class Part(models.Model):
     CATEGORY_CHOICES = [
         ('BUCKET', '바가지/버킷'),

@@ -19,7 +19,11 @@ import json
 
 from django.contrib.contenttypes.models import ContentType
 from django.core.exceptions import ValidationError
-from .models import Equipment, JobPost, Part, EquipmentImage, PartImage, PartsShop, YoutubeContent, EquipmentFavorite, PartFavorite, Comment, DeletedListingLog, Profile
+from .models import (
+    Equipment, JobPost, ExamPost, ExamComment, Part, EquipmentImage, PartImage, PartsShop,
+    YoutubeContent, EquipmentFavorite, PartFavorite, Comment, DeletedListingLog, Profile,
+)
+from .exam_utils import extract_youtube_id
 from soil.models import SoilPost
 from .forms import EquipmentForm, EquipmentEditForm, PartForm
 from .premium_utils import (
@@ -1291,6 +1295,7 @@ def job_list(request):
     return render(request, 'equipment/job_list.html', {
         'job_list': jobs,
         'jobs': jobs,
+        'jobs_section': 'jobs',
         'filter_type': job_type,
         'filter_region_sido': region_sido,
         'filter_region_sigungu': region_sigungu,
@@ -1533,6 +1538,122 @@ def job_delete(request, pk):
     job.delete()
     messages.success(request, "글이 삭제되었습니다.")
     return redirect('job_list')
+
+
+_EXAM_CATEGORY_KEYS = {c[0] for c in ExamPost.CATEGORY_CHOICES}
+_EXAM_EQUIPMENT_KEYS = {c[0] for c in ExamPost.EQUIPMENT_CHOICES}
+
+
+def _exam_list_queryset(request):
+    qs = ExamPost.objects.select_related('author').order_by('-created_at')
+    category = (request.GET.get('category') or '').strip()
+    equipment = (request.GET.get('equipment') or '').strip()
+
+    if category in _EXAM_CATEGORY_KEYS:
+        qs = qs.filter(category=category)
+    if equipment in _EXAM_EQUIPMENT_KEYS:
+        qs = qs.filter(equipment=equipment)
+    return qs, category, equipment
+
+
+def exam_list(request):
+    posts, filter_category, filter_equipment = _exam_list_queryset(request)
+    equipment_choices = [('', '전체')] + list(ExamPost.EQUIPMENT_CHOICES)
+    return render(request, 'equipment/exam_list.html', {
+        'exam_list': posts,
+        'filter_category': filter_category,
+        'filter_equipment': filter_equipment,
+        'exam_category_choices': ExamPost.CATEGORY_CHOICES,
+        'exam_equipment_choices': equipment_choices,
+        'jobs_section': 'exam',
+    })
+
+
+def exam_detail(request, pk):
+    post = get_object_or_404(ExamPost.objects.select_related('author'), pk=pk)
+
+    if request.method == 'POST':
+        if not request.user.is_authenticated:
+            return redirect(f"{reverse('login')}?next={request.get_full_path()}")
+        content = (request.POST.get('content') or '').strip()
+        if content:
+            ExamComment.objects.create(post=post, author=request.user, content=content)
+            messages.success(request, '댓글이 등록되었습니다.')
+        else:
+            messages.error(request, '댓글 내용을 입력해 주세요.')
+        return redirect('exam_detail', pk=post.pk)
+
+    ExamPost.objects.filter(pk=pk).update(views=F('views') + 1)
+    post.refresh_from_db(fields=['views'])
+    comments = post.comments.select_related('author').order_by('created_at')
+    youtube_id = ''
+    if post.category == 'video' and post.youtube_url:
+        youtube_id = extract_youtube_id(post.youtube_url)
+    return render(request, 'equipment/exam_detail.html', {
+        'post': post,
+        'comments': comments,
+        'youtube_id': youtube_id,
+        'jobs_section': 'exam',
+    })
+
+
+@login_required(login_url='/login/')
+def exam_create(request):
+    redirect_resp = _require_phone_verified(request)
+    if redirect_resp:
+        messages.info(request, '글 등록을 위해 휴대폰 본인인증이 필요합니다.')
+        return redirect_resp
+
+    if request.method == 'POST':
+        title = (request.POST.get('title') or '').strip()
+        content = (request.POST.get('content') or '').strip()
+        category = (request.POST.get('category') or '').strip()
+        equipment = (request.POST.get('equipment') or '').strip()
+        youtube_url = (request.POST.get('youtube_url') or '').strip()
+        upload = request.FILES.get('file')
+
+        if not title:
+            messages.error(request, '제목을 입력해 주세요.')
+        elif category not in _EXAM_CATEGORY_KEYS:
+            messages.error(request, '유형을 선택해 주세요.')
+        elif equipment not in _EXAM_EQUIPMENT_KEYS:
+            messages.error(request, '기종을 선택해 주세요.')
+        elif category == 'video':
+            if not youtube_url:
+                messages.error(request, '시험동영상 유형은 유튜브 URL을 입력해 주세요.')
+            elif not extract_youtube_id(youtube_url):
+                messages.error(request, '올바른 유튜브 URL을 입력해 주세요.')
+            else:
+                ExamPost.objects.create(
+                    author=request.user,
+                    title=title,
+                    content=content,
+                    category=category,
+                    equipment=equipment,
+                    youtube_url=youtube_url,
+                    file=upload,
+                )
+                messages.success(request, '글이 등록되었습니다.')
+                return redirect('exam_list')
+        elif not content:
+            messages.error(request, '내용을 입력해 주세요.')
+        else:
+            ExamPost.objects.create(
+                author=request.user,
+                title=title,
+                content=content,
+                category=category,
+                equipment=equipment,
+                file=upload,
+            )
+            messages.success(request, '글이 등록되었습니다.')
+            return redirect('exam_list')
+
+    return render(request, 'equipment/exam_form.html', {
+        'exam_category_choices': ExamPost.CATEGORY_CHOICES,
+        'exam_equipment_choices': ExamPost.EQUIPMENT_CHOICES,
+        'jobs_section': 'exam',
+    })
 
 
 # [3-1] 굴삭기 유튜브·정보

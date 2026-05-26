@@ -1,0 +1,95 @@
+{% extends "base.html" %}
+{% load static i18n_extras %}
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/jobs.css' %}?v=20260527d">
+{% endblock %}
+{% block content %}
+<div class="container py-5 pb-5 pb-md-4 gn-job-detail-page gn-exam-detail-page">
+    <div class="max-auto" style="max-width: 720px; margin: 0 auto;">
+        <header class="gn-job-hero">
+            <h1 class="gn-job-title job-title">{{ post.title }}</h1>
+            <p class="gn-job-meta-line">
+                <span class="exam-cat-badge exam-cat-badge-{{ post.category }}">{{ post.get_category_display }}</span>
+                <span class="badge bg-secondary gn-job-badge ms-1">{{ post.get_equipment_display }}</span>
+                <span class="ms-2 gn-job-meta-date">등록일 {{ post.created_at|date:"Y-m-d" }}</span>
+                <span class="mx-2">·</span>
+                <span class="gn-job-meta-date">조회 {{ post.views }}</span>
+            </p>
+        </header>
+
+        <div class="card border-0 gn-job-light-card">
+            <div class="card-body">
+                {% if post.category == 'video' and youtube_id %}
+                <div class="exam-video-embed ratio ratio-16x9 mb-3">
+                    <iframe
+                        src="https://www.youtube.com/embed/{{ youtube_id }}?rel=0"
+                        title="{{ post.title }}"
+                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                        allowfullscreen
+                        referrerpolicy="strict-origin-when-cross-origin"
+                    ></iframe>
+                </div>
+                {% endif %}
+                {% if post.content %}
+                <h2 class="gn-job-card-title">{% if post.category == 'video' %}설명{% else %}본문{% endif %}</h2>
+                <div class="gn-job-content">{{ post.content|linebreaksbr }}</div>
+                {% endif %}
+                {% if post.file %}
+                <div class="mt-3 pt-3 border-top">
+                    <a href="{{ post.file.url }}" class="btn btn-sm job-btn-view" download>
+                        <i class="bi bi-download me-1"></i>첨부 파일 다운로드
+                    </a>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <div class="card border-0 gn-job-light-card mt-3">
+            <div class="card-body">
+                <h2 class="gn-job-card-title mb-3">
+                    {% if post.category == 'review' %}💬 후기 댓글{% else %}댓글{% endif %}
+                    <span class="text-muted fw-normal">({{ comments|length }})</span>
+                </h2>
+                {% if comments %}
+                <ul class="list-unstyled exam-comment-list mb-4">
+                    {% for comment in comments %}
+                    <li class="exam-comment-item border-bottom pb-3 mb-3">
+                        <div class="d-flex justify-content-between align-items-center small text-muted mb-1">
+                            <strong class="text-dark">{{ comment.author.first_name|default:comment.author.username }}</strong>
+                            <time datetime="{{ comment.created_at|date:'c' }}">{{ comment.created_at|date:"Y-m-d H:i" }}</time>
+                        </div>
+                        <div class="exam-comment-body">{{ comment.content|linebreaksbr }}</div>
+                    </li>
+                    {% endfor %}
+                </ul>
+                {% else %}
+                <p class="text-muted small mb-4">아직 댓글이 없습니다.</p>
+                {% endif %}
+
+                {% if user.is_authenticated %}
+                <form method="post" action="{% url 'exam_detail' post.pk %}" class="exam-comment-form">
+                    {% csrf_token %}
+                    <label for="exam-comment-content" class="form-label small fw-bold text-secondary">
+                        {% if post.category == 'review' %}후기 댓글 작성{% else %}댓글 작성{% endif %}
+                    </label>
+                    <textarea id="exam-comment-content" name="content" class="form-control mb-2 job-select-rounded" rows="3" placeholder="댓글을 입력하세요." required></textarea>
+                    <button type="submit" class="btn btn-sm job-btn-search-light">등록</button>
+                </form>
+                {% else %}
+                <p class="small text-muted mb-0">
+                    <a href="{% url 'login' %}?next={{ request.get_full_path|urlencode }}">로그인</a> 후 댓글을 작성할 수 있습니다.
+                </p>
+                {% endif %}
+            </div>
+        </div>
+
+        <div class="gn-job-actions-wrap mt-3">
+            <div class="card border-0 gn-job-actions-card">
+                <div class="card-body">
+                    <a href="{% url 'exam_list' %}" class="gn-job-cta-btn gn-job-cta-list"><i class="bi bi-list-ul me-2"></i>목록</a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -12,7 +12,8 @@ from urllib.parse import urlencode
 from django.urls import reverse
 from urllib.request import urlopen, Request
 from .models import (
-    Equipment, EquipmentImage, Profile, JobPost, Part, PartImage, PartsShop, YoutubeContent,
+    Equipment, EquipmentImage, Profile, JobPost, ExamPost, ExamComment,
+    Part, PartImage, PartsShop, YoutubeContent,
     EquipmentFavorite, PartFavorite, Comment, DeletedListingLog, EquipmentType, EquipmentBumpLog,
     FinanceConsultation,
     ExcavatorEquipment, ForkliftEquipment, DumpEquipment, LoaderEquipment,
@@ -497,6 +498,23 @@ class JobPostAdmin(admin.ModelAdmin):
     search_fields = ('title', 'location', 'region_sido', 'region_sigungu', 'content', 'writer_display')
     date_hierarchy = 'created_at'
     list_per_page = 50
+
+
+@admin.register(ExamPost)
+class ExamPostAdmin(admin.ModelAdmin):
+    list_display = ['id', 'title', 'category', 'equipment', 'author', 'views', 'youtube_url', 'created_at']
+    list_filter = ('category', 'equipment', 'created_at')
+    search_fields = ('title', 'content', 'youtube_url')
+    date_hierarchy = 'created_at'
+    list_per_page = 50
+
+
+@admin.register(ExamComment)
+class ExamCommentAdmin(admin.ModelAdmin):
+    list_display = ['id', 'post', 'author', 'created_at']
+    list_filter = ('created_at',)
+    search_fields = ('content',)
+    raw_id_fields = ('post', 'author')
 
 
 # --- 회원(Profile) 목록: 기존/신규, 인증, 개인·사업자, 무료·유료, 매물수, 결제이력, 신고 ---
