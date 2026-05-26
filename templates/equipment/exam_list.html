@@ -1,112 +1,313 @@
 {% extends "base.html" %}
 {% load static i18n_extras %}
 {% block extra_css %}
-<link rel="stylesheet" href="{% static 'css/jobs.css' %}?v=20260527d">
+<link rel="stylesheet" href="{% static 'css/jobs.css' %}?v=20260528e">
 <style>
-  .exam-table-v2 .exam-row,
-  .exam-table-v2 .exam-row > td { cursor: pointer; }
+  .exam-list-shell { background: #fff; border: 1px solid var(--gn-border, #e5e7eb); border-radius: 14px; padding: 1rem; box-shadow: var(--gn-shadow, 0 1px 3px rgba(0,0,0,.06)); }
+  .exam-list-head { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 0.75rem; margin-bottom: 0.85rem; }
+  .exam-filter-label { font-size: 0.84rem; color: #334155; margin-bottom: 0.38rem; font-weight: 800; }
+  .exam-filter-tabs { display: flex; flex-wrap: wrap; gap: 0.42rem; margin-bottom: 0.7rem; }
+  .exam-filter-tab {
+    text-decoration: none;
+    border-radius: 999px;
+    border: 1px solid #e2e8f0;
+    background: #f1f5f9;
+    color: #334155;
+    font-size: 0.87rem;
+    font-weight: 600;
+    padding: 0.38rem 0.82rem;
+    display: inline-flex;
+    align-items: center;
+    transition: background-color .18s ease, transform .18s ease, box-shadow .18s ease, color .18s ease, border-color .18s ease;
+  }
+  @media (hover: hover) {
+    .exam-filter-tab:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 16px rgba(0, 0, 0, .08);
+      background: #e2e8f0;
+      color: #1e293b;
+      border-color: #cbd5e1;
+    }
+    .exam-filter-tab.active:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 16px rgba(232, 163, 23, .3);
+      background: linear-gradient(135deg, var(--gn-accent, #e8a317) 0%, #ffcc40 100%);
+      color: #111827;
+      border-color: rgba(248, 250, 252, .95);
+    }
+  }
+  .exam-filter-tab.active {
+    background: linear-gradient(135deg, var(--gn-accent, #e8a317) 0%, #ffcc40 100%);
+    color: #111827;
+    border-color: rgba(248, 250, 252, .95);
+    font-weight: 700;
+    box-shadow: 0 4px 10px rgba(232, 163, 23, .25);
+  }
+  .exam-card-grid { display: grid; grid-template-columns: repeat(1, minmax(0, 1fr)); gap: 0.8rem; }
+  @media (min-width: 768px) { .exam-card-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+  @media (min-width: 1200px) { .exam-card-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+  .exam-card-link {
+    display: block;
+    text-decoration: none;
+    color: inherit;
+    border: 1px solid var(--gn-border, #e5e7eb);
+    border-radius: 12px;
+    background: #fff;
+    overflow: hidden;
+    height: 100%;
+    transition: box-shadow .18s ease, transform .18s ease;
+  }
+  @media (hover: hover) {
+    .exam-card-link:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 20px rgba(0, 0, 0, .08);
+    }
+  }
+  .exam-card-badge-top { padding: 0.65rem 0.75rem 0; }
+  .exam-card-body { padding: 0.75rem; }
+  .exam-card-title {
+    font-size: 0.95rem;
+    font-weight: 700;
+    color: #1e293b;
+    margin: 0 0 0.45rem;
+    line-height: 1.35;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+  .exam-card-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 0.35rem; font-size: 0.78rem; color: #64748b; }
+  .exam-card-tag { border-radius: 999px; font-size: 0.72rem; font-weight: 700; padding: 0.14rem 0.48rem; background: #f1f5f9; color: #334155; }
+  .exam-list-empty { border: 1px dashed #d1d5db; border-radius: 12px; background: #fafafa; color: #6b7280; text-align: center; padding: 2rem 1rem; }
+  /* 정비유튜브(/info/) 동일 카드 */
+  .info-grid { display: grid; grid-template-columns: repeat(1, minmax(0, 1fr)); gap: 0.8rem; }
+  @media (min-width: 768px) { .info-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+  @media (min-width: 1200px) { .info-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+  .info-card { border: 1px solid var(--gn-border, #e5e7eb); border-radius: 12px; background: #fff; overflow: hidden; }
+  .info-card-body { padding: 0.75rem; }
+  .info-thumb-wrap { border-radius: 10px; overflow: hidden; background: #111827; display: block; }
+  .info-thumb { width: 100%; aspect-ratio: 16 / 9; object-fit: cover; display: block; }
+  .info-title-link { color: var(--gn-text, #1e293b); text-decoration: none; }
+  .info-title-link:hover { color: #1d4ed8; text-decoration: underline; }
+  .info-channel { font-size: .82rem; color: #64748b; margin: .2rem 0 .3rem; font-weight: 600; }
+  .info-meta { display: flex; flex-wrap: wrap; gap: 0.35rem; margin-top: 0.4rem; }
+  .info-badge { border-radius: 999px; font-size: 0.72rem; font-weight: 700; padding: 0.14rem 0.48rem; background: #f1f5f9; color: #334155; border: 0; }
+  .video-open-btn { border: 0; background: transparent; padding: 0; width: 100%; text-align: left; cursor: pointer; }
+  .video-modal-overlay {
+    position: fixed; inset: 0; background: rgba(15, 23, 42, 0.8);
+    display: none; align-items: center; justify-content: center; z-index: 1080; padding: 1rem;
+  }
+  .video-modal-overlay.open { display: flex; }
+  .video-modal-dialog {
+    width: min(1152px, 100%); background: #0f172a; border-radius: 14px;
+    box-shadow: 0 24px 60px rgba(15, 23, 42, 0.45); overflow: hidden; color: #e5e7eb;
+  }
+  .video-modal-head {
+    display: flex; align-items: center; justify-content: space-between; gap: 0.75rem;
+    padding: 0.8rem 1rem; border-bottom: 1px solid rgba(148, 163, 184, 0.3);
+  }
+  .video-modal-title { margin: 0; font-size: 1rem; font-weight: 800; color: #f8fafc; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .video-modal-close {
+    border: 0; border-radius: 8px; width: 2rem; height: 2rem;
+    display: inline-flex; align-items: center; justify-content: center;
+    color: #e2e8f0; background: rgba(148, 163, 184, 0.2); cursor: pointer;
+  }
+  .video-frame-wrap { width: 100%; aspect-ratio: 16 / 9; background: #000; }
+  .video-frame-wrap iframe { width: 100%; height: 100%; border: 0; }
 </style>
 {% endblock %}
 {% block content %}
 <div class="container py-4 job-list-page-v2">
     <div class="job-list-shell rounded-3 px-2 px-md-3 py-3 py-md-4">
-        <div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-3">
+        <div class="exam-list-head">
             <h2 class="job-page-heading mb-0">
                 <span class="job-page-heading-bar" aria-hidden="true"></span>
-                구인구직 · 자격증 시험
+                구인구직 · 자격증 시험{% if show_youtube_videos %} · 시험동영상{% endif %}
             </h2>
+            {% if not show_youtube_videos %}
             <a href="{% if user.is_authenticated %}{% url 'exam_create' %}{% else %}{% url 'login' %}?next={% url 'exam_create' %}{% endif %}" class="job-btn-write-outline">
                 <i class="bi bi-pencil-square job-write-icon me-1" aria-hidden="true"></i>글쓰기
             </a>
+            {% endif %}
         </div>
 
-        <div class="job-search-panel border rounded-3 bg-white p-3 p-md-4 mb-3">
+        <div class="exam-list-shell mb-3">
             {% include "equipment/_jobs_section_tabs.html" %}
 
-            <form action="{% url 'exam_list' %}" method="get" class="job-filter-form">
-                <div class="job-filter-grid">
-                    <div class="job-filter-fields-row">
-                        <div class="job-filter-field">
-                            <label class="form-label small mb-1" style="color:#334155;font-weight:800;">기종</label>
-                            <select name="equipment" class="form-select form-select-sm job-select-rounded">
-                                {% for val, label in exam_equipment_choices %}
-                                <option value="{{ val }}" {% if filter_equipment == val %}selected{% endif %}>{{ label }}</option>
-                                {% endfor %}
-                            </select>
-                        </div>
-                        <div class="job-filter-field">
-                            <label class="form-label small mb-1" style="color:#334155;font-weight:800;">유형</label>
-                            <select name="category" class="form-select form-select-sm job-select-rounded">
-                                <option value="">전체</option>
-                                {% for val, label in exam_category_choices %}
-                                <option value="{{ val }}" {% if filter_category == val %}selected{% endif %}>{{ label }}</option>
-                                {% endfor %}
-                            </select>
-                        </div>
-                        <div class="job-filter-actions">
-                            <button type="submit" class="job-btn-search-light"><i class="bi bi-search me-1 d-none d-sm-inline" aria-hidden="true"></i>검색</button>
-                            <a href="{% url 'exam_list' %}" class="job-btn-reset-light">초기화</a>
-                        </div>
-                    </div>
-                </div>
-            </form>
+            <div class="exam-filter-label">기종</div>
+            <div class="exam-filter-tabs">
+                {% for val, label in exam_equipment_tabs %}
+                {% if show_youtube_videos %}
+                <a href="{% url 'exam_video_list' %}{% if val %}?equipment={{ val|urlencode }}{% endif %}"
+                   class="exam-filter-tab {% if filter_equipment == val %}active{% endif %}">{{ label }}</a>
+                {% else %}
+                <a href="{% url 'exam_list' %}{% if val or filter_category %}?{% endif %}{% if val %}equipment={{ val|urlencode }}{% endif %}{% if filter_category %}{% if val %}&amp;{% endif %}category={{ filter_category|urlencode }}{% endif %}"
+                   class="exam-filter-tab {% if filter_equipment == val %}active{% endif %}">{{ label }}</a>
+                {% endif %}
+                {% endfor %}
+            </div>
+
+            <div class="exam-filter-label">유형</div>
+            <div class="exam-filter-tabs mb-2">
+                {% for val, label in exam_category_tabs %}
+                {% if val == 'video' %}
+                <a href="{% url 'exam_video_list' %}{% if filter_equipment %}?equipment={{ filter_equipment|urlencode }}{% endif %}"
+                   class="exam-filter-tab {% if show_youtube_videos %}active{% endif %}">{{ label }}</a>
+                {% else %}
+                <a href="{% url 'exam_list' %}{% if filter_equipment or val %}?{% endif %}{% if filter_equipment %}equipment={{ filter_equipment|urlencode }}{% endif %}{% if val %}{% if filter_equipment %}&amp;{% endif %}category={{ val|urlencode }}{% endif %}"
+                   class="exam-filter-tab {% if not show_youtube_videos and filter_category == val %}active{% endif %}">{{ label }}</a>
+                {% endif %}
+                {% endfor %}
+            </div>
         </div>
 
-        <div class="card border job-list-table-card rounded-3 overflow-hidden shadow-none">
-            <div class="table-responsive">
-                <table class="table table-hover mb-0 align-middle exam-table-v2 job-table-v2">
-                    <thead class="d-none d-md-table-header-group">
-                        <tr class="job-table-head">
-                            <th class="text-center py-3" style="width: 110px;">유형</th>
-                            <th class="py-3">제목</th>
-                            <th class="text-center py-3" style="width: 100px;">기종</th>
-                            <th class="text-center py-3" style="width: 110px;">날짜</th>
-                            <th class="text-end py-3" style="width: 100px;">액션</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for post in exam_list %}
-                        <tr class="exam-row job-row" data-href="{% url 'exam_detail' post.pk %}">
-                            <td class="text-center job-td-mobile-order-2 d-none d-md-table-cell" data-label="유형">
-                                <span class="exam-cat-badge exam-cat-badge-{{ post.category }}">{{ post.get_category_display }}</span>
-                            </td>
-                            <td class="job-td-mobile-order-1 job-td-mobile-title" data-label="제목">
-                                <a href="{% url 'exam_detail' post.pk %}" class="btn btn-sm job-btn-view job-mobile-view-btn d-md-none" onclick="event.stopPropagation();">보기</a>
-                                <div class="d-md-none text-muted small mb-1">
-                                    <span class="exam-cat-badge exam-cat-badge-{{ post.category }}">{{ post.get_category_display }}</span>
-                                    <span class="ms-1">{{ post.get_equipment_display }}</span>
-                                    · {{ post.created_at|date:"Y-m-d" }}
-                                    · 조회 {{ post.views }}
-                                </div>
-                                <div class="job-title-v2">
-                                    {% if post.category == 'video' %}<span class="exam-video-play-icon" aria-hidden="true">▶</span> {% endif %}{{ post.title }}
-                                </div>
-                            </td>
-                            <td class="text-center small d-none d-md-table-cell">{{ post.get_equipment_display }}</td>
-                            <td class="text-center text-muted small d-none d-lg-table-cell">{{ post.created_at|date:"Y-m-d" }}</td>
-                            <td class="text-end align-middle job-td-actions job-td-mobile-order-4 d-none d-md-table-cell" onclick="event.stopPropagation();">
-                                <a href="{% url 'exam_detail' post.pk %}" class="btn btn-sm job-btn-view" onclick="event.stopPropagation();">보기</a>
-                            </td>
-                        </tr>
-                        {% empty %}
-                        <tr class="job-empty-row">
-                            <td colspan="5" class="text-center py-5 text-muted">등록된 자격증 시험 글이 없습니다.</td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
+        {% if show_youtube_videos %}
+        {% if youtube_video_items %}
+        <div class="info-grid">
+            {% for item in youtube_video_items %}
+            <article class="info-card">
+                <div class="info-card-body">
+                    <button type="button" class="video-open-btn js-video-open"
+                            data-youtube-url="{{ item.youtube_url }}"
+                            data-video-title="{{ item.title|escape }}"
+                            aria-label="{{ item.title }} 재생">
+                        <span class="info-thumb-wrap mb-2">
+                            {% if item.thumbnail_url %}
+                            <img src="{{ item.thumbnail_url }}" class="info-thumb" alt="{{ item.title }}" loading="lazy">
+                            {% else %}
+                            <img src="https://img.youtube.com/vi/{{ item.video_id }}/mqdefault.jpg" class="info-thumb" alt="{{ item.title }}" loading="lazy">
+                            {% endif %}
+                        </span>
+                    </button>
+                    <button type="button" class="video-open-btn js-video-open info-title-link"
+                            data-youtube-url="{{ item.youtube_url }}"
+                            data-video-title="{{ item.title|escape }}">
+                        <h6 class="fw-bold mb-1 exam-card-title" style="margin-bottom:0.25rem;">{{ item.title }}</h6>
+                    </button>
+                    <div class="info-channel">{{ item.channel_title|default:"YouTube" }}</div>
+                    <div class="info-meta">
+                        <span class="info-badge">{{ item.equipment_label }}</span>
+                        <span class="info-badge">시험동영상</span>
+                        <button type="button" class="info-badge video-open-btn js-video-open"
+                                data-youtube-url="{{ item.youtube_url }}"
+                                data-video-title="{{ item.title|escape }}">유튜브 보기</button>
+                    </div>
+                </div>
+            </article>
+            {% endfor %}
+        </div>
+        {% else %}
+        <div class="exam-list-empty">선택한 조건에 맞는 시험 영상이 없습니다.</div>
+        {% endif %}
+
+        {% elif exam_list %}
+        <div class="exam-card-grid">
+            {% for post in exam_list %}
+            <a href="{% url 'exam_detail' post.pk %}" class="exam-card-link">
+                <div class="exam-card-badge-top">
+                    <span class="exam-cat-badge exam-cat-badge-{{ post.category }}">{{ post.get_category_display }}</span>
+                </div>
+                <div class="exam-card-body pt-0">
+                    <h3 class="exam-card-title">{{ post.title }}</h3>
+                    <div class="exam-card-meta">
+                        <span class="exam-card-tag">{{ post.get_equipment_display }}</span>
+                        <span>{{ post.created_at|date:"Y-m-d" }}</span>
+                        <span><i class="bi bi-chat-dots me-1" aria-hidden="true"></i>댓글 {{ post.comment_count }}</span>
+                    </div>
+                </div>
+            </a>
+            {% endfor %}
+        </div>
+
+        {% if page_obj.has_other_pages %}
+        <nav class="mt-3 d-flex justify-content-center" aria-label="자격증 시험 목록 페이지">
+            <ul class="pagination pagination-sm mb-0">
+                {% if page_obj.has_previous %}
+                <li class="page-item">
+                    <a class="page-link" href="?page={{ page_obj.previous_page_number }}{% if filter_equipment %}&amp;equipment={{ filter_equipment|urlencode }}{% endif %}{% if filter_category %}&amp;category={{ filter_category|urlencode }}{% endif %}">이전</a>
+                </li>
+                {% endif %}
+                <li class="page-item disabled"><span class="page-link">{{ page_obj.number }} / {{ page_obj.paginator.num_pages }}</span></li>
+                {% if page_obj.has_next %}
+                <li class="page-item">
+                    <a class="page-link" href="?page={{ page_obj.next_page_number }}{% if filter_equipment %}&amp;equipment={{ filter_equipment|urlencode }}{% endif %}{% if filter_category %}&amp;category={{ filter_category|urlencode }}{% endif %}">다음</a>
+                </li>
+                {% endif %}
+            </ul>
+        </nav>
+        {% endif %}
+        {% else %}
+        <div class="exam-list-empty">등록된 자격증 시험 글이 없습니다.</div>
+        {% endif %}
+    </div>
+</div>
+
+{% if show_youtube_videos %}
+<div id="videoModalOverlay" class="video-modal-overlay" aria-hidden="true">
+    <div class="video-modal-dialog" role="dialog" aria-modal="true" aria-labelledby="videoModalTitle">
+        <div class="video-modal-head">
+            <h3 id="videoModalTitle" class="video-modal-title">영상 재생</h3>
+            <button type="button" id="videoModalClose" class="video-modal-close" aria-label="닫기">X</button>
+        </div>
+        <div class="video-modal-body">
+            <div class="video-frame-wrap">
+                <iframe id="videoModalFrame" src="" title="유튜브 영상" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen referrerpolicy="strict-origin-when-cross-origin"></iframe>
             </div>
         </div>
     </div>
 </div>
+{% endif %}
+{% endblock %}
+
+{% block extra_js %}
+{% if show_youtube_videos %}
 <script>
-(function(){
-    document.querySelectorAll('.exam-row').forEach(function(row) {
-        row.addEventListener('click', function(e) {
-            if (e.target.closest('a, button')) return;
-            window.location.href = row.dataset.href;
+(function () {
+    var openButtons = document.querySelectorAll('.js-video-open');
+    var overlay = document.getElementById('videoModalOverlay');
+    var closeBtn = document.getElementById('videoModalClose');
+    var frame = document.getElementById('videoModalFrame');
+    var title = document.getElementById('videoModalTitle');
+    var body = document.body;
+    if (!openButtons.length || !overlay || !closeBtn || !frame || !title) return;
+
+    function extractVideoId(urlString) {
+        if (!urlString) return '';
+        try {
+            var url = new URL(urlString);
+            if (url.hostname.indexOf('youtu.be') >= 0) return url.pathname.replace('/', '');
+            if (url.searchParams.get('v')) return url.searchParams.get('v');
+            var parts = url.pathname.split('/embed/');
+            if (parts.length > 1) return parts[1].split('/')[0];
+        } catch (e) { return ''; }
+        return '';
+    }
+    function closeModal() {
+        overlay.classList.remove('open');
+        overlay.setAttribute('aria-hidden', 'true');
+        frame.src = '';
+        body.style.overflow = '';
+    }
+    function openModal(youtubeUrl, videoTitle) {
+        var videoId = extractVideoId(youtubeUrl);
+        if (!videoId) return;
+        title.textContent = videoTitle || '영상 재생';
+        frame.src = 'https://www.youtube.com/embed/' + encodeURIComponent(videoId) + '?autoplay=1&rel=0';
+        overlay.classList.add('open');
+        overlay.setAttribute('aria-hidden', 'false');
+        body.style.overflow = 'hidden';
+    }
+    openButtons.forEach(function (button) {
+        button.addEventListener('click', function () {
+            openModal(button.dataset.youtubeUrl, button.dataset.videoTitle);
         });
+    });
+    closeBtn.addEventListener('click', closeModal);
+    overlay.addEventListener('click', function (e) { if (e.target === overlay) closeModal(); });
+    document.addEventListener('keydown', function (e) {
+        if (e.key === 'Escape' && overlay.classList.contains('open')) closeModal();
     });
 })();
 </script>
+{% endif %}
 {% endblock %}

@@ -4,6 +4,6 @@
        class="job-type-pill {% if jobs_section == 'jobs' and filter_type != 'SEEKING' %}active{% endif %}"><i class="bi bi-person-fill me-1" aria-hidden="true"></i>사람구함</a>
     <a href="{% url 'job_list' %}?type=SEEKING{% if filter_region_sido %}&region_sido={{ filter_region_sido|urlencode }}{% endif %}{% if filter_region_sigungu %}&region_sigungu={{ filter_region_sigungu|urlencode }}{% endif %}{% if filter_equipment %}&equipment={{ filter_equipment|urlencode }}{% endif %}"
        class="job-type-pill {% if jobs_section == 'jobs' and filter_type == 'SEEKING' %}active{% endif %}"><i class="bi bi-briefcase-fill me-1" aria-hidden="true"></i>일자리구함</a>
-    <a href="{% url 'exam_list' %}"
+    <a href="{% url 'exam_video_list' %}?equipment=excavator"
        class="job-type-pill {% if jobs_section == 'exam' %}active{% endif %}"><i class="bi bi-mortarboard-fill me-1" aria-hidden="true"></i>자격증 시험</a>
 </div>

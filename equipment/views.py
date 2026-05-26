@@ -23,7 +23,7 @@ from .models import (
     Equipment, JobPost, ExamPost, ExamComment, Part, EquipmentImage, PartImage, PartsShop,
     YoutubeContent, EquipmentFavorite, PartFavorite, Comment, DeletedListingLog, Profile,
 )
-from .exam_utils import extract_youtube_id
+from .exam_utils import extract_youtube_id, fetch_exam_youtube_videos
 from soil.models import SoilPost
 from .forms import EquipmentForm, EquipmentEditForm, PartForm
 from .premium_utils import (
@@ -1542,31 +1542,86 @@ def job_delete(request, pk):
 
 _EXAM_CATEGORY_KEYS = {c[0] for c in ExamPost.CATEGORY_CHOICES}
 _EXAM_EQUIPMENT_KEYS = {c[0] for c in ExamPost.EQUIPMENT_CHOICES}
+_EXAM_LIST_PAGE_SIZE = 20
+_EXAM_DEFAULT_EQUIPMENT = 'excavator'
 
 
 def _exam_list_queryset(request):
-    qs = ExamPost.objects.select_related('author').order_by('-created_at')
+    qs = (
+        ExamPost.objects.select_related('author')
+        .annotate(comment_count=Count('comments'))
+        .order_by('-created_at')
+    )
     category = (request.GET.get('category') or '').strip()
     equipment = (request.GET.get('equipment') or '').strip()
 
-    if category in _EXAM_CATEGORY_KEYS:
+    if category == 'video':
+        pass
+    elif category in _EXAM_CATEGORY_KEYS:
         qs = qs.filter(category=category)
+    else:
+        qs = qs.exclude(category='video')
     if equipment in _EXAM_EQUIPMENT_KEYS:
         qs = qs.filter(equipment=equipment)
     return qs, category, equipment
 
 
-def exam_list(request):
-    posts, filter_category, filter_equipment = _exam_list_queryset(request)
-    equipment_choices = [('', '전체')] + list(ExamPost.EQUIPMENT_CHOICES)
-    return render(request, 'equipment/exam_list.html', {
-        'exam_list': posts,
-        'filter_category': filter_category,
+def _exam_list_context_base(filter_equipment=''):
+    return {
         'filter_equipment': filter_equipment,
-        'exam_category_choices': ExamPost.CATEGORY_CHOICES,
-        'exam_equipment_choices': equipment_choices,
+        'exam_equipment_tabs': [('', '전체')] + list(ExamPost.EQUIPMENT_CHOICES),
+        'exam_category_tabs': [('', '전체')] + list(ExamPost.CATEGORY_CHOICES),
         'jobs_section': 'exam',
+    }
+
+
+def exam_video_list(request):
+    """시험동영상 — 유튜브 API 자동 수집 (정비유튜브 /info/ 와 동일 방식)."""
+    equipment = (request.GET.get('equipment') or '').strip()
+    if equipment not in _EXAM_EQUIPMENT_KEYS:
+        equipment = ''
+    video_items = fetch_exam_youtube_videos(equipment)
+    ctx = _exam_list_context_base(filter_equipment=equipment)
+    ctx.update({
+        'show_youtube_videos': True,
+        'filter_category': 'video',
+        'youtube_video_items': video_items,
+        'exam_list': [],
+        'page_obj': None,
     })
+    return render(request, 'equipment/exam_list.html', ctx)
+
+
+def exam_list(request):
+    category = (request.GET.get('category') or '').strip()
+    equipment = (request.GET.get('equipment') or '').strip()
+    if category == 'video':
+        params = request.GET.copy()
+        if 'category' in params:
+            del params['category']
+        url = reverse('exam_video_list')
+        if params:
+            url = f'{url}?{params.urlencode()}'
+        return redirect(url)
+    if not category and not equipment and not request.GET.get('page'):
+        return redirect(f"{reverse('exam_video_list')}?equipment={_EXAM_DEFAULT_EQUIPMENT}")
+
+    qs, filter_category, filter_equipment = _exam_list_queryset(request)
+    from django.core.paginator import Paginator
+
+    paginator = Paginator(qs, _EXAM_LIST_PAGE_SIZE)
+    page_obj = paginator.get_page(request.GET.get('page'))
+    posts = list(page_obj.object_list)
+
+    ctx = _exam_list_context_base(filter_equipment=filter_equipment)
+    ctx.update({
+        'show_youtube_videos': False,
+        'filter_category': filter_category,
+        'exam_list': posts,
+        'page_obj': page_obj,
+        'youtube_video_items': [],
+    })
+    return render(request, 'equipment/exam_list.html', ctx)
 
 
 def exam_detail(request, pk):

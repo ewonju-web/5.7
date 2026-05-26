@@ -36,10 +36,10 @@
                     </select>
                 </div>
             </div>
-            <div id="exam-review-hint" class="alert alert-light border small mb-3 d-none" role="status">
+            <div id="exam-review-hint" class="alert alert-light border small mb-3" style="display: none;" role="status">
                 합격 후기를 남겨주시면 다른 수험생들이 댓글로 소통할 수 있어요 😊
             </div>
-            <div id="exam-youtube-wrap" class="mb-3 d-none">
+            <div id="youtube-url-wrap" class="mb-3" style="display: none;">
                 <label for="exam-youtube-url" class="form-label small fw-bold">유튜브 URL <span class="text-danger">*</span></label>
                 <input type="url" id="exam-youtube-url" name="youtube_url" class="form-control job-select-rounded" placeholder="예: https://www.youtube.com/watch?v=xxxxx">
             </div>
@@ -58,42 +58,54 @@
         </form>
     </div>
 </div>
+{% endblock %}
+{% block extra_js %}
 <script>
 (function () {
-    var category = document.getElementById('exam-category');
-    var youtubeWrap = document.getElementById('exam-youtube-wrap');
-    var youtubeInput = document.getElementById('exam-youtube-url');
-    var reviewHint = document.getElementById('exam-review-hint');
-    var contentLabel = document.getElementById('exam-content-label');
-    var contentField = document.getElementById('exam-content');
-    var form = document.getElementById('exam-form');
+    function initExamFormCategoryUI() {
+        var categorySelect = document.querySelector('#exam-form [name="category"]');
+        var youtubeWrap = document.getElementById('youtube-url-wrap');
+        var youtubeInput = youtubeWrap ? youtubeWrap.querySelector('input[name="youtube_url"]') : null;
+        var reviewHint = document.getElementById('exam-review-hint');
+        var contentLabel = document.getElementById('exam-content-label');
+        var contentField = document.getElementById('exam-content');
 
-    function syncCategoryUI() {
-        var val = category ? category.value : '';
-        if (youtubeWrap) youtubeWrap.classList.toggle('d-none', val !== 'video');
-        if (youtubeInput) {
-            youtubeInput.required = val === 'video';
-            if (val !== 'video') youtubeInput.value = '';
+        function toggleYoutube() {
+            if (!categorySelect || !youtubeWrap) return;
+            if (categorySelect.value === 'video') {
+                youtubeWrap.style.display = 'block';
+                if (youtubeInput) youtubeInput.required = true;
+            } else {
+                youtubeWrap.style.display = 'none';
+                if (youtubeInput) {
+                    youtubeInput.required = false;
+                    youtubeInput.value = '';
+                }
+            }
         }
-        if (reviewHint) reviewHint.classList.toggle('d-none', val !== 'review');
-        if (contentLabel) {
-            contentLabel.textContent = val === 'video' ? '설명 (선택)' : '내용';
-        }
-        if (contentField) {
-            contentField.required = val !== 'video';
-            contentField.placeholder = val === 'video' ? '동영상에 대한 설명을 입력하세요. (선택)' : '';
-        }
-    }
 
-    if (category) {
-        category.addEventListener('change', syncCategoryUI);
+        function syncCategoryUI() {
+            var val = categorySelect ? categorySelect.value : '';
+            toggleYoutube();
+            if (reviewHint) reviewHint.style.display = val === 'review' ? 'block' : 'none';
+            if (contentLabel) {
+                contentLabel.textContent = val === 'video' ? '설명 (선택)' : '내용';
+            }
+            if (contentField) {
+                contentField.required = val !== 'video';
+                contentField.placeholder = val === 'video' ? '동영상에 대한 설명을 입력하세요. (선택)' : '';
+            }
+        }
+
+        if (!categorySelect) return;
+        categorySelect.addEventListener('change', syncCategoryUI);
         syncCategoryUI();
     }
 
-    if (form) {
-        form.addEventListener('submit', function () {
-            syncCategoryUI();
-        });
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', initExamFormCategoryUI);
+    } else {
+        initExamFormCategoryUI();
     }
 })();
 </script>

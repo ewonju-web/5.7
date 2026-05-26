@@ -658,6 +658,46 @@
             color: #0f172a;
             font-weight: 600;
         }
+        #gnServiceMenu .gn-account-inline-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 0.65rem;
+            margin-top: 0.45rem;
+            padding: 0.55rem 0.1rem 0.1rem;
+            border-top: 1px solid rgba(148, 163, 184, .2);
+        }
+        #gnServiceMenu .gn-account-inline-name {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.38rem;
+            color: var(--gn-text);
+            font-weight: 700;
+            font-size: 0.98rem;
+            min-width: 0;
+        }
+        #gnServiceMenu .gn-account-inline-name span {
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+        #gnServiceMenu .gn-account-inline-logout {
+            flex-shrink: 0;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.3rem;
+            color: #e11d48;
+            font-weight: 700;
+            text-decoration: none;
+            padding: 0.36rem 0.55rem;
+            border-radius: 8px;
+            transition: background .15s ease, color .15s ease;
+        }
+        #gnServiceMenu .gn-account-inline-logout:hover,
+        #gnServiceMenu .gn-account-inline-logout:focus {
+            background: rgba(225, 29, 72, .1);
+            color: #be123c;
+        }
         /* 모바일: 햄버거 메뉴·검색 패널 글씨 살짝 확대 */
         @media (max-width: 767.98px) {
             #gnServiceMenu .gn-service-menu-logo {
@@ -801,7 +841,7 @@
                 <ul class="navbar-nav me-auto">
                     <li class="nav-item"><a class="nav-link {% if request.resolver_match.url_name == 'index' %}active{% endif %}" href="{% url 'index' %}?category=">{{ LANG|tr:"nav_market_view" }}</a></li>
                     <li class="nav-item"><a class="nav-link {% if request.resolver_match.url_name == 'equipment_create' %}active{% endif %}" href="{% if user.is_authenticated %}{% url 'equipment_create' %}{% else %}{% url 'login' %}?next={% url 'equipment_create' %}{% endif %}">{{ LANG|tr:"nav_register" }}</a></li>
-                    <li class="nav-item"><a class="nav-link {% if request.resolver_match.url_name == 'job_list' or request.resolver_match.url_name == 'job_create' or request.resolver_match.url_name == 'job_detail' or request.resolver_match.url_name == 'job_edit' or request.resolver_match.url_name == 'exam_list' or request.resolver_match.url_name == 'exam_create' or request.resolver_match.url_name == 'exam_detail' %}active{% endif %}" href="{% url 'job_list' %}">{{ LANG|tr:"nav_jobs" }}</a></li>
+                    <li class="nav-item"><a class="nav-link {% if request.resolver_match.url_name == 'job_list' or request.resolver_match.url_name == 'job_create' or request.resolver_match.url_name == 'job_detail' or request.resolver_match.url_name == 'job_edit' or request.resolver_match.url_name == 'exam_list' or request.resolver_match.url_name == 'exam_video_list' or request.resolver_match.url_name == 'exam_create' or request.resolver_match.url_name == 'exam_detail' %}active{% endif %}" href="{% url 'job_list' %}">{{ LANG|tr:"nav_jobs" }}</a></li>
                     <li class="nav-item"><a class="nav-link {% if request.resolver_match.url_name == 'finance' %}active{% endif %}" href="{% url 'finance' %}">{{ LANG|tr:"nav_attachment" }}</a></li>
                     <li class="nav-item"><a class="nav-link {% if request.resolver_match.url_name == 'excavator_info' %}active{% endif %}" href="{% url 'excavator_info' %}">{{ LANG|tr:"nav_youtube" }}</a></li>
                     <li class="nav-item"><a class="nav-link {% if request.resolver_match.url_name == 'parts_as' or request.resolver_match.url_name == 'parts_as_register' %}active{% endif %}" href="{% url 'parts_as' %}">{{ LANG|tr:"nav_parts_as" }}</a></li>
@@ -892,7 +932,15 @@
                     <a href="{% url 'chat_room_list' %}" class="list-group-item list-group-item-action gn-service-offcanvas-link" style="background: transparent; color: var(--gn-text); border-color: transparent;"><i class="bi bi-chat-dots me-2"></i>{{ LANG|tr:"nav_chat" }}{% if unread_total > 0 %} <span class="badge bg-danger rounded-pill ms-1" style="font-size: 0.65rem;">{{ unread_total }}</span>{% endif %}</a>
                     <a href="{% url 'my_page' %}" class="list-group-item list-group-item-action gn-service-offcanvas-link" style="background: transparent; color: var(--gn-text); border-color: transparent;"><i class="bi bi-person me-2"></i>{{ LANG|tr:"nav_mypage" }}</a>
                     <a href="/accounts/3rdparty/" class="list-group-item list-group-item-action gn-service-offcanvas-link" style="background: transparent; color: var(--gn-text); border-color: transparent;"><i class="bi bi-person-check me-2"></i>{{ LANG|tr:"service_social_connect" }}</a>
-                    <a href="{% url 'logout' %}" class="list-group-item list-group-item-action gn-service-offcanvas-link" style="background: transparent; color: var(--gn-text); border-color: transparent;"><i class="bi bi-box-arrow-right me-2"></i>{{ LANG|tr:"nav_logout" }}</a>
+                </div>
+                <div class="gn-account-inline-row">
+                    <div class="gn-account-inline-name">
+                        <i class="bi bi-person-circle" aria-hidden="true"></i>
+                        <span>{{ user.username }}</span>
+                    </div>
+                    <a href="{% url 'logout' %}" class="gn-service-offcanvas-link gn-account-inline-logout">
+                        <i class="bi bi-box-arrow-right" aria-hidden="true"></i>{{ LANG|tr:"nav_logout" }}
+                    </a>
                 </div>
             </div>
             {% endif %}
