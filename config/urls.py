@@ -63,6 +63,7 @@ urlpatterns = [
     path('auth/naver/callback', lambda request: _social_callback_alias(request, 'naver')),
     path('chat/', include('chat.urls')),
     path('soil/', include('soil.urls')),
+    path('rental/', include('rental.urls')),
     path('', include('equipment.urls')),
     path('login/', user_login, name='login'),
     path('logout/', user_logout, name='logout'),

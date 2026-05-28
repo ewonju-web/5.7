@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 
-{% block title %}부품 및 A/S 센터 찾기 | 굴삭기나라{% endblock %}
+{% block title %}장비 임대 · 부품 A/S 센터 찾기 | 굴삭기나라{% endblock %}
 
 {% block extra_css %}
 <style>
@@ -84,7 +84,11 @@
   .gn-shop-rating { font-size:.83rem; color:#f59e0b; font-weight:700; margin-bottom:.2rem; }
   .gn-shop-rating .count { color:#64748b; font-weight:600; margin-left:.25rem; }
   .gn-badge { border-radius:999px; padding:.2rem .55rem; font-size:.75rem; font-weight:700; }
-  .gn-badge.as { background:#dbeafe; color:#1d4ed8; } .gn-badge.parts { background:#dcfce7; color:#166534; }
+  .gn-badge.as { background:#dbeafe; color:#1d4ed8; }
+  .gn-badge.parts { background:#dcfce7; color:#166534; }
+  .gn-badge.rental_company { background:#dcfce7; color:#15803d; }
+  .gn-badge.rental_user { background:#ecfccb; color:#4d7c0f; }
+  .gn-kind-tabs { flex-wrap: wrap; }
   .gn-equip-tag { background:#f4f4f5; color:#52525b; border-radius:999px; font-size:.72rem; padding:.18rem .5rem; }
   .gn-map-panel { position:relative; overflow:hidden; }
   #partsAsMap { width:100%; height:100%; min-height:620px; }
@@ -108,7 +112,7 @@
 <div class="gn-partsas-page">
   <div class="container">
     <div class="gn-partsas-header">
-      <h2 class="gn-partsas-title">부품 및 A/S 센터 찾기</h2>
+      <h2 class="gn-partsas-title">장비 임대 · 부품 A/S 센터 찾기</h2>
       <a href="{% url 'parts_as_register' %}" class="btn btn-sm fw-bold text-dark" style="background: var(--gn-accent); border:1px solid var(--gn-accent); border-radius: 10px; box-shadow: 0 2px 8px rgba(232,163,23,.35);">업체 자진 등록</a>
     </div>
 
@@ -157,6 +161,7 @@
             <option value="all">전체 업체</option>
             <option value="as" {% if selected_shop_kind == "as" %}selected{% endif %}>AS센터</option>
             <option value="parts" {% if selected_shop_kind == "parts" %}selected{% endif %}>부품점</option>
+            <option value="rental" {% if selected_shop_kind == "rental" %}selected{% endif %}>임대업체</option>
           </select>
         </div>
         <div class="col-12">
@@ -182,6 +187,7 @@
             <button class="gn-kind-btn active" data-kind-filter="all">전체 (<span id="countAll">0</span>)</button>
             <button class="gn-kind-btn" data-kind-filter="as">AS센터 (<span id="countAs">0</span>)</button>
             <button class="gn-kind-btn" data-kind-filter="parts">부품점 (<span id="countParts">0</span>)</button>
+            <button class="gn-kind-btn" data-kind-filter="rental">임대업체 (<span id="countRental">0</span>)</button>
           </div>
         </div>
         <div class="gn-shop-list" id="shopList"></div>
@@ -208,11 +214,11 @@
       repairTypes: new Set(),
       listKindFilter: "all",
       nameKeyword: "",
-      selectedId: null,
+      selectedUid: null,
     };
-    let map, asClusterer, partsClusterer;
-    const markersById = new Map();
-    const infoById = new Map();
+    let map, asClusterer, partsClusterer, rentalCompanyClusterer, rentalUserClusterer;
+    const markersByUid = new Map();
+    const infoByUid = new Map();
     let centers = [];
 
     const listEl = document.getElementById("shopList");
@@ -220,6 +226,7 @@
     const countAllEl = document.getElementById("countAll");
     const countAsEl = document.getElementById("countAs");
     const countPartsEl = document.getElementById("countParts");
+    const countRentalEl = document.getElementById("countRental");
     const excavatorBox = document.getElementById("excavatorDetailBox");
 
     function esc(v) {
@@ -232,34 +239,53 @@
       const params = new URLSearchParams();
       params.set("equipment_type", state.equipmentType);
       params.set("region", state.region);
-      params.set("center_type", state.centerType);
+      const apiType = state.centerType === "as" ? "as_center" : state.centerType;
+      params.set("type", apiType);
       if (state.manufacturers.size) params.set("manufacturers", Array.from(state.manufacturers).join(","));
       if (state.repairTypes.size) params.set("repair_types", Array.from(state.repairTypes).join(","));
       return `/api/service-centers/?${params.toString()}`;
     }
     function markerImage(kind) {
-      const text = kind === "as" ? "AS" : "부";
-      const fillColor = kind === "as" ? "rgba(37, 99, 235, 0.75)" : "rgba(249, 115, 22, 0.75)";
-      const textColor = kind === "as" ? "#2563eb" : "#f97316";
-      const svg = encodeURIComponent(`<svg xmlns='http://www.w3.org/2000/svg' width='46' height='56'><path d='M23 2C12 2 3 11 3 22c0 14 18 30 20 32 2-2 20-18 20-32C43 11 34 2 23 2z' fill='${fillColor}' stroke='white' stroke-width='1.2'/><circle cx='23' cy='22' r='13' fill='white'/><text x='23' y='26' font-size='11' font-family='Arial' font-weight='700' text-anchor='middle' fill='${textColor}'>${text}</text></svg>`);
+      const styles = {
+        as: { text: "AS", fill: "rgba(37, 99, 235, 0.75)", color: "#2563eb" },
+        parts: { text: "부", fill: "rgba(249, 115, 22, 0.75)", color: "#f97316" },
+        rental_company: { text: "임", fill: "rgba(22, 163, 74, 0.78)", color: "#16a34a" },
+        rental_user: { text: "개", fill: "rgba(132, 204, 22, 0.78)", color: "#65a30d" },
+      };
+      const pin = styles[kind] || styles.parts;
+      const svg = encodeURIComponent(`<svg xmlns='http://www.w3.org/2000/svg' width='46' height='56'><path d='M23 2C12 2 3 11 3 22c0 14 18 30 20 32 2-2 20-18 20-32C43 11 34 2 23 2z' fill='${pin.fill}' stroke='white' stroke-width='1.2'/><circle cx='23' cy='22' r='13' fill='white'/><text x='23' y='26' font-size='11' font-family='Arial' font-weight='700' text-anchor='middle' fill='${pin.color}'>${pin.text}</text></svg>`);
       return new kakao.maps.MarkerImage(`data:image/svg+xml;charset=UTF-8,${svg}`, new kakao.maps.Size(34, 42), { offset: new kakao.maps.Point(17, 42) });
+    }
+    function markerKind(c) {
+      if (c.type === "rental_company" || c.type === "rental_user") return c.type;
+      return c.center_type_key === "as" ? "as" : "parts";
+    }
+    function matchesKindFilter(c) {
+      if (state.listKindFilter === "all") return true;
+      if (state.listKindFilter === "as") return c.type === "as_center";
+      if (state.listKindFilter === "parts") return c.type === "parts";
+      if (state.listKindFilter === "rental") return c.type === "rental_company" || c.type === "rental_user";
+      return c.center_type_key === state.listKindFilter;
     }
     function visibleCenters() {
       const keyword = (state.nameKeyword || "").trim().toLowerCase();
       return centers.filter((c) => {
-        const matchKind = state.listKindFilter === "all" || c.center_type_key === state.listKindFilter;
-        const matchName = !keyword || (c.name || "").toLowerCase().includes(keyword);
+        const matchKind = matchesKindFilter(c);
+        const haystack = [c.name, c.title, c.equipment_label, c.phone].filter(Boolean).join(" ").toLowerCase();
+        const matchName = !keyword || haystack.includes(keyword);
         return matchKind && matchName;
       });
     }
     function updateCounts() {
       const all = centers.length;
-      const asCount = centers.filter((x) => x.center_type_key === "as").length;
-      const partsCount = centers.filter((x) => x.center_type_key === "parts").length;
+      const asCount = centers.filter((x) => x.type === "as_center").length;
+      const partsCount = centers.filter((x) => x.type === "parts").length;
+      const rentalCount = centers.filter((x) => x.type === "rental_company" || x.type === "rental_user").length;
       resultCountEl.textContent = String(all);
       countAllEl.textContent = String(all);
       countAsEl.textContent = String(asCount);
       countPartsEl.textContent = String(partsCount);
+      countRentalEl.textContent = String(rentalCount);
     }
     function renderList() {
       const filtered = visibleCenters();
@@ -267,69 +293,116 @@
         listEl.innerHTML = '<div class="gn-empty">조건에 맞는 업체가 없습니다.</div>';
         return;
       }
-      listEl.innerHTML = filtered.map((c) => `
-        <article class="gn-shop-card ${state.selectedId === c.id ? "active" : ""}" data-id="${c.id}">
+      listEl.innerHTML = filtered.map((c) => {
+        const isRental = c.type === "rental_company" || c.type === "rental_user";
+        const ratingHtml = !isRental
+          ? `<div class="gn-shop-rating">★ ${Number(c.rating || 0).toFixed(1)} <span class="count">리뷰 ${Number(c.review_count || 0)}개</span></div>`
+          : "";
+        const rentalHtml = isRental
+          ? `<div class="small text-muted mb-1">기종: ${esc(c.equipment_label || "-")}</div>
+             <div class="small fw-semibold mb-1">임대료: ${esc(c.rental_price || "협의")}${c.rental_period ? ` · ${esc(c.rental_period)}` : ""}</div>`
+          : `<div class="d-flex flex-wrap gap-1">${(c.manufacturers || []).slice(0, 4).map((t) => `<span class="gn-equip-tag">${esc(t)}</span>`).join("")}</div>`;
+        const displayName = c.is_personal ? `${esc(c.name)} (개인)` : esc(c.name);
+        return `
+        <article class="gn-shop-card ${state.selectedUid === c.uid ? "active" : ""}" data-uid="${esc(c.uid)}">
           <div class="d-flex justify-content-between align-items-center mb-1">
-            <p class="gn-shop-name">${esc(c.name)}</p>
+            <p class="gn-shop-name">${displayName}</p>
             <span class="gn-badge ${c.center_type_key}">${esc(c.center_type)}</span>
           </div>
           <div class="small text-muted mb-1">${esc(c.address || c.region || "주소 미등록")}</div>
-          <div class="gn-shop-rating">★ ${Number(c.rating || 0).toFixed(1)} <span class="count">리뷰 ${Number(c.review_count || 0)}개</span></div>
+          ${ratingHtml}
           <div class="small fw-semibold mb-1">${esc(c.phone || "연락처 없음")}</div>
-          <div class="d-flex flex-wrap gap-1">${(c.manufacturers || []).slice(0, 4).map((t) => `<span class="gn-equip-tag">${esc(t)}</span>`).join("")}</div>
-        </article>
-      `).join("");
+          ${rentalHtml}
+        </article>`;
+      }).join("");
       listEl.querySelectorAll(".gn-shop-card").forEach((el) => {
-        el.addEventListener("click", () => selectCenter(Number(el.dataset.id), true));
+        el.addEventListener("click", () => selectCenter(el.dataset.uid, true));
       });
     }
+    function infoWindowHtml(c) {
+      const detailLink = c.detail_url
+        ? `<div class="mt-1"><a href="${esc(c.detail_url)}" class="text-primary fw-semibold">상세보기</a></div>`
+        : "";
+      if (c.type === "rental_user") {
+        return `<div class="gn-info-window">
+          <div><strong>${esc(c.name)} (개인)</strong></div>
+          <div>기종: ${esc(c.equipment_label || "-")}</div>
+          <div>임대료: ${esc(c.rental_price || "협의")}${c.rental_period ? ` · ${esc(c.rental_period)}` : ""}</div>
+          <div>${esc(c.phone || "연락처 없음")}</div>
+          ${detailLink}
+        </div>`;
+      }
+      if (c.type === "rental_company") {
+        return `<div class="gn-info-window">
+          <div><strong>${esc(c.name)}</strong></div>
+          <div>기종: ${esc(c.equipment_label || "-")}</div>
+          <div>${esc(c.phone || "연락처 없음")}</div>
+          <div>${esc(c.address || c.region || "")}</div>
+        </div>`;
+      }
+      return `<div class="gn-info-window">
+        <div><strong>${esc(c.name)}</strong></div>
+        <div>${esc(c.phone || "연락처 없음")}</div>
+        <div>${esc(c.address || c.region || "")}</div>
+        <div>취급 제조사: ${esc((c.manufacturers || []).join(", ") || "-")}</div>
+        <div>영업시간: ${esc(c.operating_hours || "정보 없음")}</div>
+      </div>`;
+    }
     function clearMapObjects() {
-      infoById.forEach((iw) => iw.close());
-      markersById.forEach((m) => m.setMap(null));
-      markersById.clear();
-      infoById.clear();
+      infoByUid.forEach((iw) => iw.close());
+      markersByUid.forEach((m) => m.setMap(null));
+      markersByUid.clear();
+      infoByUid.clear();
       if (asClusterer) asClusterer.clear();
       if (partsClusterer) partsClusterer.clear();
+      if (rentalCompanyClusterer) rentalCompanyClusterer.clear();
+      if (rentalUserClusterer) rentalUserClusterer.clear();
     }
     function renderMarkers() {
       clearMapObjects();
       const bounds = new kakao.maps.LatLngBounds();
       const asMarkers = [];
       const partsMarkers = [];
+      const rentalCompanyMarkers = [];
+      const rentalUserMarkers = [];
       visibleCenters().forEach((c) => {
         if (typeof c.lat !== "number" || typeof c.lng !== "number") return;
         const pos = new kakao.maps.LatLng(c.lat, c.lng);
-        const marker = new kakao.maps.Marker({ position: pos, title: c.name, image: markerImage(c.center_type_key) });
-        const info = new kakao.maps.InfoWindow({
-          content: `<div class="gn-info-window"><div><strong>${esc(c.name)}</strong></div><div>${esc(c.phone || "연락처 없음")}</div><div>${esc(c.address || c.region || "")}</div><div>취급 제조사: ${esc((c.manufacturers || []).join(", ") || "-")}</div><div>영업시간: ${esc(c.operating_hours || "정보 없음")}</div></div>`,
-        });
-        kakao.maps.event.addListener(marker, "click", () => selectCenter(c.id, false));
+        const kind = markerKind(c);
+        const marker = new kakao.maps.Marker({ position: pos, title: c.name, image: markerImage(kind) });
+        const info = new kakao.maps.InfoWindow({ content: infoWindowHtml(c) });
+        kakao.maps.event.addListener(marker, "click", () => selectCenter(c.uid, false));
         marker.setMap(map);
-        if (c.center_type_key === "as") asMarkers.push(marker); else partsMarkers.push(marker);
-        markersById.set(c.id, marker);
-        infoById.set(c.id, info);
+        if (kind === "as") asMarkers.push(marker);
+        else if (kind === "parts") partsMarkers.push(marker);
+        else if (kind === "rental_company") rentalCompanyMarkers.push(marker);
+        else if (kind === "rental_user") rentalUserMarkers.push(marker);
+        markersByUid.set(c.uid, marker);
+        infoByUid.set(c.uid, info);
         bounds.extend(pos);
       });
-      if (asMarkers.length || partsMarkers.length) {
-        if (asMarkers.length) asClusterer.addMarkers(asMarkers);
-        if (partsMarkers.length) partsClusterer.addMarkers(partsMarkers);
+      if (asMarkers.length) asClusterer.addMarkers(asMarkers);
+      if (partsMarkers.length) partsClusterer.addMarkers(partsMarkers);
+      if (rentalCompanyMarkers.length) rentalCompanyClusterer.addMarkers(rentalCompanyMarkers);
+      if (rentalUserMarkers.length) rentalUserClusterer.addMarkers(rentalUserMarkers);
+      if (asMarkers.length || partsMarkers.length || rentalCompanyMarkers.length || rentalUserMarkers.length) {
         map.setBounds(bounds);
       }
     }
-    function selectCenter(id, pan) {
-      state.selectedId = id;
+    function selectCenter(uid, pan) {
+      state.selectedUid = uid;
       renderList();
-      infoById.forEach((iw) => iw.close());
-      const marker = markersById.get(id);
-      const info = infoById.get(id);
+      infoByUid.forEach((iw) => iw.close());
+      const marker = markersByUid.get(uid);
+      const info = infoByUid.get(uid);
       if (marker && info) {
         info.open(map, marker);
         if (pan) map.panTo(marker.getPosition());
       }
     }
     function resetSelection() {
-      state.selectedId = null;
-      infoById.forEach((iw) => iw.close());
+      state.selectedUid = null;
+      infoByUid.forEach((iw) => iw.close());
     }
     async function fetchCenters() {
       resetSelection();
@@ -435,11 +508,22 @@
         map, averageCenter: true, minLevel: 8,
         styles: [{ width:"46px", height:"46px", background:"rgba(249, 115, 22, 0.75)", border:"1px solid rgba(255,255,255,0.95)", borderRadius:"23px", color:"#fff", textAlign:"center", fontWeight:"700", lineHeight:"46px", fontSize:"14px" }],
       });
+      rentalCompanyClusterer = new kakao.maps.MarkerClusterer({
+        map, averageCenter: true, minLevel: 8,
+        styles: [{ width:"46px", height:"46px", background:"rgba(22, 163, 74, 0.78)", border:"1px solid rgba(255,255,255,0.95)", borderRadius:"23px", color:"#fff", textAlign:"center", fontWeight:"700", lineHeight:"46px", fontSize:"14px" }],
+      });
+      rentalUserClusterer = new kakao.maps.MarkerClusterer({
+        map, averageCenter: true, minLevel: 8,
+        styles: [{ width:"46px", height:"46px", background:"rgba(132, 204, 22, 0.78)", border:"1px solid rgba(255,255,255,0.95)", borderRadius:"23px", color:"#fff", textAlign:"center", fontWeight:"700", lineHeight:"46px", fontSize:"14px" }],
+      });
       updateExcavatorBox();
       bindEvents();
       await fetchCenters();
-      if (initialFocusShopId && markersById.has(initialFocusShopId)) {
-        selectCenter(initialFocusShopId, true);
+      const focusUid = initialFocusShopId
+        ? (centers.find((c) => c.id === initialFocusShopId && (c.type === "as_center" || c.type === "parts"))?.uid || null)
+        : null;
+      if (focusUid && markersByUid.has(focusUid)) {
+        selectCenter(focusUid, true);
         const layoutEl = document.querySelector(".gn-layout");
         const mobileTabsEl = document.getElementById("mobileViewTabs");
         if (layoutEl && mobileTabsEl && window.innerWidth <= 991) {

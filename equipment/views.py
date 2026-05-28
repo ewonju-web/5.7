@@ -15,12 +15,13 @@ from django.conf import settings
 from decimal import Decimal, ROUND_HALF_UP
 from datetime import timedelta
 from urllib.parse import parse_qs, quote, urlencode, urlparse
+from pathlib import Path
 import json
 
 from django.contrib.contenttypes.models import ContentType
 from django.core.exceptions import ValidationError
 from .models import (
-    Equipment, JobPost, ExamPost, ExamComment, Part, EquipmentImage, PartImage, PartsShop,
+    Equipment, JobPost, ExamPost, ExamAttachment, ExamComment, Part, EquipmentImage, PartImage, PartsShop,
     YoutubeContent, EquipmentFavorite, PartFavorite, Comment, DeletedListingLog, Profile,
 )
 from .exam_utils import extract_youtube_id, fetch_exam_youtube_videos
@@ -1544,6 +1545,16 @@ _EXAM_CATEGORY_KEYS = {c[0] for c in ExamPost.CATEGORY_CHOICES}
 _EXAM_EQUIPMENT_KEYS = {c[0] for c in ExamPost.EQUIPMENT_CHOICES}
 _EXAM_LIST_PAGE_SIZE = 20
 _EXAM_DEFAULT_EQUIPMENT = 'excavator'
+_EXAM_ATTACHMENT_EXTENSIONS = {'.pdf', '.hwp'}
+
+
+def _validate_exam_attachments(uploads):
+    invalid_upload_names = []
+    for upload in uploads:
+        ext = Path(getattr(upload, 'name', '')).suffix.lower()
+        if ext not in _EXAM_ATTACHMENT_EXTENSIONS:
+            invalid_upload_names.append(getattr(upload, 'name', '알 수 없는 파일'))
+    return invalid_upload_names
 
 
 def _exam_list_queryset(request):
@@ -1625,7 +1636,10 @@ def exam_list(request):
 
 
 def exam_detail(request, pk):
-    post = get_object_or_404(ExamPost.objects.select_related('author'), pk=pk)
+    post = get_object_or_404(
+        ExamPost.objects.select_related('author').prefetch_related('attachments'),
+        pk=pk,
+    )
 
     if request.method == 'POST':
         if not request.user.is_authenticated:
@@ -1641,12 +1655,23 @@ def exam_detail(request, pk):
     ExamPost.objects.filter(pk=pk).update(views=F('views') + 1)
     post.refresh_from_db(fields=['views'])
     comments = post.comments.select_related('author').order_by('created_at')
+    attachments = list(post.attachments.all())
+    for attachment in attachments:
+        attachment.ext_label = (Path(attachment.original_name or attachment.file.name).suffix or '').replace('.', '').upper() or 'FILE'
+    if post.file:
+        legacy_name = (post.file.name or '').split('/')[-1]
+        attachments.insert(0, {
+            'file': post.file,
+            'original_name': legacy_name,
+            'ext_label': (Path(legacy_name).suffix or '').replace('.', '').upper() or 'FILE',
+        })
     youtube_id = ''
     if post.category == 'video' and post.youtube_url:
         youtube_id = extract_youtube_id(post.youtube_url)
     return render(request, 'equipment/exam_detail.html', {
         'post': post,
         'comments': comments,
+        'attachments': attachments,
         'youtube_id': youtube_id,
         'jobs_section': 'exam',
     })
@@ -1665,7 +1690,11 @@ def exam_create(request):
         category = (request.POST.get('category') or '').strip()
         equipment = (request.POST.get('equipment') or '').strip()
         youtube_url = (request.POST.get('youtube_url') or '').strip()
-        upload = request.FILES.get('file')
+        uploads = [f for f in request.FILES.getlist('files') if f]
+        legacy_upload = request.FILES.get('file')
+        if legacy_upload:
+            uploads.append(legacy_upload)
+        invalid_upload_names = _validate_exam_attachments(uploads)
 
         if not title:
             messages.error(request, '제목을 입력해 주세요.')
@@ -1678,29 +1707,43 @@ def exam_create(request):
                 messages.error(request, '시험동영상 유형은 유튜브 URL을 입력해 주세요.')
             elif not extract_youtube_id(youtube_url):
                 messages.error(request, '올바른 유튜브 URL을 입력해 주세요.')
+            elif invalid_upload_names:
+                messages.error(request, f"첨부는 PDF/HWP만 가능합니다: {', '.join(invalid_upload_names[:3])}")
             else:
-                ExamPost.objects.create(
+                post = ExamPost.objects.create(
                     author=request.user,
                     title=title,
                     content=content,
                     category=category,
                     equipment=equipment,
                     youtube_url=youtube_url,
-                    file=upload,
                 )
+                for upload in uploads:
+                    ExamAttachment.objects.create(
+                        post=post,
+                        file=upload,
+                        original_name=getattr(upload, 'name', '')[:255],
+                    )
                 messages.success(request, '글이 등록되었습니다.')
                 return redirect('exam_list')
         elif not content:
             messages.error(request, '내용을 입력해 주세요.')
+        elif invalid_upload_names:
+            messages.error(request, f"첨부는 PDF/HWP만 가능합니다: {', '.join(invalid_upload_names[:3])}")
         else:
-            ExamPost.objects.create(
+            post = ExamPost.objects.create(
                 author=request.user,
                 title=title,
                 content=content,
                 category=category,
                 equipment=equipment,
-                file=upload,
             )
+            for upload in uploads:
+                ExamAttachment.objects.create(
+                    post=post,
+                    file=upload,
+                    original_name=getattr(upload, 'name', '')[:255],
+                )
             messages.success(request, '글이 등록되었습니다.')
             return redirect('exam_list')
 
@@ -1709,6 +1752,79 @@ def exam_create(request):
         'exam_equipment_choices': ExamPost.EQUIPMENT_CHOICES,
         'jobs_section': 'exam',
     })
+
+
+@login_required(login_url='/login/')
+def exam_edit(request, pk):
+    post = get_object_or_404(ExamPost.objects.prefetch_related('attachments'), pk=pk)
+    if post.author_id != request.user.id:
+        raise Http404()
+
+    if request.method == 'POST':
+        title = (request.POST.get('title') or '').strip()
+        content = (request.POST.get('content') or '').strip()
+        category = (request.POST.get('category') or '').strip()
+        equipment = (request.POST.get('equipment') or '').strip()
+        youtube_url = (request.POST.get('youtube_url') or '').strip()
+        uploads = [f for f in request.FILES.getlist('files') if f]
+        legacy_upload = request.FILES.get('file')
+        if legacy_upload:
+            uploads.append(legacy_upload)
+        invalid_upload_names = _validate_exam_attachments(uploads)
+        delete_attachment_ids = [v for v in request.POST.getlist('delete_attachment_ids') if v.isdigit()]
+
+        if not title:
+            messages.error(request, '제목을 입력해 주세요.')
+        elif category not in _EXAM_CATEGORY_KEYS:
+            messages.error(request, '유형을 선택해 주세요.')
+        elif equipment not in _EXAM_EQUIPMENT_KEYS:
+            messages.error(request, '기종을 선택해 주세요.')
+        elif category == 'video' and not youtube_url:
+            messages.error(request, '시험동영상 유형은 유튜브 URL을 입력해 주세요.')
+        elif category == 'video' and not extract_youtube_id(youtube_url):
+            messages.error(request, '올바른 유튜브 URL을 입력해 주세요.')
+        elif category != 'video' and not content:
+            messages.error(request, '내용을 입력해 주세요.')
+        elif invalid_upload_names:
+            messages.error(request, f"첨부는 PDF/HWP만 가능합니다: {', '.join(invalid_upload_names[:3])}")
+        else:
+            post.title = title
+            post.content = content
+            post.category = category
+            post.equipment = equipment
+            post.youtube_url = youtube_url if category == 'video' else ''
+            post.save(update_fields=['title', 'content', 'category', 'equipment', 'youtube_url'])
+
+            if delete_attachment_ids:
+                post.attachments.filter(id__in=delete_attachment_ids).delete()
+            for upload in uploads:
+                ExamAttachment.objects.create(
+                    post=post,
+                    file=upload,
+                    original_name=getattr(upload, 'name', '')[:255],
+                )
+            messages.success(request, '글이 수정되었습니다.')
+            return redirect('exam_detail', pk=post.pk)
+
+    return render(request, 'equipment/exam_form.html', {
+        'exam_category_choices': ExamPost.CATEGORY_CHOICES,
+        'exam_equipment_choices': ExamPost.EQUIPMENT_CHOICES,
+        'jobs_section': 'exam',
+        'editing_post': post,
+        'existing_attachments': list(post.attachments.all()),
+    })
+
+
+@login_required(login_url='/login/')
+def exam_delete(request, pk):
+    post = get_object_or_404(ExamPost, pk=pk)
+    if post.author_id != request.user.id:
+        raise Http404()
+    if request.method != 'POST':
+        return redirect('exam_detail', pk=pk)
+    post.delete()
+    messages.success(request, '글이 삭제되었습니다.')
+    return redirect('exam_list')
 
 
 # [3-1] 굴삭기 유튜브·정보
@@ -2069,16 +2185,8 @@ def parts_as_register(request):
     })
 
 
-def service_centers_api(request):
-    """지도/목록 마커용 서비스센터 데이터 API."""
-    equipment_type = (request.GET.get("equipment_type") or "all").strip().lower()
-    manufacturers = [x.strip() for x in (request.GET.get("manufacturers") or "").split(",") if x.strip()]
-    ton_ranges = [x.strip() for x in (request.GET.get("ton_ranges") or "").split(",") if x.strip()]
-    repair_types = [x.strip() for x in (request.GET.get("repair_types") or "").split(",") if x.strip()]
-    region = (request.GET.get("region") or "").strip()
-    center_type = (request.GET.get("center_type") or "all").strip().lower()
-
-    equipment_aliases_by_key = {
+def _equipment_aliases_by_key():
+    return {
         "excavator": {"excavator", "굴삭기", "포크레인"},
         "dump": {"dump", "덤프", "덤프트럭"},
         "forklift": {"forklift", "지게차"},
@@ -2088,46 +2196,183 @@ def service_centers_api(request):
         "other": {"other", "기타"},
     }
 
-    centers_qs = PartsShop.objects.all()
-    if center_type in ("as", "parts"):
-        centers_qs = centers_qs.filter(shop_kind=center_type)
-    if region:
-        centers_qs = centers_qs.filter(region__icontains=region)
+
+def _equipment_label_by_key():
+    return {
+        "excavator": "굴삭기",
+        "forklift": "지게차",
+        "dump": "덤프트럭",
+        "loader": "스키로더·로더",
+        "crane": "크레인",
+        "attachment": "어태치먼트",
+        "other": "기타",
+    }
+
+
+def _match_equipment_type(equipment_type, equipment_tokens):
+    if not equipment_type or equipment_type == "all":
+        return True
+    aliases = _equipment_aliases_by_key().get(equipment_type, {equipment_type})
+    return any(token in aliases for token in equipment_tokens)
+
+
+def _normalize_type_filter(request):
+    """type(신규) 또는 center_type(기존) 파라미터를 통합."""
+    raw = (request.GET.get("type") or request.GET.get("center_type") or "all").strip().lower()
+    mapping = {
+        "as": "as_center",
+        "as_center": "as_center",
+        "parts": "parts",
+        "rental": "rental",
+        "rental_company": "rental",
+        "rental_user": "rental",
+        "all": "all",
+    }
+    return mapping.get(raw, "all")
+
+
+def service_centers_api(request):
+    """지도/목록 마커용 서비스센터 + 임대 데이터 API."""
+    from rental.models import RentalCompany, RentalPost
+
+    equipment_type = (request.GET.get("equipment_type") or "all").strip().lower()
+    manufacturers = [x.strip() for x in (request.GET.get("manufacturers") or "").split(",") if x.strip()]
+    ton_ranges = [x.strip() for x in (request.GET.get("ton_ranges") or "").split(",") if x.strip()]
+    repair_types = [x.strip() for x in (request.GET.get("repair_types") or "").split(",") if x.strip()]
+    region = (request.GET.get("region") or "").strip()
+    type_filter = _normalize_type_filter(request)
+    equipment_label_by_key = _equipment_label_by_key()
 
     centers = []
-    for center in centers_qs:
-        center_manufacturers = list(center.manufacturers or center.manufacturer or [])
-        center_ton_ranges = list(center.ton_ranges or [])
-        center_repair_types = list(center.repair_types or [])
-        center_equipment_types = [str(x).strip().lower() for x in (center.equipment_types or []) if str(x).strip()]
-        if equipment_type and equipment_type != "all":
-            aliases = equipment_aliases_by_key.get(equipment_type, {equipment_type})
-            if not any(token in aliases for token in center_equipment_types):
-                continue
-        if manufacturers and not any(x in center_manufacturers for x in manufacturers):
-            continue
-        if ton_ranges and not any(x in center_ton_ranges for x in ton_ranges):
-            continue
-        if repair_types and not any(x in center_repair_types for x in repair_types):
-            continue
 
-        centers.append({
-            "id": center.pk,
-            "name": center.name,
-            "lat": center.lat,
-            "lng": center.lng,
-            "phone": center.contact,
-            "address": center.address,
-            "center_type": center.get_shop_kind_display(),
-            "center_type_key": center.shop_kind,
-            "manufacturers": center_manufacturers,
-            "ton_ranges": center_ton_ranges,
-            "repair_types": center_repair_types,
-            "operating_hours": center.note or "",
-            "region": center.region,
-            "rating": float(center.rating or 0),
-            "review_count": int(center.review_count or 0),
-        })
+    if type_filter in ("all", "as_center", "parts"):
+        centers_qs = PartsShop.objects.all()
+        if type_filter == "as_center":
+            centers_qs = centers_qs.filter(shop_kind="as")
+        elif type_filter == "parts":
+            centers_qs = centers_qs.filter(shop_kind="parts")
+        if region:
+            centers_qs = centers_qs.filter(region__icontains=region)
+
+        for center in centers_qs:
+            center_manufacturers = list(center.manufacturers or center.manufacturer or [])
+            center_ton_ranges = list(center.ton_ranges or [])
+            center_repair_types = list(center.repair_types or [])
+            center_equipment_types = [str(x).strip().lower() for x in (center.equipment_types or []) if str(x).strip()]
+            if not _match_equipment_type(equipment_type, center_equipment_types):
+                continue
+            if manufacturers and not any(x in center_manufacturers for x in manufacturers):
+                continue
+            if ton_ranges and not any(x in center_ton_ranges for x in ton_ranges):
+                continue
+            if repair_types and not any(x in center_repair_types for x in repair_types):
+                continue
+
+            shop_type = "as_center" if center.shop_kind == "as" else "parts"
+            centers.append({
+                "id": center.pk,
+                "uid": f"{shop_type}-{center.pk}",
+                "type": shop_type,
+                "name": center.name,
+                "lat": center.lat,
+                "lng": center.lng,
+                "phone": center.contact,
+                "address": center.address,
+                "center_type": center.get_shop_kind_display(),
+                "center_type_key": center.shop_kind,
+                "equipment_label": ", ".join(
+                    equipment_label_by_key.get(k, k)
+                    for k in center_equipment_types
+                    if k in equipment_label_by_key
+                ) or "-",
+                "manufacturers": center_manufacturers,
+                "ton_ranges": center_ton_ranges,
+                "repair_types": center_repair_types,
+                "operating_hours": center.note or "",
+                "region": center.region,
+                "rating": float(center.rating or 0),
+                "review_count": int(center.review_count or 0),
+                "rental_price": "",
+                "rental_period": "",
+                "detail_url": "",
+                "is_personal": False,
+            })
+
+    if type_filter in ("all", "rental"):
+        rental_company_qs = RentalCompany.objects.filter(is_active=True)
+        if region:
+            rental_company_qs = rental_company_qs.filter(region__icontains=region)
+
+        for company in rental_company_qs:
+            company_equipment_types = [str(x).strip().lower() for x in (company.equipment_types or []) if str(x).strip()]
+            if not _match_equipment_type(equipment_type, company_equipment_types):
+                continue
+            centers.append({
+                "id": company.pk,
+                "uid": f"rental_company-{company.pk}",
+                "type": "rental_company",
+                "name": company.name,
+                "lat": company.lat,
+                "lng": company.lng,
+                "phone": company.contact,
+                "address": company.address,
+                "center_type": "임대업체",
+                "center_type_key": "rental_company",
+                "equipment_label": ", ".join(
+                    equipment_label_by_key.get(k, k)
+                    for k in company_equipment_types
+                    if k in equipment_label_by_key
+                ) or "-",
+                "manufacturers": [],
+                "ton_ranges": [],
+                "repair_types": [],
+                "operating_hours": company.note or "",
+                "region": company.region,
+                "rating": 0,
+                "review_count": 0,
+                "rental_price": "",
+                "rental_period": "",
+                "detail_url": "",
+                "is_personal": False,
+            })
+
+        rental_post_qs = RentalPost.objects.filter(
+            is_available=True,
+            lat__isnull=False,
+            lng__isnull=False,
+        ).select_related("author")
+        if region:
+            rental_post_qs = rental_post_qs.filter(region__icontains=region)
+
+        for post in rental_post_qs:
+            post_equipment_types = [post.equipment_type]
+            if not _match_equipment_type(equipment_type, post_equipment_types):
+                continue
+            centers.append({
+                "id": post.pk,
+                "uid": f"rental_user-{post.pk}",
+                "type": "rental_user",
+                "name": post.display_name,
+                "lat": post.lat,
+                "lng": post.lng,
+                "phone": post.contact,
+                "address": post.address,
+                "center_type": "(개인) 임대",
+                "center_type_key": "rental_user",
+                "equipment_label": post.get_equipment_type_display(),
+                "manufacturers": [],
+                "ton_ranges": [],
+                "repair_types": [],
+                "operating_hours": "",
+                "region": post.region,
+                "rating": 0,
+                "review_count": 0,
+                "rental_price": post.rental_price or "",
+                "rental_period": post.rental_period or "",
+                "detail_url": f"/rental/{post.pk}/",
+                "is_personal": True,
+                "title": post.title,
+            })
 
     return JsonResponse({"centers": centers})
 

@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+
+{% block title %}{{ post.title }} | 장비 임대 | 굴삭기나라{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+  <div class="mb-3">
+    <a href="{% url 'parts_as' %}" class="text-decoration-none small">← 임대·부품 A/S 지도</a>
+  </div>
+  <div class="card border-0 shadow-sm">
+    <div class="card-body p-4">
+      <div class="d-flex flex-wrap align-items-center gap-2 mb-2">
+        <span class="badge text-bg-success">개인 임대</span>
+        <span class="badge text-bg-light text-dark border">{{ post.get_equipment_type_display }}</span>
+      </div>
+      <h1 class="h4 fw-bold mb-3">{{ post.title }}</h1>
+      <dl class="row mb-0 small">
+        <dt class="col-sm-3 text-muted">작성자</dt>
+        <dd class="col-sm-9">{{ post.display_name }}</dd>
+        <dt class="col-sm-3 text-muted">지역</dt>
+        <dd class="col-sm-9">{{ post.region }}{% if post.address %} · {{ post.address }}{% endif %}</dd>
+        <dt class="col-sm-3 text-muted">임대료</dt>
+        <dd class="col-sm-9">{{ post.rental_price|default:"협의" }}</dd>
+        <dt class="col-sm-3 text-muted">기간</dt>
+        <dd class="col-sm-9">{{ post.rental_period|default:"-" }}</dd>
+        <dt class="col-sm-3 text-muted">연락처</dt>
+        <dd class="col-sm-9 fw-semibold">{{ post.contact }}</dd>
+      </dl>
+      {% if post.description %}
+      <hr>
+      <div class="small" style="white-space: pre-wrap;">{{ post.description }}</div>
+      {% endif %}
+    </div>
+  </div>
+</div>
+{% endblock %}

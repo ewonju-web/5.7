@@ -24,6 +24,7 @@ INSTALLED_APPS = [
     'django.contrib.admin',
     "accounts",
     'billing.apps.BillingConfig',
+    'rental.apps.RentalConfig',
     'django.contrib.auth',
     'django.contrib.contenttypes',
     'django.contrib.sessions',
