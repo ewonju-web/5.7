@@ -43,7 +43,10 @@
         </div>
         <div class="col-12">
           <label class="form-label">주소</label>
-          <input type="text" name="address" class="form-control" value="{{ driver.address|default:'' }}">
+          <div class="input-group">
+            <input type="text" id="driverAddressInput" name="address" class="form-control" value="{{ driver.address|default:'' }}">
+            <button type="button" class="btn btn-outline-secondary" id="driverAddressSearchBtn">주소 검색</button>
+          </div>
           <div class="form-text">주소 저장 시 좌표가 자동 변환됩니다.</div>
         </div>
         <div class="col-md-6">
@@ -73,4 +76,20 @@
     </div>
   </div>
 </div>
+<script src="//t1.daumcdn.net/mapjsapi/bundle/postcode/prod/postcode.v2.js"></script>
+<script>
+  (function () {
+    var btn = document.getElementById("driverAddressSearchBtn");
+    var input = document.getElementById("driverAddressInput");
+    if (!btn || !input || !window.daum || !daum.Postcode) return;
+    btn.addEventListener("click", function () {
+      new daum.Postcode({
+        oncomplete: function (data) {
+          input.value = data.roadAddress || data.jibunAddress || "";
+          input.focus();
+        }
+      }).open();
+    });
+  })();
+</script>
 {% endblock %}
