@@ -88,10 +88,28 @@
   .gn-badge.parts { background:#dcfce7; color:#166534; }
   .gn-badge.rental_company { background:#dcfce7; color:#15803d; }
   .gn-badge.rental_user { background:#ecfccb; color:#4d7c0f; }
+  .gn-badge.call_kakao { background:#f3e8ff; color:#7e22ce; }
+  .gn-badge.call_driver { background:#fce7f3; color:#be185d; }
   .gn-kind-tabs { flex-wrap: wrap; }
   .gn-equip-tag { background:#f4f4f5; color:#52525b; border-radius:999px; font-size:.72rem; padding:.18rem .5rem; }
   .gn-map-panel { position:relative; overflow:hidden; }
   #partsAsMap { width:100%; height:100%; min-height:620px; }
+  .gn-map-legend {
+    position: absolute;
+    right: 10px;
+    bottom: 10px;
+    z-index: 3;
+    background: rgba(255,255,255,.95);
+    border: 1px solid #e5e7eb;
+    border-radius: 10px;
+    padding: .4rem .55rem;
+    font-size: .75rem;
+    color: #334155;
+    display: flex;
+    gap: .5rem;
+    flex-wrap: wrap;
+  }
+  .gn-dot { width: 10px; height: 10px; border-radius: 999px; display:inline-block; margin-right:4px; vertical-align:middle; }
   .gn-mobile-tabs { display:none; }
   .gn-empty { text-align:center; color:#6b7280; padding:2rem 1rem; border:1px dashed #d1d5db; border-radius:12px; background:#fafafa; }
   .gn-info-window { min-width:220px; max-width:280px; padding:.35rem; font-size:.82rem; }
@@ -113,7 +131,12 @@
   <div class="container">
     <div class="gn-partsas-header">
       <h2 class="gn-partsas-title">장비 임대 · 부품 A/S 센터 찾기</h2>
-      <a href="{% url 'parts_as_register' %}" class="btn btn-sm fw-bold text-dark" style="background: var(--gn-accent); border:1px solid var(--gn-accent); border-radius: 10px; box-shadow: 0 2px 8px rgba(232,163,23,.35);">업체 자진 등록</a>
+      <div class="d-flex gap-2">
+        {% if show_driver_register_button %}
+        <a href="{% url 'driver_register' %}" class="btn btn-sm fw-bold text-dark" style="background:#f9a8d4;border:1px solid #f9a8d4;border-radius:10px;">기사 등록하기</a>
+        {% endif %}
+        <a href="{% url 'parts_as_register' %}" class="btn btn-sm fw-bold text-dark" style="background: var(--gn-accent); border:1px solid var(--gn-accent); border-radius: 10px; box-shadow: 0 2px 8px rgba(232,163,23,.35);">업체 자진 등록</a>
+      </div>
     </div>
 
     <section class="gn-search-card">
@@ -162,6 +185,7 @@
             <option value="as" {% if selected_shop_kind == "as" %}selected{% endif %}>AS센터</option>
             <option value="parts" {% if selected_shop_kind == "parts" %}selected{% endif %}>부품점</option>
             <option value="rental" {% if selected_shop_kind == "rental" %}selected{% endif %}>임대업체</option>
+            <option value="call" {% if selected_shop_kind == "call" %}selected{% endif %}>중기호출</option>
           </select>
         </div>
         <div class="col-12">
@@ -188,11 +212,20 @@
             <button class="gn-kind-btn" data-kind-filter="as">AS센터 (<span id="countAs">0</span>)</button>
             <button class="gn-kind-btn" data-kind-filter="parts">부품점 (<span id="countParts">0</span>)</button>
             <button class="gn-kind-btn" data-kind-filter="rental">임대업체 (<span id="countRental">0</span>)</button>
+            <button class="gn-kind-btn" data-kind-filter="call">중기호출 (<span id="countCall">0</span>)</button>
           </div>
         </div>
         <div class="gn-shop-list" id="shopList"></div>
       </div>
-      <div class="gn-map-panel"><div id="partsAsMap"></div></div>
+      <div class="gn-map-panel">
+        <div id="partsAsMap"></div>
+        <div class="gn-map-legend">
+          <span><i class="gn-dot" style="background:#f97316"></i>부품점</span>
+          <span><i class="gn-dot" style="background:#2563eb"></i>AS센터</span>
+          <span><i class="gn-dot" style="background:#16a34a"></i>임대</span>
+          <span><i class="gn-dot" style="background:#9333ea"></i>중기호출</span>
+        </div>
+      </div>
     </section>
   </div>
 </div>
@@ -216,7 +249,7 @@
       nameKeyword: "",
       selectedUid: null,
     };
-    let map, asClusterer, partsClusterer, rentalCompanyClusterer, rentalUserClusterer;
+    let map, asClusterer, partsClusterer, rentalCompanyClusterer, rentalUserClusterer, callKakaoClusterer, callDriverClusterer;
     const markersByUid = new Map();
     const infoByUid = new Map();
     let centers = [];
@@ -227,6 +260,7 @@
     const countAsEl = document.getElementById("countAs");
     const countPartsEl = document.getElementById("countParts");
     const countRentalEl = document.getElementById("countRental");
+    const countCallEl = document.getElementById("countCall");
     const excavatorBox = document.getElementById("excavatorDetailBox");
 
     function esc(v) {
@@ -251,13 +285,15 @@
         parts: { text: "부", fill: "rgba(249, 115, 22, 0.75)", color: "#f97316" },
         rental_company: { text: "임", fill: "rgba(22, 163, 74, 0.78)", color: "#16a34a" },
         rental_user: { text: "개", fill: "rgba(132, 204, 22, 0.78)", color: "#65a30d" },
+        call_kakao: { text: "호", fill: "rgba(147, 51, 234, 0.8)", color: "#9333ea" },
+        call_driver: { text: "기", fill: "rgba(236, 72, 153, 0.8)", color: "#ec4899" },
       };
       const pin = styles[kind] || styles.parts;
       const svg = encodeURIComponent(`<svg xmlns='http://www.w3.org/2000/svg' width='46' height='56'><path d='M23 2C12 2 3 11 3 22c0 14 18 30 20 32 2-2 20-18 20-32C43 11 34 2 23 2z' fill='${pin.fill}' stroke='white' stroke-width='1.2'/><circle cx='23' cy='22' r='13' fill='white'/><text x='23' y='26' font-size='11' font-family='Arial' font-weight='700' text-anchor='middle' fill='${pin.color}'>${pin.text}</text></svg>`);
       return new kakao.maps.MarkerImage(`data:image/svg+xml;charset=UTF-8,${svg}`, new kakao.maps.Size(34, 42), { offset: new kakao.maps.Point(17, 42) });
     }
     function markerKind(c) {
-      if (c.type === "rental_company" || c.type === "rental_user") return c.type;
+      if (c.type === "rental_company" || c.type === "rental_user" || c.type === "call_kakao" || c.type === "call_driver") return c.type;
       return c.center_type_key === "as" ? "as" : "parts";
     }
     function matchesKindFilter(c) {
@@ -265,6 +301,7 @@
       if (state.listKindFilter === "as") return c.type === "as_center";
       if (state.listKindFilter === "parts") return c.type === "parts";
       if (state.listKindFilter === "rental") return c.type === "rental_company" || c.type === "rental_user";
+      if (state.listKindFilter === "call") return c.type === "call_kakao" || c.type === "call_driver";
       return c.center_type_key === state.listKindFilter;
     }
     function visibleCenters() {
@@ -281,11 +318,13 @@
       const asCount = centers.filter((x) => x.type === "as_center").length;
       const partsCount = centers.filter((x) => x.type === "parts").length;
       const rentalCount = centers.filter((x) => x.type === "rental_company" || x.type === "rental_user").length;
+      const callCount = centers.filter((x) => x.type === "call_kakao" || x.type === "call_driver").length;
       resultCountEl.textContent = String(all);
       countAllEl.textContent = String(all);
       countAsEl.textContent = String(asCount);
       countPartsEl.textContent = String(partsCount);
       countRentalEl.textContent = String(rentalCount);
+      countCallEl.textContent = String(callCount);
     }
     function renderList() {
       const filtered = visibleCenters();
@@ -295,14 +334,15 @@
       }
       listEl.innerHTML = filtered.map((c) => {
         const isRental = c.type === "rental_company" || c.type === "rental_user";
-        const ratingHtml = !isRental
+        const isCall = c.type === "call_kakao" || c.type === "call_driver";
+        const ratingHtml = (!isRental && !isCall)
           ? `<div class="gn-shop-rating">★ ${Number(c.rating || 0).toFixed(1)} <span class="count">리뷰 ${Number(c.review_count || 0)}개</span></div>`
           : "";
-        const rentalHtml = isRental
+        const rentalHtml = (isRental || isCall)
           ? `<div class="small text-muted mb-1">기종: ${esc(c.equipment_label || "-")}</div>
-             <div class="small fw-semibold mb-1">임대료: ${esc(c.rental_price || "협의")}${c.rental_period ? ` · ${esc(c.rental_period)}` : ""}</div>`
+             <div class="small fw-semibold mb-1">${isCall ? "일당" : "임대료"}: ${esc(c.rental_price || "협의")}${c.experience ? ` · 경력 ${esc(c.experience)}` : ""}${c.rental_period ? ` · ${esc(c.rental_period)}` : ""}</div>`
           : `<div class="d-flex flex-wrap gap-1">${(c.manufacturers || []).slice(0, 4).map((t) => `<span class="gn-equip-tag">${esc(t)}</span>`).join("")}</div>`;
-        const displayName = c.is_personal ? `${esc(c.name)} (개인)` : esc(c.name);
+        const displayName = c.type === "call_driver" ? `${esc(c.name)} (기사)` : (c.is_personal ? `${esc(c.name)} (개인)` : esc(c.name));
         return `
         <article class="gn-shop-card ${state.selectedUid === c.uid ? "active" : ""}" data-uid="${esc(c.uid)}">
           <div class="d-flex justify-content-between align-items-center mb-1">
@@ -340,6 +380,24 @@
           <div>${esc(c.address || c.region || "")}</div>
         </div>`;
       }
+      if (c.type === "call_kakao") {
+        return `<div class="gn-info-window">
+          <div><strong>${esc(c.name)}</strong></div>
+          <div>기종: ${esc(c.equipment_label || "건설기계")}</div>
+          <div>${esc(c.phone || "연락처 없음")}</div>
+          ${c.detail_url ? `<div class="mt-1"><a href="${esc(c.detail_url)}" target="_blank" rel="noopener" class="text-primary fw-semibold">카카오맵 보기</a></div>` : ""}
+        </div>`;
+      }
+      if (c.type === "call_driver") {
+        return `<div class="gn-info-window">
+          <div><strong>${esc(c.name)} 기사</strong></div>
+          <div>기종: ${esc(c.equipment_label || "-")}</div>
+          <div>경력: ${esc(c.experience || "-")}</div>
+          <div>일당: ${esc(c.rental_price || "협의")}</div>
+          <div>${esc(c.phone || "연락처 없음")}</div>
+          ${detailLink}
+        </div>`;
+      }
       return `<div class="gn-info-window">
         <div><strong>${esc(c.name)}</strong></div>
         <div>${esc(c.phone || "연락처 없음")}</div>
@@ -357,6 +415,8 @@
       if (partsClusterer) partsClusterer.clear();
       if (rentalCompanyClusterer) rentalCompanyClusterer.clear();
       if (rentalUserClusterer) rentalUserClusterer.clear();
+      if (callKakaoClusterer) callKakaoClusterer.clear();
+      if (callDriverClusterer) callDriverClusterer.clear();
     }
     function renderMarkers() {
       clearMapObjects();
@@ -365,6 +425,8 @@
       const partsMarkers = [];
       const rentalCompanyMarkers = [];
       const rentalUserMarkers = [];
+      const callKakaoMarkers = [];
+      const callDriverMarkers = [];
       visibleCenters().forEach((c) => {
         if (typeof c.lat !== "number" || typeof c.lng !== "number") return;
         const pos = new kakao.maps.LatLng(c.lat, c.lng);
@@ -377,6 +439,8 @@
         else if (kind === "parts") partsMarkers.push(marker);
         else if (kind === "rental_company") rentalCompanyMarkers.push(marker);
         else if (kind === "rental_user") rentalUserMarkers.push(marker);
+        else if (kind === "call_kakao") callKakaoMarkers.push(marker);
+        else if (kind === "call_driver") callDriverMarkers.push(marker);
         markersByUid.set(c.uid, marker);
         infoByUid.set(c.uid, info);
         bounds.extend(pos);
@@ -385,7 +449,9 @@
       if (partsMarkers.length) partsClusterer.addMarkers(partsMarkers);
       if (rentalCompanyMarkers.length) rentalCompanyClusterer.addMarkers(rentalCompanyMarkers);
       if (rentalUserMarkers.length) rentalUserClusterer.addMarkers(rentalUserMarkers);
-      if (asMarkers.length || partsMarkers.length || rentalCompanyMarkers.length || rentalUserMarkers.length) {
+      if (callKakaoMarkers.length) callKakaoClusterer.addMarkers(callKakaoMarkers);
+      if (callDriverMarkers.length) callDriverClusterer.addMarkers(callDriverMarkers);
+      if (asMarkers.length || partsMarkers.length || rentalCompanyMarkers.length || rentalUserMarkers.length || callKakaoMarkers.length || callDriverMarkers.length) {
         map.setBounds(bounds);
       }
     }
@@ -515,6 +581,14 @@
       rentalUserClusterer = new kakao.maps.MarkerClusterer({
         map, averageCenter: true, minLevel: 8,
         styles: [{ width:"46px", height:"46px", background:"rgba(132, 204, 22, 0.78)", border:"1px solid rgba(255,255,255,0.95)", borderRadius:"23px", color:"#fff", textAlign:"center", fontWeight:"700", lineHeight:"46px", fontSize:"14px" }],
+      });
+      callKakaoClusterer = new kakao.maps.MarkerClusterer({
+        map, averageCenter: true, minLevel: 8,
+        styles: [{ width:"46px", height:"46px", background:"rgba(147, 51, 234, 0.8)", border:"1px solid rgba(255,255,255,0.95)", borderRadius:"23px", color:"#fff", textAlign:"center", fontWeight:"700", lineHeight:"46px", fontSize:"14px" }],
+      });
+      callDriverClusterer = new kakao.maps.MarkerClusterer({
+        map, averageCenter: true, minLevel: 8,
+        styles: [{ width:"46px", height:"46px", background:"rgba(236, 72, 153, 0.8)", border:"1px solid rgba(255,255,255,0.95)", borderRadius:"23px", color:"#fff", textAlign:"center", fontWeight:"700", lineHeight:"46px", fontSize:"14px" }],
       });
       updateExcavatorBox();
       bindEvents();

@@ -1,0 +1,76 @@
+{% extends "base.html" %}
+
+{% block title %}{% if driver %}기사 정보 수정{% else %}중기 기사 등록{% endif %} | 굴삭기나라{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+  <div class="card border-0 shadow-sm">
+    <div class="card-body p-4">
+      <h4 class="fw-bold mb-3">{% if driver %}기사 정보 수정{% else %}중기 기사 등록{% endif %}</h4>
+      <form method="post" id="driver-form" class="row g-3">
+        {% csrf_token %}
+        <div class="col-md-6">
+          <label class="form-label">이름/닉네임</label>
+          <input type="text" name="name" class="form-control" required value="{{ driver.name|default:'' }}">
+        </div>
+        <div class="col-md-6">
+          <label class="form-label">연락처</label>
+          <input type="text" name="contact" class="form-control" required value="{{ driver.contact|default:'' }}">
+        </div>
+        <div class="col-md-6">
+          <label class="form-label">기종</label>
+          <select name="equipment_type" class="form-select">
+            {% for value, label in equipment_choices %}
+            <option value="{{ value }}" {% if driver and driver.equipment_type == value %}selected{% endif %}>{{ label }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="col-md-6">
+          <label class="form-label">경력</label>
+          <select name="experience" class="form-select">
+            {% for value, label in experience_choices %}
+            <option value="{{ value }}" {% if driver and driver.experience == value %}selected{% endif %}>{{ label }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="col-md-6">
+          <label class="form-label">활동 지역</label>
+          <input type="text" name="region" class="form-control" required value="{{ driver.region|default:'' }}">
+        </div>
+        <div class="col-md-6">
+          <label class="form-label">일당(원)</label>
+          <input type="number" name="day_rate" class="form-control" min="0" value="{{ driver.day_rate|default:'' }}">
+        </div>
+        <div class="col-12">
+          <label class="form-label">주소</label>
+          <input type="text" name="address" class="form-control" value="{{ driver.address|default:'' }}">
+          <div class="form-text">주소 저장 시 좌표가 자동 변환됩니다.</div>
+        </div>
+        <div class="col-md-6">
+          <label class="form-label">보유 자격증</label>
+          <input type="text" name="license" class="form-control" value="{{ driver.license|default:'' }}">
+        </div>
+        <div class="col-md-6">
+          <label class="form-label">호출 가능 여부</label>
+          <select name="is_available" class="form-select">
+            <option value="Y" {% if not driver or driver.is_available %}selected{% endif %}>가능</option>
+            <option value="N" {% if driver and not driver.is_available %}selected{% endif %}>불가</option>
+          </select>
+        </div>
+        <div class="col-12">
+          <label class="form-label">소개</label>
+          <textarea name="description" class="form-control" rows="4">{{ driver.description|default:'' }}</textarea>
+        </div>
+        <div class="col-12 d-flex gap-2">
+          <button type="submit" class="btn btn-warning fw-bold">저장</button>
+          {% if driver %}
+          <a href="{% url 'driver_detail' driver.pk %}" class="btn btn-outline-secondary">취소</a>
+          {% else %}
+          <a href="{% url 'parts_as' %}?type=call" class="btn btn-outline-secondary">취소</a>
+          {% endif %}
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}

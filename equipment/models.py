@@ -507,6 +507,21 @@ class ExamPost(models.Model):
         return self.title
 
 
+class ExamAttachment(models.Model):
+    post = models.ForeignKey(ExamPost, on_delete=models.CASCADE, related_name='attachments')
+    file = models.FileField(upload_to='exam_files/')
+    original_name = models.CharField(max_length=255, blank=True, default='')
+    uploaded_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = '자격증 시험 첨부파일'
+        verbose_name_plural = '자격증 시험 첨부파일'
+        ordering = ['uploaded_at', 'id']
+
+    def __str__(self):
+        return self.original_name or self.file.name
+
+
 class ExamComment(models.Model):
     post = models.ForeignKey(ExamPost, on_delete=models.CASCADE, related_name='comments')
     author = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
@@ -664,6 +679,49 @@ class PartsShop(models.Model):
 
     def __str__(self):
         return f"{self.name} ({self.region})"
+
+
+class DriverProfile(models.Model):
+    """중기 기사 직접 등록 — 호출 가능 기사 정보."""
+
+    EQUIPMENT_CHOICES = [
+        ("excavator", "굴삭기"),
+        ("forklift", "지게차"),
+        ("crane", "기중기"),
+        ("dump", "덤프트럭"),
+        ("loader", "스키로더"),
+        ("other", "기타"),
+    ]
+    EXPERIENCE_CHOICES = [
+        ("1", "1년 미만"),
+        ("3", "1~3년"),
+        ("5", "3~5년"),
+        ("10", "5~10년"),
+        ("10+", "10년 이상"),
+    ]
+
+    author = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+    name = models.CharField(max_length=50)
+    equipment_type = models.CharField(max_length=20, choices=EQUIPMENT_CHOICES)
+    experience = models.CharField(max_length=10, choices=EXPERIENCE_CHOICES)
+    region = models.CharField(max_length=50)
+    address = models.CharField(max_length=200, blank=True, default="")
+    latitude = models.FloatField(blank=True, null=True)
+    longitude = models.FloatField(blank=True, null=True)
+    day_rate = models.PositiveIntegerField(blank=True, null=True, help_text="일당(원), 없으면 협의")
+    contact = models.CharField(max_length=50)
+    description = models.TextField(blank=True, default="")
+    license = models.CharField(max_length=100, blank=True, default="", help_text="보유 자격증")
+    is_available = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+        verbose_name = "중기 호출 기사"
+        verbose_name_plural = "중기 호출 기사"
+
+    def __str__(self):
+        return f"{self.name} ({self.get_equipment_type_display()})"
 
 
 class FinanceConsultation(models.Model):

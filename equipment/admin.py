@@ -13,7 +13,7 @@ from django.urls import reverse
 from urllib.request import urlopen, Request
 from .models import (
     Equipment, EquipmentImage, Profile, JobPost, ExamPost, ExamComment,
-    Part, PartImage, PartsShop, YoutubeContent,
+    Part, PartImage, PartsShop, DriverProfile, YoutubeContent,
     EquipmentFavorite, PartFavorite, Comment, DeletedListingLog, EquipmentType, EquipmentBumpLog,
     FinanceConsultation,
     ExcavatorEquipment, ForkliftEquipment, DumpEquipment, LoaderEquipment,
@@ -479,6 +479,13 @@ class PartsShopAdmin(admin.ModelAdmin):
         super().save_model(request, obj, form, change)
 
 
+@admin.register(DriverProfile)
+class DriverProfileAdmin(admin.ModelAdmin):
+    list_display = ("name", "equipment_type", "region", "day_rate", "is_available", "created_at")
+    list_filter = ("equipment_type", "is_available")
+    search_fields = ("name", "region", "contact")
+
+
 @admin.register(YoutubeContent)
 class YoutubeContentAdmin(admin.ModelAdmin):
     list_display = [
@@ -568,6 +575,11 @@ class ProfileAdmin(admin.ModelAdmin):
     # list_editable은 list_display에 없는 필드를 가리키면 SystemCheckError가 발생합니다.
     # 여기서는 편집 기능을 끄고(기본값) 조회 중심으로 동작하도록 합니다.
     list_editable = ()
+    actions = (
+        'mark_premium_30_days',
+        'mark_premium_unlimited',
+        'mark_premium_off',
+    )
     readonly_fields = (
         'equipment_count_display',
         'payment_count_display',
@@ -577,6 +589,29 @@ class ProfileAdmin(admin.ModelAdmin):
         'weekly_bump_status_display',
     )
     date_hierarchy = 'user__date_joined'
+
+    @admin.action(description='선택 회원 유료 전환 (30일)')
+    def mark_premium_30_days(self, request, queryset):
+        from datetime import timedelta
+        today = timezone.now().date()
+        changed = 0
+        for profile in queryset:
+            base = profile.premium_until if profile.premium_until and profile.premium_until >= today else today
+            profile.is_premium = True
+            profile.premium_until = base + timedelta(days=30)
+            profile.save(update_fields=['is_premium', 'premium_until'])
+            changed += 1
+        self.message_user(request, f'{changed}명 회원을 30일 유료로 전환했습니다.')
+
+    @admin.action(description='선택 회원 유료 전환 (무기한)')
+    def mark_premium_unlimited(self, request, queryset):
+        changed = queryset.update(is_premium=True, premium_until=None)
+        self.message_user(request, f'{changed}명 회원을 무기한 유료로 전환했습니다.')
+
+    @admin.action(description='선택 회원 유료 해제')
+    def mark_premium_off(self, request, queryset):
+        changed = queryset.update(is_premium=False, premium_until=None)
+        self.message_user(request, f'{changed}명 회원의 유료 상태를 해제했습니다.')
 
     def get_queryset(self, request):
         qs = super().get_queryset(request)

@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+
+{% block title %}{{ driver.name }} | 중기호출 기사 | 굴삭기나라{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+  <div class="card border-0 shadow-sm">
+    <div class="card-body p-4">
+      <div class="d-flex justify-content-between align-items-start gap-2 flex-wrap">
+        <div>
+          <h4 class="fw-bold mb-1">{{ driver.name }}</h4>
+          <div class="text-muted small">{{ driver.get_equipment_type_display }} · {{ driver.get_experience_display }}</div>
+        </div>
+        {% if can_edit %}
+        <div class="d-flex gap-2">
+          <a href="{% url 'driver_edit' driver.pk %}" class="btn btn-sm btn-outline-primary">수정</a>
+          <form method="post" action="{% url 'driver_delete' driver.pk %}" onsubmit="return confirm('기사 정보를 삭제할까요?');">
+            {% csrf_token %}
+            <button type="submit" class="btn btn-sm btn-outline-danger">삭제</button>
+          </form>
+        </div>
+        {% endif %}
+      </div>
+
+      <hr>
+      <dl class="row small mb-0">
+        <dt class="col-sm-3 text-muted">활동 지역</dt><dd class="col-sm-9">{{ driver.region }}</dd>
+        <dt class="col-sm-3 text-muted">주소</dt><dd class="col-sm-9">{{ driver.address|default:"-" }}</dd>
+        <dt class="col-sm-3 text-muted">일당</dt><dd class="col-sm-9">{% if driver.day_rate %}{{ driver.day_rate }}원{% else %}협의{% endif %}</dd>
+        <dt class="col-sm-3 text-muted">연락처</dt><dd class="col-sm-9 fw-semibold">{{ driver.contact }}</dd>
+        <dt class="col-sm-3 text-muted">자격증</dt><dd class="col-sm-9">{{ driver.license|default:"-" }}</dd>
+        <dt class="col-sm-3 text-muted">상태</dt><dd class="col-sm-9">{% if driver.is_available %}호출 가능{% else %}호출 불가{% endif %}</dd>
+      </dl>
+
+      {% if driver.description %}
+      <hr>
+      <div class="small" style="white-space: pre-wrap;">{{ driver.description }}</div>
+      {% endif %}
+
+      {% if kakao_map_js_key and driver.latitude and driver.longitude %}
+      <hr>
+      <div id="driverDetailMap" style="height:320px;border-radius:12px;"></div>
+      <script src="https://dapi.kakao.com/v2/maps/sdk.js?appkey={{ kakao_map_js_key }}&autoload=false"></script>
+      <script>
+        kakao.maps.load(function () {
+          var pos = new kakao.maps.LatLng({{ driver.latitude }}, {{ driver.longitude }});
+          var map = new kakao.maps.Map(document.getElementById("driverDetailMap"), { center: pos, level: 4 });
+          var marker = new kakao.maps.Marker({ position: pos });
+          marker.setMap(map);
+        });
+      </script>
+      {% endif %}
+    </div>
+  </div>
+</div>
+{% endblock %}

@@ -21,10 +21,11 @@ import json
 from django.contrib.contenttypes.models import ContentType
 from django.core.exceptions import ValidationError
 from .models import (
-    Equipment, JobPost, ExamPost, ExamAttachment, ExamComment, Part, EquipmentImage, PartImage, PartsShop,
+    Equipment, JobPost, ExamPost, ExamAttachment, ExamComment, Part, EquipmentImage, PartImage, PartsShop, DriverProfile,
     YoutubeContent, EquipmentFavorite, PartFavorite, Comment, DeletedListingLog, Profile,
 )
 from .exam_utils import extract_youtube_id, fetch_exam_youtube_videos
+from .rental_utils import fetch_call_companies
 from soil.models import SoilPost
 from .forms import EquipmentForm, EquipmentEditForm, PartForm
 from .premium_utils import (
@@ -2085,7 +2086,7 @@ def parts_as(request):
     """부품/AS 센터 지도 + 목록 검색 페이지."""
     region = (request.GET.get('region', '') or '').strip()
     equipment_type = (request.GET.get('equipment_type', 'all') or 'all').strip().lower()
-    shop_kind = (request.GET.get('shop_kind', 'all') or 'all').strip().lower()
+    shop_kind = (request.GET.get('shop_kind') or request.GET.get('type') or 'all').strip().lower()
     focus_shop_id = request.GET.get('shop', '').strip()
 
     equipment_type_choices = [
@@ -2117,6 +2118,7 @@ def parts_as(request):
         'excavator_ton_ranges': PartsShop.TON_RANGE_CHOICES,
         'excavator_repair_types': PartsShop.REPAIR_TYPE_CHOICES,
         'kakao_map_js_key': kakao_map_js_key,
+        'show_driver_register_button': request.user.is_authenticated,
     })
 
 
@@ -2185,6 +2187,174 @@ def parts_as_register(request):
     })
 
 
+def _kakao_geocode(address):
+    addr = (address or "").strip()
+    if not addr:
+        return None
+    key = (getattr(settings, "KAKAO_REST_API_KEY", "") or "").strip()
+    if not key:
+        return None
+    try:
+        from urllib.request import Request, urlopen
+
+        query = urlencode({"query": addr})
+        req_url = f"https://dapi.kakao.com/v2/local/search/address.json?{query}"
+        request_obj = Request(req_url, headers={"Authorization": f"KakaoAK {key}"})
+        with urlopen(request_obj, timeout=8) as resp:
+            payload = json.loads(resp.read().decode("utf-8"))
+        docs = payload.get("documents") or []
+        if not docs:
+            return None
+        top = docs[0]
+        return float(top.get("y")), float(top.get("x"))
+    except Exception:
+        return None
+
+
+def driver_list(request):
+    """중기 호출 목록(기사 직접등록 + 카카오 자동수집)."""
+    region = (request.GET.get("region", "") or "").strip()
+    equipment_type = (request.GET.get("equipment_type", "all") or "all").strip().lower()
+    focus_driver_id = request.GET.get("driver", "").strip()
+
+    equipment_type_choices = [
+        ("all", "전체"),
+        ("excavator", "굴삭기"),
+        ("forklift", "지게차"),
+        ("dump", "덤프트럭"),
+        ("loader", "스키로더·로더"),
+        ("crane", "크레인"),
+        ("attachment", "어태치먼트"),
+        ("other", "기타"),
+    ]
+    equipment_label_by_key = {k: v for k, v in equipment_type_choices}
+    region_options = list(
+        PartsShop.objects.exclude(region="").values_list("region", flat=True).distinct().order_by("region")
+    )
+
+    return render(request, "equipment/parts_as.html", {
+        "region": region,
+        "focus_driver_id": focus_driver_id,
+        "focus_shop_id": "",
+        "selected_equipment_type": equipment_type if equipment_type in equipment_label_by_key else "all",
+        "selected_shop_kind": "call",
+        "equipment_type_choices": equipment_type_choices,
+        "region_options": region_options,
+        "excavator_manufacturers": PartsShop.MANUFACTURER_CHOICES,
+        "excavator_ton_ranges": PartsShop.TON_RANGE_CHOICES,
+        "excavator_repair_types": PartsShop.REPAIR_TYPE_CHOICES,
+        "kakao_map_js_key": _get_kakao_map_js_key(),
+        "show_driver_register_button": request.user.is_authenticated,
+    })
+
+
+@login_required(login_url="/login/")
+def driver_register(request):
+    redirect_resp = _require_phone_verified_strict(request)
+    if redirect_resp:
+        return redirect_resp
+
+    equipment_choices = DriverProfile.EQUIPMENT_CHOICES
+    experience_choices = DriverProfile.EXPERIENCE_CHOICES
+
+    if request.method == "POST":
+        name = (request.POST.get("name") or "").strip()
+        equipment_type = (request.POST.get("equipment_type") or "excavator").strip().lower()
+        experience = (request.POST.get("experience") or "1").strip()
+        region = (request.POST.get("region") or "").strip()
+        address = (request.POST.get("address") or "").strip()
+        day_rate = (request.POST.get("day_rate") or "").strip()
+        contact = (request.POST.get("contact") or "").strip()
+        license_name = (request.POST.get("license") or "").strip()
+        description = (request.POST.get("description") or "").strip()
+        is_available = (request.POST.get("is_available") or "Y") == "Y"
+
+        if not name or not region or not contact:
+            messages.error(request, "이름, 활동 지역, 연락처는 필수입니다.")
+        else:
+            coords = _kakao_geocode(address) if address else None
+            day_rate_val = None
+            if day_rate.isdigit():
+                day_rate_val = int(day_rate)
+            profile = DriverProfile.objects.create(
+                author=request.user,
+                name=name,
+                equipment_type=equipment_type if equipment_type in {x[0] for x in equipment_choices} else "other",
+                experience=experience if experience in {x[0] for x in experience_choices} else "1",
+                region=region,
+                address=address,
+                latitude=(coords[0] if coords else None),
+                longitude=(coords[1] if coords else None),
+                day_rate=day_rate_val,
+                contact=contact,
+                license=license_name,
+                description=description,
+                is_available=is_available,
+            )
+            messages.success(request, "중기 기사 등록이 완료되었습니다.")
+            return redirect(f"{reverse('parts_as')}?type=call&driver={profile.pk}")
+
+    return render(request, "equipment/driver_form.html", {
+        "equipment_choices": equipment_choices,
+        "experience_choices": experience_choices,
+        "driver": None,
+    })
+
+
+def driver_detail(request, pk):
+    driver = get_object_or_404(DriverProfile, pk=pk)
+    return render(request, "equipment/driver_detail.html", {
+        "driver": driver,
+        "can_edit": request.user.is_authenticated and request.user.pk == driver.author_id,
+        "kakao_map_js_key": _get_kakao_map_js_key(),
+    })
+
+
+@login_required(login_url="/login/")
+def driver_edit(request, pk):
+    driver = get_object_or_404(DriverProfile, pk=pk, author=request.user)
+    redirect_resp = _require_phone_verified_strict(request)
+    if redirect_resp:
+        return redirect_resp
+
+    equipment_choices = DriverProfile.EQUIPMENT_CHOICES
+    experience_choices = DriverProfile.EXPERIENCE_CHOICES
+    if request.method == "POST":
+        driver.name = (request.POST.get("name") or "").strip()
+        driver.equipment_type = (request.POST.get("equipment_type") or driver.equipment_type).strip().lower()
+        driver.experience = (request.POST.get("experience") or driver.experience).strip()
+        driver.region = (request.POST.get("region") or "").strip()
+        driver.address = (request.POST.get("address") or "").strip()
+        day_rate = (request.POST.get("day_rate") or "").strip()
+        driver.day_rate = int(day_rate) if day_rate.isdigit() else None
+        driver.contact = (request.POST.get("contact") or "").strip()
+        driver.license = (request.POST.get("license") or "").strip()
+        driver.description = (request.POST.get("description") or "").strip()
+        driver.is_available = (request.POST.get("is_available") or "Y") == "Y"
+        coords = _kakao_geocode(driver.address) if driver.address else None
+        if coords:
+            driver.latitude = coords[0]
+            driver.longitude = coords[1]
+        driver.save()
+        messages.success(request, "기사 정보가 수정되었습니다.")
+        return redirect("driver_detail", pk=driver.pk)
+
+    return render(request, "equipment/driver_form.html", {
+        "equipment_choices": equipment_choices,
+        "experience_choices": experience_choices,
+        "driver": driver,
+    })
+
+
+@login_required(login_url="/login/")
+def driver_delete(request, pk):
+    driver = get_object_or_404(DriverProfile, pk=pk, author=request.user)
+    if request.method == "POST":
+        driver.delete()
+        messages.success(request, "기사 정보가 삭제되었습니다.")
+        return redirect(f"{reverse('parts_as')}?type=call")
+    return redirect("driver_detail", pk=pk)
+
 def _equipment_aliases_by_key():
     return {
         "excavator": {"excavator", "굴삭기", "포크레인"},
@@ -2226,6 +2396,9 @@ def _normalize_type_filter(request):
         "rental": "rental",
         "rental_company": "rental",
         "rental_user": "rental",
+        "call": "call",
+        "call_kakao": "call",
+        "call_driver": "call",
         "all": "all",
     }
     return mapping.get(raw, "all")
@@ -2372,6 +2545,70 @@ def service_centers_api(request):
                 "detail_url": f"/rental/{post.pk}/",
                 "is_personal": True,
                 "title": post.title,
+            })
+
+    if type_filter in ("all", "call"):
+        call_companies = fetch_call_companies(equipment_type=equipment_type, region=region or "전국")
+        for item in call_companies:
+            centers.append({
+                "id": item.get("id"),
+                "uid": f"call_kakao-{item.get('id')}",
+                "type": "call_kakao",
+                "name": item.get("name") or "중기 호출 업체",
+                "lat": item.get("lat"),
+                "lng": item.get("lng"),
+                "phone": item.get("phone") or "",
+                "address": item.get("address") or "",
+                "center_type": "중기호출",
+                "center_type_key": "call_kakao",
+                "equipment_label": equipment_label_by_key.get(equipment_type, "건설기계") if equipment_type != "all" else "건설기계",
+                "manufacturers": [],
+                "ton_ranges": [],
+                "repair_types": [],
+                "operating_hours": "",
+                "region": region or "",
+                "rating": 0,
+                "review_count": 0,
+                "rental_price": "",
+                "rental_period": "",
+                "detail_url": item.get("place_url") or "",
+                "is_personal": False,
+                "experience": "",
+                "day_rate": "",
+            })
+
+        driver_qs = DriverProfile.objects.filter(is_available=True)
+        if region:
+            driver_qs = driver_qs.filter(region__icontains=region)
+        for driver in driver_qs:
+            if not _match_equipment_type(equipment_type, [driver.equipment_type]):
+                continue
+            centers.append({
+                "id": driver.pk,
+                "uid": f"call_driver-{driver.pk}",
+                "type": "call_driver",
+                "name": driver.name,
+                "lat": driver.latitude,
+                "lng": driver.longitude,
+                "phone": driver.contact,
+                "address": driver.address,
+                "center_type": "중기호출 기사",
+                "center_type_key": "call_driver",
+                "equipment_label": driver.get_equipment_type_display(),
+                "manufacturers": [],
+                "ton_ranges": [],
+                "repair_types": [],
+                "operating_hours": "",
+                "region": driver.region,
+                "rating": 0,
+                "review_count": 0,
+                "rental_price": f"{driver.day_rate:,}원" if driver.day_rate else "협의",
+                "rental_period": "",
+                "detail_url": reverse("driver_detail", kwargs={"pk": driver.pk}),
+                "is_personal": True,
+                "title": driver.name,
+                "experience": driver.get_experience_display(),
+                "day_rate": driver.day_rate or 0,
             })
 
     return JsonResponse({"centers": centers})
