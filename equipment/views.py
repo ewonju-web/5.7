@@ -2921,6 +2921,44 @@ def equipment_detail(request, pk):
 
     detail_back_url, detail_back_label = _resolve_equipment_detail_back_url(request, equipment)
 
+    seller_manner_score = None
+    seller_item_scores = {}
+    seller_item_bars = []
+    seller_manner_tier_label = ''
+    trust_bad_tag_choices = []
+    trust_report_choices = []
+    trust_can_review = False
+    trust_has_reviewed = False
+    if equipment.author_id:
+        from equipment.templatetags.i18n_extras import translate
+        from trust.i18n_helpers import translated_bad_tag_choices, translated_report_choices
+        from trust.services import (
+            ITEM_SCORE_LABELS,
+            SCORE_FIELDS,
+            buyer_can_review_equipment,
+            get_or_create_manner_score,
+            get_seller_item_averages,
+            user_reviewed_equipment,
+        )
+
+        seller_manner_score = get_or_create_manner_score(equipment.author)
+        seller_item_scores = get_seller_item_averages(equipment.author)
+        seller_item_bars = [
+            {
+                'field': field,
+                'label_key': ITEM_SCORE_LABELS[field],
+                'avg': seller_item_scores.get(field, 0.0),
+            }
+            for field in SCORE_FIELDS
+        ]
+        _lang = (request.session.get('lang') or 'ko').strip().lower()
+        seller_manner_tier_label = translate(_lang, f'trust_tier_{seller_manner_score.tier}')
+        trust_bad_tag_choices = translated_bad_tag_choices(request)
+        trust_report_choices = translated_report_choices(request)
+        if request.user.is_authenticated:
+            trust_can_review = buyer_can_review_equipment(request.user, equipment)
+            trust_has_reviewed = user_reviewed_equipment(request.user, equipment)
+
     return render(request, 'equipment/equipment_detail.html', {
         'equipment': equipment,
         'detail_back_url': detail_back_url,
@@ -2950,6 +2988,14 @@ def equipment_detail(request, pk):
         'kakao_map_js_key': _get_kakao_map_js_key(),
         'can_bump': can_bump,
         'next_bump_at': next_bump_at,
+        'seller_manner_score': seller_manner_score,
+        'seller_item_scores': seller_item_scores,
+        'seller_item_bars': seller_item_bars,
+        'seller_manner_tier_label': seller_manner_tier_label,
+        'trust_bad_tag_choices': trust_bad_tag_choices,
+        'trust_report_choices': trust_report_choices,
+        'trust_can_review': trust_can_review,
+        'trust_has_reviewed': trust_has_reviewed,
     })
 
 
@@ -2963,6 +3009,15 @@ def equipment_create(request):
     if redirect_resp:
         messages.info(request, '매물 등록을 위해 휴대폰 본인인증이 필요합니다.')
         return redirect_resp
+
+    from trust.services import SellerListingBlocked, is_seller_blocked
+
+    if is_seller_blocked(request.user):
+        messages.error(
+            request,
+            '매너점수 이용 제한으로 매물을 등록할 수 없습니다. 고객센터에 문의해 주세요.',
+        )
+        return redirect('my_page')
 
     if request.method == 'POST':
         form = EquipmentForm(_post_with_coalesced_weight_class(request.POST))
@@ -3037,6 +3092,20 @@ def equipment_create(request):
                     for f in image_files:
                         EquipmentImage.objects.create(equipment=obj, image=f)
                     return redirect('equipment_detail', obj.pk)
+                except SellerListingBlocked as exc:
+                    messages.error(request, str(exc.message) if hasattr(exc, 'message') else str(exc))
+                    return render(request, 'equipment/equipment_form.html', {
+                        'form': form,
+                        'mode': 'create',
+                        'sido_choices': SIDO_CHOICES,
+                        'sigungu_map_json': json.dumps(SIGUNGU_MAP, ensure_ascii=False),
+                        'free_listing_count': current_count,
+                        'free_listing_limit': FREE_LISTING_LIMIT,
+                        'premium_listing_limit': PREMIUM_LISTING_LIMIT,
+                        'monthly_listing_count': current_count,
+                        'monthly_listing_limit': monthly_limit,
+                        'is_premium': is_user_premium(request.user),
+                    })
                 except Exception:
                     import traceback
                     traceback.print_exc()

@@ -71,6 +71,8 @@
         </div>
       </div>
 
+      {% include "trust/partials/seller_trust_section.html" %}
+
       <!-- 2. 현재 매물: 상태 + 판매금액 + 기본 정보 -->
       <div class="card gn-card-sharp gn-card-light p-3 mb-3" style="border-radius: 10px;">
         <div class="d-flex align-items-center flex-wrap gap-2 mb-2">
@@ -1173,6 +1175,13 @@
       max-width: 320px;
     }
   }
+  .gn-seller-trust-section .gn-trust-bar-fill { background: #378ADD; }
+  .gn-trust-tier-best { background: #1D9E75; color: #fff; }
+  .gn-trust-tier-verified { background: #378ADD; color: #fff; }
+  .gn-trust-tier-caution { background: #EF9F27; color: #1a1a1a; }
+  .gn-trust-tier-blocked { background: #E24B4A; color: #fff; }
+  .gn-trust-review-tabs .nav-link { cursor: pointer; font-size: 0.8rem; padding: 0.35rem 0.6rem; }
+  .gn-trust-reviews-list { max-height: 220px; overflow-y: auto; }
   .gn-seller-rail-card { border-radius: 10px !important; }
   .gn-seller-rail-head { background: linear-gradient(180deg, #fffbeb 0%, #ffffff 100%); }
   /* 상세 우측: 첫화면과 동일 톤의 전문가 패널 */

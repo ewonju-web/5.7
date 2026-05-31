@@ -1,0 +1,154 @@
+{% load i18n_extras trust_extras %}
+{% if equipment.author_id and seller_manner_score %}
+<section class="card gn-card-sharp gn-card-light mb-3 p-3 gn-seller-trust-section" id="sellerTrustSection"
+         data-seller-id="{{ equipment.author_id }}"
+         data-equipment-id="{{ equipment.pk }}"
+         data-reviews-url="{% url 'trust:seller_reviews' equipment.author_id %}"
+         data-review-create-url="{% url 'trust:review_create' %}"
+         data-report-create-url="{% url 'trust:report_create' %}">
+  <div class="d-flex align-items-start justify-content-between gap-2 mb-3">
+    <div>
+      <h6 class="small text-muted text-uppercase mb-1">{{ LANG|tr:"trust_seller_reliability" }}</h6>
+      <div class="fw-bold">{{ author_display|default:"-" }}</div>
+      <span class="badge gn-trust-tier-{{ seller_manner_score.tier }} mt-1">
+        {{ seller_manner_tier_label }}
+      </span>
+    </div>
+    <div class="text-center flex-shrink-0">
+      {% with score=seller_manner_score.score %}
+      <svg width="72" height="72" viewBox="0 0 72 72" aria-hidden="true">
+        <circle cx="36" cy="36" r="30" fill="none" stroke="#eee" stroke-width="7"/>
+        <circle cx="36" cy="36" r="30" fill="none"
+          stroke="{{ score|manner_gauge_color }}"
+          stroke-width="7"
+          stroke-dasharray="188.5"
+          stroke-dashoffset="{{ score|manner_gauge_offset }}"
+          stroke-linecap="round"
+          transform="rotate(-90 36 36)"/>
+        <text x="36" y="34" text-anchor="middle" font-size="16" font-weight="bold" fill="#333">{{ score|floatformat:0 }}</text>
+        <text x="36" y="47" text-anchor="middle" font-size="9" fill="#999">{{ LANG|tr:"trust_manner_score" }}</text>
+      </svg>
+      {% endwith %}
+      <div class="small text-muted">
+        {{ LANG|tr:"trust_review_good" }} {{ seller_manner_score.good_count }}
+        · {{ LANG|tr:"trust_review_bad" }} {{ seller_manner_score.bad_count }}
+      </div>
+    </div>
+  </div>
+
+  <div class="gn-trust-item-bars mb-3">
+    {% for bar in seller_item_bars %}
+    <div class="gn-trust-bar-row mb-2">
+      <div class="d-flex justify-content-between small mb-1">
+        <span>{{ LANG|tr:bar.label_key }}</span>
+        <span class="fw-semibold">{{ bar.avg }}</span>
+      </div>
+      <div class="progress" style="height:6px;">
+        <div class="progress-bar gn-trust-bar-fill" role="progressbar"
+             style="width: {% widthratio bar.avg 5 100 %}%;"></div>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+
+  <div class="d-flex flex-wrap gap-2 mb-3">
+    {% if trust_can_review and not trust_has_reviewed %}
+    <button type="button" class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#trustReviewModal">
+      {{ LANG|tr:"trust_btn_review" }}
+    </button>
+    {% elif trust_has_reviewed %}
+    <span class="small text-muted">{{ LANG|tr:"trust_review_done" }}</span>
+    {% endif %}
+    <button type="button" class="btn btn-sm btn-outline-danger" data-bs-toggle="modal" data-bs-target="#trustReportModal">
+      {{ LANG|tr:"trust_btn_report" }}
+    </button>
+  </div>
+
+  <div>
+    <ul class="nav nav-tabs nav-tabs-sm mb-2 gn-trust-review-tabs" role="tablist">
+      <li class="nav-item"><button type="button" class="nav-link active" data-review-type="all">{{ LANG|tr:"trust_tab_all" }}</button></li>
+      <li class="nav-item"><button type="button" class="nav-link" data-review-type="good">{{ LANG|tr:"trust_tab_good" }}</button></li>
+      <li class="nav-item"><button type="button" class="nav-link" data-review-type="bad">{{ LANG|tr:"trust_tab_bad" }}</button></li>
+    </ul>
+    <div id="trustReviewsList" class="gn-trust-reviews-list small">{{ LANG|tr:"trust_reviews_loading" }}</div>
+    <button type="button" class="btn btn-link btn-sm p-0 d-none mt-1" id="trustReviewsMore">{{ LANG|tr:"trust_reviews_more" }}</button>
+  </div>
+</section>
+
+<div class="modal fade" id="trustReviewModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-scrollable">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">{{ LANG|tr:"trust_modal_review_title" }}</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <div class="mb-3">
+          <label class="form-label fw-bold">{{ LANG|tr:"trust_review_type" }}</label>
+          <div class="d-flex gap-2" id="trustReviewTypeGroup">
+            <label class="btn btn-outline-success btn-sm active"><input type="radio" name="trustReviewType" value="good" class="d-none" checked> {{ LANG|tr:"trust_review_good_label" }}</label>
+            <label class="btn btn-outline-secondary btn-sm"><input type="radio" name="trustReviewType" value="bad" class="d-none"> {{ LANG|tr:"trust_review_bad_label" }}</label>
+          </div>
+        </div>
+        <div id="trustScoreFields" class="mb-3">
+          {% for bar in seller_item_bars %}
+          <div class="mb-2">
+            <label class="form-label small mb-1">{{ LANG|tr:bar.label_key }}</label>
+            <div class="btn-group btn-group-sm w-100 trust-score-btns" role="group" data-score-field="{{ bar.field }}">
+              <button type="button" class="btn btn-outline-secondary" data-score="1">1</button>
+              <button type="button" class="btn btn-outline-secondary" data-score="2">2</button>
+              <button type="button" class="btn btn-outline-secondary" data-score="3">3</button>
+              <button type="button" class="btn btn-outline-secondary" data-score="4">4</button>
+              <button type="button" class="btn btn-outline-secondary" data-score="5">5</button>
+            </div>
+          </div>
+          {% endfor %}
+        </div>
+        <div id="trustBadTagsWrap" class="mb-3 d-none">
+          <label class="form-label small fw-bold">{{ LANG|tr:"trust_bad_tags" }}</label>
+          <div class="d-flex flex-wrap gap-1" id="trustBadTagsGroup">
+            {% for val, label in trust_bad_tag_choices %}
+            <label class="btn btn-sm btn-outline-secondary">
+              <input type="checkbox" class="d-none trust-bad-tag" value="{{ val }}"> {{ label }}
+            </label>
+            {% endfor %}
+          </div>
+        </div>
+        <textarea class="form-control form-control-sm" id="trustReviewComment" rows="2" maxlength="500" placeholder="{{ LANG|tr:"trust_review_comment_ph" }}"></textarea>
+        <div id="trustReviewError" class="text-danger small mt-2 d-none"></div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">{{ LANG|tr:"btn_cancel" }}</button>
+        <button type="button" class="btn btn-primary btn-sm" id="trustReviewSubmit">{{ LANG|tr:"trust_btn_submit_review" }}</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="modal fade" id="trustReportModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">{{ LANG|tr:"trust_modal_report_title" }}</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <label class="form-label fw-bold">{{ LANG|tr:"trust_report_reason" }}</label>
+        <select class="form-select form-select-sm mb-2" id="trustReportReason">
+          {% for val, label in trust_report_choices %}
+          <option value="{{ val }}">{{ label }}</option>
+          {% endfor %}
+        </select>
+        <textarea class="form-control form-control-sm" id="trustReportDetail" rows="3" maxlength="2000" placeholder="{{ LANG|tr:"trust_report_detail_ph" }}"></textarea>
+        <div id="trustReportError" class="text-danger small mt-2 d-none"></div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">{{ LANG|tr:"btn_cancel" }}</button>
+        <button type="button" class="btn btn-danger btn-sm" id="trustReportSubmit">{{ LANG|tr:"trust_btn_submit_report" }}</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="/static/js/seller_trust.js" defer></script>
+{% endif %}

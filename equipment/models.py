@@ -183,6 +183,13 @@ class Equipment(models.Model):
         verbose_name = "중고 굴삭기"
         verbose_name_plural = "2. 중고 굴삭기 관리"
 
+    def save(self, *args, **kwargs):
+        if self.author_id:
+            from trust.services import assert_seller_can_list
+
+            assert_seller_can_list(self.author)
+        super().save(*args, **kwargs)
+
     def __str__(self):
         return self.model_name or self.get_equipment_type_display() or "매물"
 
