@@ -86,7 +86,9 @@
   .gn-badge { border-radius:999px; padding:.2rem .55rem; font-size:.75rem; font-weight:700; }
   .gn-badge.as { background:#dbeafe; color:#1d4ed8; }
   .gn-badge.parts { background:#dcfce7; color:#166534; }
-  .gn-badge.rental_company { background:#dcfce7; color:#15803d; }
+  .gn-badge.rental_company,
+  .gn-badge.rental_kakao { background:#dcfce7; color:#15803d; }
+  .gn-badge.regional_heavy { background:#dbeafe; color:#1d4ed8; }
   .gn-badge.rental_user { background:#ecfccb; color:#4d7c0f; }
   .gn-badge.call_kakao { background:#f3e8ff; color:#7e22ce; }
   .gn-badge.call_driver { background:#fce7f3; color:#be185d; }
@@ -112,6 +114,22 @@
   .gn-dot { width: 10px; height: 10px; border-radius: 999px; display:inline-block; margin-right:4px; vertical-align:middle; }
   .gn-mobile-tabs { display:none; }
   .gn-empty { text-align:center; color:#6b7280; padding:2rem 1rem; border:1px dashed #d1d5db; border-radius:12px; background:#fafafa; }
+  .gn-loading-state { border-style: solid; background: #fff; color: #64748b; }
+  .gn-layout.is-loading .gn-kind-tabs { opacity: 0.55; pointer-events: none; }
+  .gn-map-panel { position: relative; }
+  .gn-layout.is-loading .gn-map-panel::after {
+    content: "지도·업체 정보를 불러오는 중...";
+    position: absolute;
+    inset: 0;
+    z-index: 4;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(255, 255, 255, 0.82);
+    color: #475569;
+    font-size: 0.92rem;
+    font-weight: 600;
+  }
   .gn-info-window { min-width:220px; max-width:280px; padding:.35rem; font-size:.82rem; }
   @media (max-width:991.98px) {
     .gn-layout { grid-template-columns:1fr; min-height:auto; }
@@ -184,8 +202,7 @@
             <option value="all">전체 업체</option>
             <option value="as" {% if selected_shop_kind == "as" %}selected{% endif %}>AS센터</option>
             <option value="parts" {% if selected_shop_kind == "parts" %}selected{% endif %}>부품점</option>
-            <option value="rental" {% if selected_shop_kind == "rental" %}selected{% endif %}>임대업체</option>
-            <option value="call" {% if selected_shop_kind == "call" %}selected{% endif %}>중기호출</option>
+            <option value="rental" {% if selected_shop_kind == "rental" %}selected{% endif %}>지역중기</option>
           </select>
         </div>
         <div class="col-12">
@@ -203,19 +220,20 @@
       <button type="button" class="gn-mobile-tab-btn" data-mobile-view="list">목록보기</button>
     </div>
 
-    <section class="gn-layout">
+    <section class="gn-layout is-loading">
       <div class="gn-list-panel">
         <div class="gn-list-toolbar">
-          <div class="small text-muted"><strong id="resultCount">0</strong>개 업체</div>
+          <div class="small text-muted"><strong id="resultCount">…</strong>개 업체</div>
           <div class="gn-kind-tabs">
-            <button class="gn-kind-btn active" data-kind-filter="all">전체 (<span id="countAll">0</span>)</button>
-            <button class="gn-kind-btn" data-kind-filter="as">AS센터 (<span id="countAs">0</span>)</button>
-            <button class="gn-kind-btn" data-kind-filter="parts">부품점 (<span id="countParts">0</span>)</button>
-            <button class="gn-kind-btn" data-kind-filter="rental">임대업체 (<span id="countRental">0</span>)</button>
-            <button class="gn-kind-btn" data-kind-filter="call">중기호출 (<span id="countCall">0</span>)</button>
+            <button class="gn-kind-btn active" data-kind-filter="all">전체 (<span id="countAll">…</span>)</button>
+            <button class="gn-kind-btn" data-kind-filter="as">AS센터 (<span id="countAs">…</span>)</button>
+            <button class="gn-kind-btn" data-kind-filter="parts">부품점 (<span id="countParts">…</span>)</button>
+            <button class="gn-kind-btn" data-kind-filter="rental">지역중기 (<span id="countRental">…</span>)</button>
           </div>
         </div>
-        <div class="gn-shop-list" id="shopList"></div>
+        <div class="gn-shop-list" id="shopList">
+          <div class="gn-empty gn-loading-state">업체 정보를 불러오는 중...</div>
+        </div>
       </div>
       <div class="gn-map-panel">
         <div id="partsAsMap"></div>
@@ -223,7 +241,7 @@
           <span><i class="gn-dot" style="background:#f97316"></i>부품점</span>
           <span><i class="gn-dot" style="background:#2563eb"></i>AS센터</span>
           <span><i class="gn-dot" style="background:#16a34a"></i>임대</span>
-          <span><i class="gn-dot" style="background:#9333ea"></i>중기호출</span>
+          <span><i class="gn-dot" style="background:#2563eb"></i>지역중기</span>
         </div>
       </div>
     </section>
@@ -250,19 +268,33 @@
       selectedUid: null,
     };
     let map, asClusterer, partsClusterer, rentalCompanyClusterer, rentalUserClusterer, callKakaoClusterer, callDriverClusterer;
+    let mapReady = false;
     const markersByUid = new Map();
     const infoByUid = new Map();
     let centers = [];
 
+    const layoutEl = document.querySelector(".gn-layout");
     const listEl = document.getElementById("shopList");
     const resultCountEl = document.getElementById("resultCount");
     const countAllEl = document.getElementById("countAll");
     const countAsEl = document.getElementById("countAs");
     const countPartsEl = document.getElementById("countParts");
     const countRentalEl = document.getElementById("countRental");
-    const countCallEl = document.getElementById("countCall");
     const excavatorBox = document.getElementById("excavatorDetailBox");
 
+    function setLoading(loading) {
+      if (layoutEl) layoutEl.classList.toggle("is-loading", loading);
+      if (loading) {
+        resultCountEl.textContent = "…";
+        countAllEl.textContent = "…";
+        countAsEl.textContent = "…";
+        countPartsEl.textContent = "…";
+        countRentalEl.textContent = "…";
+        if (!centers.length) {
+          listEl.innerHTML = '<div class="gn-empty gn-loading-state">업체 정보를 불러오는 중...</div>';
+        }
+      }
+    }
     function esc(v) {
       return (v || "").replace(/[&<>"']/g, (c) => ({ "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;" }[c]));
     }
@@ -284,6 +316,8 @@
         as: { text: "AS", fill: "rgba(37, 99, 235, 0.75)", color: "#2563eb" },
         parts: { text: "부", fill: "rgba(249, 115, 22, 0.75)", color: "#f97316" },
         rental_company: { text: "임", fill: "rgba(22, 163, 74, 0.78)", color: "#16a34a" },
+        rental_kakao: { text: "임", fill: "rgba(22, 163, 74, 0.78)", color: "#16a34a" },
+        regional_heavy: { text: "중", fill: "rgba(37, 99, 235, 0.82)", color: "#1d4ed8" },
         rental_user: { text: "개", fill: "rgba(132, 204, 22, 0.78)", color: "#65a30d" },
         call_kakao: { text: "호", fill: "rgba(147, 51, 234, 0.8)", color: "#9333ea" },
         call_driver: { text: "기", fill: "rgba(236, 72, 153, 0.8)", color: "#ec4899" },
@@ -293,15 +327,14 @@
       return new kakao.maps.MarkerImage(`data:image/svg+xml;charset=UTF-8,${svg}`, new kakao.maps.Size(34, 42), { offset: new kakao.maps.Point(17, 42) });
     }
     function markerKind(c) {
-      if (c.type === "rental_company" || c.type === "rental_user" || c.type === "call_kakao" || c.type === "call_driver") return c.type;
+      if (c.type === "rental_company" || c.type === "rental_kakao" || c.type === "regional_heavy" || c.type === "rental_user" || c.type === "call_kakao" || c.type === "call_driver") return c.type;
       return c.center_type_key === "as" ? "as" : "parts";
     }
     function matchesKindFilter(c) {
       if (state.listKindFilter === "all") return true;
       if (state.listKindFilter === "as") return c.type === "as_center";
       if (state.listKindFilter === "parts") return c.type === "parts";
-      if (state.listKindFilter === "rental") return c.type === "rental_company" || c.type === "rental_user";
-      if (state.listKindFilter === "call") return c.type === "call_kakao" || c.type === "call_driver";
+      if (state.listKindFilter === "rental") return c.type === "rental_company" || c.type === "rental_kakao" || c.type === "regional_heavy" || c.type === "rental_user" || c.type === "call_kakao" || c.type === "call_driver";
       return c.center_type_key === state.listKindFilter;
     }
     function visibleCenters() {
@@ -317,14 +350,12 @@
       const all = centers.length;
       const asCount = centers.filter((x) => x.type === "as_center").length;
       const partsCount = centers.filter((x) => x.type === "parts").length;
-      const rentalCount = centers.filter((x) => x.type === "rental_company" || x.type === "rental_user").length;
-      const callCount = centers.filter((x) => x.type === "call_kakao" || x.type === "call_driver").length;
+      const rentalCount = centers.filter((x) => x.type === "rental_company" || x.type === "rental_kakao" || x.type === "regional_heavy" || x.type === "rental_user" || x.type === "call_kakao" || x.type === "call_driver").length;
       resultCountEl.textContent = String(all);
       countAllEl.textContent = String(all);
       countAsEl.textContent = String(asCount);
       countPartsEl.textContent = String(partsCount);
       countRentalEl.textContent = String(rentalCount);
-      countCallEl.textContent = String(callCount);
     }
     function renderList() {
       const filtered = visibleCenters();
@@ -333,7 +364,7 @@
         return;
       }
       listEl.innerHTML = filtered.map((c) => {
-        const isRental = c.type === "rental_company" || c.type === "rental_user";
+        const isRental = c.type === "rental_company" || c.type === "rental_kakao" || c.type === "regional_heavy" || c.type === "rental_user";
         const isCall = c.type === "call_kakao" || c.type === "call_driver";
         const ratingHtml = (!isRental && !isCall)
           ? `<div class="gn-shop-rating">★ ${Number(c.rating || 0).toFixed(1)} <span class="count">리뷰 ${Number(c.review_count || 0)}개</span></div>`
@@ -372,12 +403,29 @@
           ${detailLink}
         </div>`;
       }
-      if (c.type === "rental_company") {
+      if (c.type === "regional_heavy") {
+        const kakaoLink = c.detail_url
+          ? `<div class="mt-1"><a href="${esc(c.detail_url)}" target="_blank" rel="noopener" class="text-primary fw-semibold">카카오맵 보기</a></div>`
+          : "";
+        return `<div class="gn-info-window">
+          <div><strong>${esc(c.name)}</strong></div>
+          <div class="small text-muted">${esc(c.operating_hours || "건설기계")}</div>
+          <div>기종: ${esc(c.equipment_label || "-")}</div>
+          <div>${esc(c.phone || "연락처 없음")}</div>
+          <div>${esc(c.address || c.region || "")}</div>
+          ${kakaoLink}
+        </div>`;
+      }
+      if (c.type === "rental_company" || c.type === "rental_kakao") {
+        const kakaoLink = c.type === "rental_kakao" && c.detail_url
+          ? `<div class="mt-1"><a href="${esc(c.detail_url)}" target="_blank" rel="noopener" class="text-primary fw-semibold">카카오맵 보기</a></div>`
+          : "";
         return `<div class="gn-info-window">
           <div><strong>${esc(c.name)}</strong></div>
           <div>기종: ${esc(c.equipment_label || "-")}</div>
           <div>${esc(c.phone || "연락처 없음")}</div>
           <div>${esc(c.address || c.region || "")}</div>
+          ${kakaoLink}
         </div>`;
       }
       if (c.type === "call_kakao") {
@@ -437,7 +485,7 @@
         marker.setMap(map);
         if (kind === "as") asMarkers.push(marker);
         else if (kind === "parts") partsMarkers.push(marker);
-        else if (kind === "rental_company") rentalCompanyMarkers.push(marker);
+        else if (kind === "rental_company" || kind === "rental_kakao" || kind === "regional_heavy") rentalCompanyMarkers.push(marker);
         else if (kind === "rental_user") rentalUserMarkers.push(marker);
         else if (kind === "call_kakao") callKakaoMarkers.push(marker);
         else if (kind === "call_driver") callDriverMarkers.push(marker);
@@ -470,14 +518,23 @@
       state.selectedUid = null;
       infoByUid.forEach((iw) => iw.close());
     }
-    async function fetchCenters() {
-      resetSelection();
+    async function loadCentersData() {
       const res = await fetch(buildApiUrl(), { headers: { "X-Requested-With": "XMLHttpRequest" } });
       const data = await res.json();
       centers = Array.isArray(data.centers) ? data.centers : [];
+    }
+    async function fetchCenters(options) {
+      const showLoading = !(options && options.showLoading === false);
+      resetSelection();
+      if (showLoading) setLoading(true);
+      try {
+        await loadCentersData();
+      } finally {
+        if (showLoading) setLoading(false);
+      }
       updateCounts();
       renderList();
-      renderMarkers();
+      if (mapReady) renderMarkers();
     }
     function bindEvents() {
       document.querySelectorAll("#equipmentTypePills .gn-pill-btn").forEach((btn) => {
@@ -490,7 +547,7 @@
             document.querySelectorAll(".gn-filter-chip").forEach((x) => x.classList.remove("active"));
           }
           updateExcavatorBox();
-          await fetchCenters();
+          await fetchCenters({ showLoading: false });
         });
       });
       document.querySelectorAll(".gn-filter-chip").forEach((chip) => {
@@ -500,7 +557,7 @@
           this.classList.toggle("active");
           const target = group === "manufacturers" ? state.manufacturers : state.repairTypes;
           if (target.has(value)) target.delete(value); else target.add(value);
-          await fetchCenters();
+          await fetchCenters({ showLoading: false });
         });
       });
       document.getElementById("regionInput").addEventListener("change", async function () {
@@ -564,6 +621,8 @@
         await fetchCenters();
       });
     }
+    setLoading(true);
+    const centersPromise = loadCentersData();
     kakao.maps.load(async function () {
       map = new kakao.maps.Map(document.getElementById("partsAsMap"), { center: new kakao.maps.LatLng(36.5, 127.8), level: 13 });
       asClusterer = new kakao.maps.MarkerClusterer({
@@ -592,7 +651,12 @@
       });
       updateExcavatorBox();
       bindEvents();
-      await fetchCenters();
+      await centersPromise;
+      mapReady = true;
+      updateCounts();
+      renderList();
+      renderMarkers();
+      setLoading(false);
       const focusUid = initialFocusShopId
         ? (centers.find((c) => c.id === initialFocusShopId && (c.type === "as_center" || c.type === "parts"))?.uid || null)
         : null;

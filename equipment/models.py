@@ -18,6 +18,12 @@ class Profile(models.Model):
     business_number = models.CharField(max_length=50, blank=True, null=True, verbose_name="등록번호")
     phone = models.CharField(max_length=20, blank=True, null=True, verbose_name="연락처")
     bio = models.TextField(blank=True, default="", verbose_name="소개글")
+    profile_photo = models.ImageField(
+        upload_to="profile_photos/",
+        blank=True,
+        null=True,
+        verbose_name="명함 사진",
+    )
     is_approved = models.BooleanField(default=False, verbose_name="승인여부")
     youtube_url = models.URLField(blank=True, null=True, verbose_name='유튜브 채널 주소')
     # 유료 회원: 무제한 매물 등록, 첫화면/우측 배너 노출, "이 회원 매물 전체 보기" 이용 가능

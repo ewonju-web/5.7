@@ -1,5 +1,8 @@
 # 유료 회원 노출용: 첫화면 로테이션·우측 배너
+import random
+
 from django.db import models
+from django.urls import reverse
 from django.utils import timezone
 
 from .models import Equipment, Profile
@@ -9,6 +12,9 @@ PREMIUM_SIDEBAR_INDEX_TOTAL = 20
 PREMIUM_SIDEBAR_INDEX_PER_SIDE = 10
 
 # 첫화면 좌우 패널 제목 — 기종 탭별로 해당 기종 유료 매물만 노출 + 문구 분리
+# 우측 「전문가들」 명함 소개글 — 한 줄 말줄임(레이아웃 깨짐 방지)
+PREMIUM_EXPERT_BIO_MAX_LENGTH = 30
+
 PREMIUM_SIDEBAR_EXPERT_TITLE_BY_CATEGORY = {
     "excavator": "굴삭기 전문가들",
     "forklift": "지게차 전문가들",
@@ -66,6 +72,88 @@ def pad_premium_sidebar_slots(items, limit=6):
     """우측 유료 사이드바를 항상 limit칸으로 맞춤. 부족한 칸은 None(빈 카드)."""
     items = list(items)[:limit]
     return items + [None] * (limit - len(items))
+
+
+def pad_premium_expert_cards(cards, limit=10):
+    """전문가 명함 슬롯 — 부족분은 None."""
+    cards = list(cards)[:limit]
+    return cards + [None] * (limit - len(cards))
+
+
+def truncate_premium_expert_bio(text, max_length=PREMIUM_EXPERT_BIO_MAX_LENGTH):
+    """명함 영역용 소개글 길이 제한."""
+    s = (text or "").strip().replace("\n", " ").replace("\r", " ")
+    while "  " in s:
+        s = s.replace("  ", " ")
+    if len(s) <= max_length:
+        return s
+    return s[: max_length - 1].rstrip() + "…"
+
+
+def _premium_display_name(profile):
+    company = (profile.company_name or "").strip()
+    if company:
+        return company
+    user = profile.user
+    full = (user.get_full_name() or "").strip()
+    if full:
+        return full
+    return (user.username or "").strip() or "전문가"
+
+
+def _fallback_listing_photo_url(profile, equipment_type=None):
+    qs = Equipment.objects.visible().filter(author_id=profile.user_id, is_sold=False)
+    if equipment_type:
+        qs = qs.filter(equipment_type=equipment_type)
+    listing = qs.prefetch_related("images").order_by("-created_at").first()
+    if not listing:
+        return ""
+    first = listing.images.first()
+    return first.image.url if first and first.image else ""
+
+
+def get_premium_expert_cards(limit=10, equipment_type=None, *, exclude_user_id=None):
+    """
+    유료 회원 명함 카드 — 프로필 사진·소개·전화 + 미니홈 링크.
+    해당 기종 노출 매물이 1건 이상인 유료 회원만 포함.
+    """
+    uids = _premium_user_ids()
+    if not uids:
+        return []
+    if exclude_user_id:
+        uids = [uid for uid in uids if uid != exclude_user_id]
+    profiles = (
+        Profile.objects.filter(user_id__in=uids)
+        .select_related("user")
+        .order_by("?")
+    )
+    cards = []
+    for profile in profiles:
+        eq_qs = Equipment.objects.visible().filter(author_id=profile.user_id, is_sold=False)
+        if equipment_type:
+            eq_qs = eq_qs.filter(equipment_type=equipment_type)
+        if not eq_qs.exists():
+            continue
+        photo_url = ""
+        if profile.profile_photo:
+            photo_url = profile.profile_photo.url
+        if not photo_url:
+            photo_url = _fallback_listing_photo_url(profile, equipment_type)
+        detail_url = reverse("author_listings", kwargs={"user_id": profile.user_id})
+        if equipment_type:
+            detail_url = f"{detail_url}?category={equipment_type}"
+        cards.append(
+            {
+                "user_id": profile.user_id,
+                "name": _premium_display_name(profile),
+                "photo_url": photo_url,
+                "bio": truncate_premium_expert_bio(profile.bio),
+                "phone": (profile.phone or "").strip(),
+                "detail_url": detail_url,
+            }
+        )
+    random.shuffle(cards)
+    return cards[:limit]
 
 
 def is_user_premium(user):

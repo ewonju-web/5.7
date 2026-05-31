@@ -1,6 +1,7 @@
 """자격증 시험 — 유튜브 URL·API 검색 유틸."""
 from __future__ import annotations
 
+import html
 import json
 from urllib.parse import parse_qs, urlencode, urlparse
 from urllib.request import Request, urlopen
@@ -61,7 +62,7 @@ def fetch_exam_youtube_videos(equipment_key: str = '') -> list[dict]:
     if not api_key:
         return []
 
-    cache_key = f'youtube_api:exam:{equipment_key or "all"}'
+    cache_key = f'youtube_api:exam:v2:{equipment_key or "all"}'
     cached = cache.get(cache_key)
     if cached is not None:
         return cached
@@ -99,7 +100,7 @@ def fetch_exam_youtube_videos(equipment_key: str = '') -> list[dict]:
         )
         items.append({
             'video_id': video_id,
-            'title': (snippet.get('title') or '').strip(),
+            'title': html.unescape((snippet.get('title') or '').strip()),
             'channel_title': (snippet.get('channelTitle') or '').strip(),
             'thumbnail_url': thumb,
             'youtube_url': f'https://www.youtube.com/watch?v={video_id}',

@@ -6,10 +6,18 @@
 <div class="container py-4 gn-mypage">
     <div class="gn-profile-card mb-3">
         <div class="gn-profile-left">
+            {% if profile.is_premium_active and profile.profile_photo %}
+            <div class="gn-avatar gn-avatar-photo" style="background-image:url('{{ profile.profile_photo.url }}');"></div>
+            {% else %}
             <div class="gn-avatar">{{ user.username|slice:":1"|upper }}</div>
+            {% endif %}
             <div>
                 <p class="gn-name mb-1">{{ user.first_name|default:user.username }}</p>
-                <p class="gn-meta mb-1">아이디 {{ user.username }} · 가입일 {{ user.date_joined|date:"Y-m-d" }}</p>
+                <p class="gn-meta mb-1">
+                    아이디 {{ user.username }}
+                    <a href="{% url 'logout' %}" class="gn-meta-logout ms-1">로그아웃</a>
+                    · 가입일 {{ user.date_joined|date:"Y-m-d" }}
+                </p>
                 <span class="gn-badge-free">{% if profile.is_premium_active %}유료회원{% else %}무료회원{% endif %}</span>
                 {% if is_legacy_user %}
                 <a href="{% url 'legacy_convert' %}" class="btn btn-sm btn-outline-light ms-2">정식 회원 전환</a>
@@ -23,10 +31,99 @@
         <div class="gn-stat-card"><div class="gn-stat-num">{{ stats.my_count }}</div><div class="gn-stat-label">등록 매물 수</div></div>
         <div class="gn-stat-card"><div class="gn-stat-num">{{ stats.fav_count }}</div><div class="gn-stat-label">찜한 매물 수</div></div>
         <div class="gn-stat-card"><div class="gn-stat-num">{{ stats.total_views|intcomma }}</div><div class="gn-stat-label">총 조회수</div></div>
-        <div class="gn-stat-card"><div class="gn-stat-num">{{ stats.grade_label }}</div><div class="gn-stat-label">회원 등급</div></div>
+        <div class="gn-stat-card gn-stat-card-grade">
+            <div class="gn-stat-num">{{ stats.grade_label }}</div>
+            <div class="gn-stat-label">회원 등급</div>
+            {% if profile.is_premium_active %}
+            <button type="button" class="btn btn-sm gn-premium-card-open-btn mt-2" id="btnOpenPremiumCard">명함 설정하기</button>
+            {% endif %}
+        </div>
     </div>
 
+    {% if not profile.is_premium_active %}
+    <section class="gn-section-card mb-4">
+        <div class="gn-section-head">
+            <h5 class="gn-section-title">유료회원 명함</h5>
+        </div>
+        <p class="small text-muted mb-2">사진·소개글·전화번호가 매물 상세 「전문가들」 영역에 노출됩니다.</p>
+        <a href="{% url 'billing_upgrade' %}" class="btn gn-gold-btn btn-sm">유료회원 안내</a>
+    </section>
+    {% endif %}
+
     {% if profile.is_premium_active %}
+    <section class="gn-section-card mb-4 d-none" id="premium-card-settings" aria-hidden="true">
+        <div class="gn-section-head">
+            <h5 class="gn-section-title">유료회원 명함 설정</h5>
+            <div class="d-flex gap-1 flex-shrink-0">
+                <a href="{% url 'author_listings' user.pk %}" class="btn btn-sm btn-outline-secondary" target="_blank" rel="noopener">미리보기</a>
+                <button type="button" class="btn btn-sm btn-outline-secondary" id="btnClosePremiumCard">닫기</button>
+            </div>
+        </div>
+        <p class="small text-muted mb-3">굴삭기·지게차 등 매물 상세 우측 「전문가들」 명함에 표시됩니다. 소개글은 <strong>한 줄 {{ premium_expert_bio_max_length }}자</strong>까지입니다. 해당 기종 매물이 1건 이상 있어야 노출됩니다.</p>
+        <form method="post" enctype="multipart/form-data" class="gn-premium-card-form">
+            {% csrf_token %}
+            <input type="hidden" name="action" value="update_premium_card">
+            <div class="row g-3">
+                <div class="col-12 col-md-4 text-center text-md-start">
+                    <label class="form-label small fw-bold d-block">명함 사진</label>
+                    <div class="gn-premium-photo-preview mb-2 mx-auto mx-md-0">
+                        {% if profile.profile_photo %}
+                        <img src="{{ profile.profile_photo.url }}" alt="명함 사진" id="premiumPhotoPreview">
+                        {% else %}
+                        <div class="gn-premium-photo-empty" id="premiumPhotoPreview"><i class="bi bi-person-badge"></i><span>사진 없음</span></div>
+                        {% endif %}
+                    </div>
+                    <input type="file" name="profile_photo" id="id_profile_photo" class="form-control form-control-sm" accept="image/jpeg,image/png,image/webp">
+                    {% if profile.profile_photo %}
+                    <div class="form-check mt-2 text-start">
+                        <input class="form-check-input" type="checkbox" name="remove_profile_photo" value="1" id="remove_profile_photo">
+                        <label class="form-check-label small" for="remove_profile_photo">사진 삭제</label>
+                    </div>
+                    {% endif %}
+                </div>
+                <div class="col-12 col-md-8">
+                    <div class="mb-3">
+                        <label for="id_company_name" class="form-label small fw-bold">상호 / 이름</label>
+                        <input type="text" name="company_name" id="id_company_name" class="form-control" maxlength="100"
+                               value="{{ profile.company_name|default:'' }}" placeholder="예: OO중기">
+                    </div>
+                    <div class="mb-3">
+                        <label for="id_premium_phone" class="form-label small fw-bold">전화번호 <span class="text-danger">*</span></label>
+                        <input type="tel" name="phone" id="id_premium_phone" class="form-control" maxlength="20"
+                               value="{{ profile.phone|default:'' }}" placeholder="010-0000-0000" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="id_premium_bio" class="form-label small fw-bold">명함 소개글 <span class="text-muted fw-normal">(한 줄 {{ premium_expert_bio_max_length }}자)</span></label>
+                        <textarea name="bio" id="id_premium_bio" class="form-control" rows="2" maxlength="{{ premium_expert_bio_max_length }}"
+                                  placeholder="예: 남양주 굴삭기 전문, 전국 출장 가능">{{ profile.bio }}</textarea>
+                        <div class="d-flex justify-content-between align-items-center mt-1">
+                            <span class="small text-muted" id="premiumBioHint">명함 박스 밖으로 글자가 넘어가지 않도록 짧게 적어 주세요.</span>
+                            <span class="small text-muted"><span id="premiumBioCount">0</span>/{{ premium_expert_bio_max_length }}</span>
+                        </div>
+                    </div>
+                    <div class="gn-premium-card-sample mb-3" aria-hidden="true">
+                        <div class="small text-muted mb-1">명함 미리보기</div>
+                        <div class="gn-premium-card-sample-inner">
+                            <div class="gn-premium-card-sample-thumb">
+                                {% if profile.profile_photo %}
+                                <img src="{{ profile.profile_photo.url }}" alt="">
+                                {% else %}
+                                <i class="bi bi-person-fill"></i>
+                                {% endif %}
+                            </div>
+                            <div class="gn-premium-card-sample-text min-width-0">
+                                <div class="fw-bold text-truncate" id="premiumSampleName">{{ profile.company_name|default:user.first_name|default:user.username }}</div>
+                                <div class="small text-muted gn-premium-card-sample-bio" id="premiumSampleBio">{{ profile.bio|default:"소개글을 입력하세요" }}</div>
+                                <div class="fw-bold text-primary small mt-1" id="premiumSamplePhone">{{ profile.phone|format_phone|default:"010-0000-0000" }}</div>
+                            </div>
+                        </div>
+                    </div>
+                    <button type="submit" class="btn gn-gold-btn">명함 저장</button>
+                </div>
+            </div>
+        </form>
+    </section>
+
     <section class="gn-section-card mb-4">
         <div class="gn-section-head">
             <h5 class="gn-section-title">지역별 구매 문의 알림</h5>
@@ -228,8 +325,45 @@
     display: flex; align-items: center; justify-content: center;
     flex-shrink: 0;
   }
+  .gn-avatar-photo {
+    background-color: #1f2937;
+    background-size: cover;
+    background-position: center;
+    color: transparent;
+  }
+  .gn-premium-photo-preview {
+    width: 120px; height: 120px; border-radius: 12px; overflow: hidden;
+    border: 1px solid #e5e7eb; background: #f8fafc;
+  }
+  .gn-premium-photo-preview img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .gn-premium-photo-empty {
+    width: 100%; height: 100%; display: flex; flex-direction: column;
+    align-items: center; justify-content: center; color: #94a3b8; font-size: 0.75rem; gap: 0.25rem;
+  }
+  .gn-premium-photo-empty i { font-size: 1.6rem; }
+  .gn-premium-card-sample-inner {
+    display: flex; gap: 0.5rem; align-items: flex-start;
+    border: 1px solid #e5e7eb; border-radius: 10px; background: #fff;
+    padding: 0.55rem; max-width: 280px;
+  }
+  .gn-premium-card-sample-thumb {
+    width: 52px; height: 52px; flex-shrink: 0; border-radius: 8px;
+    overflow: hidden; background: #f1f5f9; display: flex; align-items: center; justify-content: center;
+  }
+  .gn-premium-card-sample-thumb img { width: 100%; height: 100%; object-fit: cover; }
+  .gn-premium-card-sample-bio {
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%;
+  }
   .gn-name { color: #fff; font-size: 22px; font-weight: 600; }
   .gn-meta { color: rgba(255,255,255,.78); font-size: 14px; }
+  .gn-meta-logout {
+    color: #fecaca;
+    text-decoration: underline;
+    font-weight: 700;
+  }
+  .gn-meta-logout:hover {
+    color: #fff;
+  }
   .gn-badge-free {
     display: inline-block; border-radius: 999px; padding: 0.14rem 0.55rem;
     background: #e5e7eb; color: #475569; font-size: 13px; font-weight: 700; padding: 3px 10px;
@@ -243,6 +377,12 @@
   .gn-stat-card { background: #fff; border: 1px solid #e5e7eb; border-radius: 12px; padding: 1.25rem 0.8rem; text-align: center; }
   .gn-stat-num { color: #F5A623; font-weight: 600; font-size: 24px; margin-bottom: 0.2rem; }
   .gn-stat-label { color: #6b7280; font-size: 14px; }
+  .gn-stat-card-grade { display: flex; flex-direction: column; align-items: center; justify-content: center; }
+  .gn-premium-card-open-btn {
+    background: #F5A623; color: #1f2937; border: none; font-weight: 700;
+    border-radius: 8px; font-size: 0.72rem; padding: 0.28rem 0.55rem; white-space: nowrap;
+  }
+  .gn-premium-card-open-btn:hover { background: #e3a12d; color: #1f2937; }
 
   .gn-quick-grid { display: grid; grid-template-columns: repeat(5, minmax(0,1fr)); gap: 0.6rem; }
   .gn-quick-item {
@@ -441,4 +581,88 @@
     .gn-quick-grid { grid-template-columns: repeat(2, minmax(0,1fr)); }
   }
 </style>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+(function () {
+  var panel = document.getElementById("premium-card-settings");
+  var openBtn = document.getElementById("btnOpenPremiumCard");
+  var closeBtn = document.getElementById("btnClosePremiumCard");
+  function showPremiumCardPanel() {
+    if (!panel) return;
+    panel.classList.remove("d-none");
+    panel.setAttribute("aria-hidden", "false");
+    panel.scrollIntoView({ behavior: "smooth", block: "start" });
+  }
+  function hidePremiumCardPanel() {
+    if (!panel) return;
+    panel.classList.add("d-none");
+    panel.setAttribute("aria-hidden", "true");
+  }
+  if (openBtn) openBtn.addEventListener("click", showPremiumCardPanel);
+  if (closeBtn) closeBtn.addEventListener("click", hidePremiumCardPanel);
+
+  var bioMax = {{ premium_expert_bio_max_length|default:30 }};
+  var bioEl = document.getElementById("id_premium_bio");
+  var bioCount = document.getElementById("premiumBioCount");
+  var sampleBio = document.getElementById("premiumSampleBio");
+  var sampleName = document.getElementById("premiumSampleName");
+  var samplePhone = document.getElementById("premiumSamplePhone");
+  var nameEl = document.getElementById("id_company_name");
+  var phoneEl = document.getElementById("id_premium_phone");
+
+  function trimBio(text) {
+    var s = (text || "").replace(/\s+/g, " ").trim();
+    if (s.length <= bioMax) return s;
+    return s.slice(0, bioMax - 1) + "…";
+  }
+  function syncBio() {
+    if (!bioEl) return;
+    var raw = bioEl.value.replace(/\n/g, " ");
+    if (raw.length > bioMax) bioEl.value = raw.slice(0, bioMax);
+    if (bioCount) bioCount.textContent = String(bioEl.value.length);
+    if (sampleBio) sampleBio.textContent = trimBio(bioEl.value) || "소개글을 입력하세요";
+  }
+  if (bioEl) {
+    bioEl.addEventListener("input", syncBio);
+    syncBio();
+  }
+  if (nameEl && sampleName) {
+    nameEl.addEventListener("input", function () {
+      sampleName.textContent = nameEl.value.trim() || sampleName.textContent;
+    });
+  }
+  if (phoneEl && samplePhone) {
+    phoneEl.addEventListener("input", function () {
+      samplePhone.textContent = phoneEl.value.trim() || "010-0000-0000";
+    });
+  }
+
+  var input = document.getElementById("id_profile_photo");
+  var preview = document.getElementById("premiumPhotoPreview");
+  if (!input || !preview) return;
+  input.addEventListener("change", function () {
+    var file = input.files && input.files[0];
+    if (!file) return;
+    var reader = new FileReader();
+    reader.onload = function (e) {
+      if (preview.tagName === "IMG") {
+        preview.src = e.target.result;
+      } else {
+        var img = document.createElement("img");
+        img.id = "premiumPhotoPreview";
+        img.alt = "명함 사진";
+        img.src = e.target.result;
+        preview.replaceWith(img);
+      }
+      var sampleThumb = document.querySelector(".gn-premium-card-sample-thumb");
+      if (sampleThumb) {
+        sampleThumb.innerHTML = '<img src="' + e.target.result + '" alt="">';
+      }
+    };
+    reader.readAsDataURL(file);
+  });
+})();
+</script>
 {% endblock %}

@@ -1196,3 +1196,162 @@ h1.job-title,
 .student-chat-form textarea {
   resize: none;
 }
+
+/* 시험동영상 카드 (/jobs/exam/videos/) */
+.exam-video-grid {
+  display: grid;
+  grid-template-columns: repeat(1, minmax(0, 1fr));
+  gap: 16px;
+  margin-bottom: 8px;
+}
+@media (min-width: 768px) {
+  .exam-video-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 20px;
+  }
+}
+@media (min-width: 1200px) {
+  .exam-video-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+.exam-video-card {
+  border-radius: 12px;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.12);
+  overflow: hidden;
+  background: #ffffff;
+  border: 1px solid #f0f0f0;
+}
+.exam-video-thumb-btn {
+  display: block;
+  width: 100%;
+  border: 0;
+  background: transparent;
+  padding: 0;
+  cursor: pointer;
+  text-align: left;
+}
+.exam-video-thumb-wrap {
+  position: relative;
+  display: block;
+  overflow: hidden;
+  background: #111827;
+}
+.exam-video-thumb-wrap::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0);
+  transition: background 0.2s ease;
+  pointer-events: none;
+}
+.exam-video-thumb {
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  object-fit: cover;
+  display: block;
+  transition: transform 0.2s ease;
+}
+.exam-video-play {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.55);
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  line-height: 1;
+  padding-left: 3px;
+  pointer-events: none;
+  z-index: 1;
+}
+@media (hover: hover) {
+  .exam-video-thumb-btn:hover .exam-video-thumb-wrap::after {
+    background: rgba(0, 0, 0, 0.18);
+  }
+  .exam-video-thumb-btn:hover .exam-video-thumb {
+    transform: scale(1.02);
+  }
+}
+.exam-video-thumb-btn:active .exam-video-thumb-wrap::after {
+  background: rgba(0, 0, 0, 0.25);
+}
+.exam-video-body {
+  padding: 12px;
+  background: #ffffff;
+}
+.exam-video-title-btn {
+  display: block;
+  width: 100%;
+  border: 0;
+  background: transparent;
+  padding: 0;
+  margin: 0 0 4px;
+  cursor: pointer;
+  text-align: left;
+}
+.exam-video-title {
+  margin: 0;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: #1a1a1a;
+  line-height: 1.4;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.exam-video-channel {
+  font-size: 13px;
+  color: #666666;
+  margin: 0 0 8px;
+}
+.exam-video-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.exam-video-badge {
+  border-radius: 999px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  padding: 0.18rem 0.52rem;
+  line-height: 1.3;
+}
+.exam-video-badge-equipment {
+  background: #fff3e0;
+  color: #e65100;
+}
+.exam-video-badge-type {
+  background: #fce4ec;
+  color: #c62828;
+}
+.exam-video-yt-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 10px;
+  border: 0;
+  background: transparent;
+  padding: 0;
+  color: #ff0000;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+@media (hover: hover) {
+  .exam-video-title-btn:hover .exam-video-title {
+    color: #111827;
+    text-decoration: underline;
+  }
+  .exam-video-yt-link:hover {
+    color: #cc0000;
+    text-decoration: underline;
+  }
+}

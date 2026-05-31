@@ -2,7 +2,11 @@
 {% block content %}
 <div class="container py-5">
     <div class="mb-4">
-        <h2 class="fw-bold">👤 마이페이지</h2>
+        <h2 class="fw-bold d-flex align-items-center gap-2 flex-wrap">
+            <span>👤 마이페이지</span>
+            <span class="fs-6 fw-semibold text-muted">{{ user.username }}</span>
+            <a href="{% url 'logout' %}" class="btn btn-outline-danger btn-sm">로그아웃</a>
+        </h2>
         <p class="text-muted"><strong>{{ user.username }}</strong>님이 등록하신 내역입니다.</p>
     </div>
 

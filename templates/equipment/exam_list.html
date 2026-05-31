@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 {% load static i18n_extras %}
 {% block extra_css %}
-<link rel="stylesheet" href="{% static 'css/jobs.css' %}?v=20260528e">
+<link rel="stylesheet" href="{% static 'css/jobs.css' %}?v=20260528f">
 <style>
   .exam-list-shell { background: #fff; border: 1px solid var(--gn-border, #e5e7eb); border-radius: 14px; padding: 1rem; box-shadow: var(--gn-shadow, 0 1px 3px rgba(0,0,0,.06)); }
   .exam-list-head { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 0.75rem; margin-bottom: 0.85rem; }
@@ -79,20 +79,7 @@
   .exam-card-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 0.35rem; font-size: 0.78rem; color: #64748b; }
   .exam-card-tag { border-radius: 999px; font-size: 0.72rem; font-weight: 700; padding: 0.14rem 0.48rem; background: #f1f5f9; color: #334155; }
   .exam-list-empty { border: 1px dashed #d1d5db; border-radius: 12px; background: #fafafa; color: #6b7280; text-align: center; padding: 2rem 1rem; }
-  /* 정비유튜브(/info/) 동일 카드 */
-  .info-grid { display: grid; grid-template-columns: repeat(1, minmax(0, 1fr)); gap: 0.8rem; }
-  @media (min-width: 768px) { .info-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
-  @media (min-width: 1200px) { .info-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
-  .info-card { border: 1px solid var(--gn-border, #e5e7eb); border-radius: 12px; background: #fff; overflow: hidden; }
-  .info-card-body { padding: 0.75rem; }
-  .info-thumb-wrap { border-radius: 10px; overflow: hidden; background: #111827; display: block; }
-  .info-thumb { width: 100%; aspect-ratio: 16 / 9; object-fit: cover; display: block; }
-  .info-title-link { color: var(--gn-text, #1e293b); text-decoration: none; }
-  .info-title-link:hover { color: #1d4ed8; text-decoration: underline; }
-  .info-channel { font-size: .82rem; color: #64748b; margin: .2rem 0 .3rem; font-weight: 600; }
-  .info-meta { display: flex; flex-wrap: wrap; gap: 0.35rem; margin-top: 0.4rem; }
-  .info-badge { border-radius: 999px; font-size: 0.72rem; font-weight: 700; padding: 0.14rem 0.48rem; background: #f1f5f9; color: #334155; border: 0; }
-  .video-open-btn { border: 0; background: transparent; padding: 0; width: 100%; text-align: left; cursor: pointer; }
+  .video-open-btn { border: 0; background: transparent; padding: 0; cursor: pointer; }
   .video-modal-overlay {
     position: fixed; inset: 0; background: rgba(15, 23, 42, 0.8);
     display: none; align-items: center; justify-content: center; z-index: 1080; padding: 1rem;
@@ -141,7 +128,7 @@
                 <a href="{% url 'exam_video_list' %}{% if val %}?equipment={{ val|urlencode }}{% endif %}"
                    class="exam-filter-tab {% if filter_equipment == val %}active{% endif %}">{{ label }}</a>
                 {% else %}
-                <a href="{% url 'exam_list' %}{% if val or filter_category %}?{% endif %}{% if val %}equipment={{ val|urlencode }}{% endif %}{% if filter_category %}{% if val %}&amp;{% endif %}category={{ filter_category|urlencode }}{% endif %}"
+                <a href="{% if filter_category == 'question' %}{% url 'exam_list' %}?category=question{% else %}{% url 'exam_list' %}{% if val or filter_category %}?{% endif %}{% if val %}equipment={{ val|urlencode }}{% endif %}{% if filter_category %}{% if val %}&amp;{% endif %}category={{ filter_category|urlencode }}{% endif %}{% endif %}"
                    class="exam-filter-tab {% if filter_equipment == val %}active{% endif %}">{{ label }}</a>
                 {% endif %}
                 {% endfor %}
@@ -153,6 +140,9 @@
                 {% if val == 'video' %}
                 <a href="{% url 'exam_video_list' %}{% if filter_equipment %}?equipment={{ filter_equipment|urlencode }}{% endif %}"
                    class="exam-filter-tab {% if show_youtube_videos %}active{% endif %}">{{ label }}</a>
+                {% elif val == 'question' %}
+                <a href="{% url 'exam_list' %}?category=question"
+                   class="exam-filter-tab {% if not show_youtube_videos and filter_category == val %}active{% endif %}">{{ label }}</a>
                 {% else %}
                 <a href="{% url 'exam_list' %}{% if filter_equipment or val %}?{% endif %}{% if filter_equipment %}equipment={{ filter_equipment|urlencode }}{% endif %}{% if val %}{% if filter_equipment %}&amp;{% endif %}category={{ val|urlencode }}{% endif %}"
                    class="exam-filter-tab {% if not show_youtube_videos and filter_category == val %}active{% endif %}">{{ label }}</a>
@@ -163,35 +153,36 @@
 
         {% if show_youtube_videos %}
         {% if youtube_video_items %}
-        <div class="info-grid">
+        <div class="exam-video-grid">
             {% for item in youtube_video_items %}
-            <article class="info-card">
-                <div class="info-card-body">
-                    <button type="button" class="video-open-btn js-video-open"
-                            data-youtube-url="{{ item.youtube_url }}"
-                            data-video-title="{{ item.title|escape }}"
-                            aria-label="{{ item.title }} 재생">
-                        <span class="info-thumb-wrap mb-2">
-                            {% if item.thumbnail_url %}
-                            <img src="{{ item.thumbnail_url }}" class="info-thumb" alt="{{ item.title }}" loading="lazy">
-                            {% else %}
-                            <img src="https://img.youtube.com/vi/{{ item.video_id }}/mqdefault.jpg" class="info-thumb" alt="{{ item.title }}" loading="lazy">
-                            {% endif %}
-                        </span>
-                    </button>
-                    <button type="button" class="video-open-btn js-video-open info-title-link"
+            <article class="exam-video-card">
+                <button type="button" class="exam-video-thumb-btn video-open-btn js-video-open"
+                        data-youtube-url="{{ item.youtube_url }}"
+                        data-video-title="{{ item.title|escape }}"
+                        aria-label="{{ item.title }} 재생">
+                    <span class="exam-video-thumb-wrap">
+                        {% if item.thumbnail_url %}
+                        <img src="{{ item.thumbnail_url }}" class="exam-video-thumb" alt="{{ item.title }}" loading="lazy">
+                        {% else %}
+                        <img src="https://img.youtube.com/vi/{{ item.video_id }}/mqdefault.jpg" class="exam-video-thumb" alt="{{ item.title }}" loading="lazy">
+                        {% endif %}
+                        <span class="exam-video-play" aria-hidden="true">▶</span>
+                    </span>
+                </button>
+                <div class="exam-video-body">
+                    <button type="button" class="exam-video-title-btn video-open-btn js-video-open"
                             data-youtube-url="{{ item.youtube_url }}"
                             data-video-title="{{ item.title|escape }}">
-                        <h6 class="fw-bold mb-1 exam-card-title" style="margin-bottom:0.25rem;">{{ item.title }}</h6>
+                        <h3 class="exam-video-title">{{ item.title }}</h3>
                     </button>
-                    <div class="info-channel">{{ item.channel_title|default:"YouTube" }}</div>
-                    <div class="info-meta">
-                        <span class="info-badge">{{ item.equipment_label }}</span>
-                        <span class="info-badge">시험동영상</span>
-                        <button type="button" class="info-badge video-open-btn js-video-open"
-                                data-youtube-url="{{ item.youtube_url }}"
-                                data-video-title="{{ item.title|escape }}">유튜브 보기</button>
+                    <div class="exam-video-channel">{{ item.channel_title|default:"YouTube" }}</div>
+                    <div class="exam-video-meta">
+                        <span class="exam-video-badge exam-video-badge-equipment">{{ item.equipment_label }}</span>
+                        <span class="exam-video-badge exam-video-badge-type">시험동영상</span>
                     </div>
+                    <button type="button" class="exam-video-yt-link video-open-btn js-video-open"
+                            data-youtube-url="{{ item.youtube_url }}"
+                            data-video-title="{{ item.title|escape }}">▶ 유튜브 보기</button>
                 </div>
             </article>
             {% endfor %}
@@ -224,13 +215,13 @@
             <ul class="pagination pagination-sm mb-0">
                 {% if page_obj.has_previous %}
                 <li class="page-item">
-                    <a class="page-link" href="?page={{ page_obj.previous_page_number }}{% if filter_equipment %}&amp;equipment={{ filter_equipment|urlencode }}{% endif %}{% if filter_category %}&amp;category={{ filter_category|urlencode }}{% endif %}">이전</a>
+                    <a class="page-link" href="?page={{ page_obj.previous_page_number }}{% if filter_equipment and filter_category != 'question' %}&amp;equipment={{ filter_equipment|urlencode }}{% endif %}{% if filter_category %}&amp;category={{ filter_category|urlencode }}{% endif %}">이전</a>
                 </li>
                 {% endif %}
                 <li class="page-item disabled"><span class="page-link">{{ page_obj.number }} / {{ page_obj.paginator.num_pages }}</span></li>
                 {% if page_obj.has_next %}
                 <li class="page-item">
-                    <a class="page-link" href="?page={{ page_obj.next_page_number }}{% if filter_equipment %}&amp;equipment={{ filter_equipment|urlencode }}{% endif %}{% if filter_category %}&amp;category={{ filter_category|urlencode }}{% endif %}">다음</a>
+                    <a class="page-link" href="?page={{ page_obj.next_page_number }}{% if filter_equipment and filter_category != 'question' %}&amp;equipment={{ filter_equipment|urlencode }}{% endif %}{% if filter_category %}&amp;category={{ filter_category|urlencode }}{% endif %}">다음</a>
                 </li>
                 {% endif %}
             </ul>

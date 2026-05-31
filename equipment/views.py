@@ -15,17 +15,22 @@ from django.conf import settings
 from decimal import Decimal, ROUND_HALF_UP
 from datetime import timedelta
 from urllib.parse import parse_qs, quote, urlencode, urlparse
-from pathlib import Path
 import json
 
 from django.contrib.contenttypes.models import ContentType
 from django.core.exceptions import ValidationError
 from .models import (
-    Equipment, JobPost, ExamPost, ExamAttachment, ExamComment, Part, EquipmentImage, PartImage, PartsShop, DriverProfile,
+    Equipment, JobPost, ExamPost, ExamComment, Part, EquipmentImage, PartImage, PartsShop,
     YoutubeContent, EquipmentFavorite, PartFavorite, Comment, DeletedListingLog, Profile,
+    DriverProfile,
+)
+from .rental_utils import (
+    fetch_call_companies,
+    fetch_rental_companies,
+    fetch_regional_heavy_companies,
+    get_kakao_rest_key,
 )
 from .exam_utils import extract_youtube_id, fetch_exam_youtube_videos
-from .rental_utils import fetch_call_companies
 from soil.models import SoilPost
 from .forms import EquipmentForm, EquipmentEditForm, PartForm
 from .premium_utils import (
@@ -38,9 +43,11 @@ from .premium_utils import (
     BUMP_WEEKLY_LIMIT,
     get_premium_user_ids,
     get_premium_equipment_rotation,
-    get_premium_equipment_sidebar,
-    pad_premium_sidebar_slots,
-    PREMIUM_SIDEBAR_INDEX_TOTAL,
+    get_premium_expert_cards,
+    pad_premium_expert_cards,
+    PREMIUM_EXPERT_BIO_MAX_LENGTH,
+    truncate_premium_expert_bio,
+    PREMIUM_SIDEBAR_INDEX_PER_SIDE,
     PREMIUM_SIDEBAR_EXPERT_TITLE_BY_CATEGORY,
 )
 from .claim_utils import normalize_phone_digits
@@ -806,13 +813,27 @@ def my_page(request):
     except Profile.DoesNotExist:
         profile = Profile.objects.create(user=request.user)
 
-    if request.method == 'POST' and request.POST.get('action') == 'update_bio':
+    if request.method == 'POST' and request.POST.get('action') in ('update_premium_card', 'update_bio'):
         if not profile.is_premium_active:
-            messages.warning(request, '소개글 설정은 유료회원만 이용할 수 있습니다.')
+            messages.warning(request, '명함 설정은 유료회원만 이용할 수 있습니다.')
             return redirect('my_page')
-        profile.bio = (request.POST.get('bio') or '').strip()
-        profile.save(update_fields=['bio'])
-        messages.success(request, '소개글이 저장되었습니다.')
+        company_name = (request.POST.get('company_name') or '').strip()
+        profile.company_name = company_name or None
+        phone = (request.POST.get('phone') or '').strip()
+        if phone:
+            profile.phone = phone
+        profile.bio = truncate_premium_expert_bio(request.POST.get('bio') or '')
+        if request.POST.get('remove_profile_photo') == '1':
+            if profile.profile_photo:
+                try:
+                    profile.profile_photo.delete(save=False)
+                except Exception:
+                    pass
+            profile.profile_photo = None
+        elif request.FILES.get('profile_photo'):
+            profile.profile_photo = request.FILES['profile_photo']
+        profile.save()
+        messages.success(request, '유료회원 명함 정보가 저장되었습니다.')
         return redirect('my_page')
 
     my_equipments = (
@@ -877,6 +898,7 @@ def my_page(request):
         'is_legacy_user': is_legacy_user,
         'free_listing_limit': FREE_LISTING_LIMIT,
         'premium_region_inquiry_alerts': premium_region_inquiry_alerts,
+        'premium_expert_bio_max_length': PREMIUM_EXPERT_BIO_MAX_LENGTH,
     })
 
 
@@ -1546,16 +1568,6 @@ _EXAM_CATEGORY_KEYS = {c[0] for c in ExamPost.CATEGORY_CHOICES}
 _EXAM_EQUIPMENT_KEYS = {c[0] for c in ExamPost.EQUIPMENT_CHOICES}
 _EXAM_LIST_PAGE_SIZE = 20
 _EXAM_DEFAULT_EQUIPMENT = 'excavator'
-_EXAM_ATTACHMENT_EXTENSIONS = {'.pdf', '.hwp'}
-
-
-def _validate_exam_attachments(uploads):
-    invalid_upload_names = []
-    for upload in uploads:
-        ext = Path(getattr(upload, 'name', '')).suffix.lower()
-        if ext not in _EXAM_ATTACHMENT_EXTENSIONS:
-            invalid_upload_names.append(getattr(upload, 'name', '알 수 없는 파일'))
-    return invalid_upload_names
 
 
 def _exam_list_queryset(request):
@@ -1566,6 +1578,10 @@ def _exam_list_queryset(request):
     )
     category = (request.GET.get('category') or '').strip()
     equipment = (request.GET.get('equipment') or '').strip()
+
+    # 기출문제: 기종은 항상 전체(모든 기종의 기출 표시)
+    if category == 'question':
+        equipment = ''
 
     if category == 'video':
         pass
@@ -1607,6 +1623,13 @@ def exam_video_list(request):
 def exam_list(request):
     category = (request.GET.get('category') or '').strip()
     equipment = (request.GET.get('equipment') or '').strip()
+    if category == 'question' and equipment:
+        params = request.GET.copy()
+        del params['equipment']
+        url = reverse('exam_list')
+        if params:
+            url = f'{url}?{params.urlencode()}'
+        return redirect(url)
     if category == 'video':
         params = request.GET.copy()
         if 'category' in params:
@@ -1637,10 +1660,7 @@ def exam_list(request):
 
 
 def exam_detail(request, pk):
-    post = get_object_or_404(
-        ExamPost.objects.select_related('author').prefetch_related('attachments'),
-        pk=pk,
-    )
+    post = get_object_or_404(ExamPost.objects.select_related('author'), pk=pk)
 
     if request.method == 'POST':
         if not request.user.is_authenticated:
@@ -1656,23 +1676,12 @@ def exam_detail(request, pk):
     ExamPost.objects.filter(pk=pk).update(views=F('views') + 1)
     post.refresh_from_db(fields=['views'])
     comments = post.comments.select_related('author').order_by('created_at')
-    attachments = list(post.attachments.all())
-    for attachment in attachments:
-        attachment.ext_label = (Path(attachment.original_name or attachment.file.name).suffix or '').replace('.', '').upper() or 'FILE'
-    if post.file:
-        legacy_name = (post.file.name or '').split('/')[-1]
-        attachments.insert(0, {
-            'file': post.file,
-            'original_name': legacy_name,
-            'ext_label': (Path(legacy_name).suffix or '').replace('.', '').upper() or 'FILE',
-        })
     youtube_id = ''
     if post.category == 'video' and post.youtube_url:
         youtube_id = extract_youtube_id(post.youtube_url)
     return render(request, 'equipment/exam_detail.html', {
         'post': post,
         'comments': comments,
-        'attachments': attachments,
         'youtube_id': youtube_id,
         'jobs_section': 'exam',
     })
@@ -1691,11 +1700,7 @@ def exam_create(request):
         category = (request.POST.get('category') or '').strip()
         equipment = (request.POST.get('equipment') or '').strip()
         youtube_url = (request.POST.get('youtube_url') or '').strip()
-        uploads = [f for f in request.FILES.getlist('files') if f]
-        legacy_upload = request.FILES.get('file')
-        if legacy_upload:
-            uploads.append(legacy_upload)
-        invalid_upload_names = _validate_exam_attachments(uploads)
+        upload = request.FILES.get('file')
 
         if not title:
             messages.error(request, '제목을 입력해 주세요.')
@@ -1708,43 +1713,29 @@ def exam_create(request):
                 messages.error(request, '시험동영상 유형은 유튜브 URL을 입력해 주세요.')
             elif not extract_youtube_id(youtube_url):
                 messages.error(request, '올바른 유튜브 URL을 입력해 주세요.')
-            elif invalid_upload_names:
-                messages.error(request, f"첨부는 PDF/HWP만 가능합니다: {', '.join(invalid_upload_names[:3])}")
             else:
-                post = ExamPost.objects.create(
+                ExamPost.objects.create(
                     author=request.user,
                     title=title,
                     content=content,
                     category=category,
                     equipment=equipment,
                     youtube_url=youtube_url,
+                    file=upload,
                 )
-                for upload in uploads:
-                    ExamAttachment.objects.create(
-                        post=post,
-                        file=upload,
-                        original_name=getattr(upload, 'name', '')[:255],
-                    )
                 messages.success(request, '글이 등록되었습니다.')
                 return redirect('exam_list')
         elif not content:
             messages.error(request, '내용을 입력해 주세요.')
-        elif invalid_upload_names:
-            messages.error(request, f"첨부는 PDF/HWP만 가능합니다: {', '.join(invalid_upload_names[:3])}")
         else:
-            post = ExamPost.objects.create(
+            ExamPost.objects.create(
                 author=request.user,
                 title=title,
                 content=content,
                 category=category,
                 equipment=equipment,
+                file=upload,
             )
-            for upload in uploads:
-                ExamAttachment.objects.create(
-                    post=post,
-                    file=upload,
-                    original_name=getattr(upload, 'name', '')[:255],
-                )
             messages.success(request, '글이 등록되었습니다.')
             return redirect('exam_list')
 
@@ -1757,9 +1748,14 @@ def exam_create(request):
 
 @login_required(login_url='/login/')
 def exam_edit(request, pk):
-    post = get_object_or_404(ExamPost.objects.prefetch_related('attachments'), pk=pk)
-    if post.author_id != request.user.id:
+    post = get_object_or_404(ExamPost, pk=pk)
+    if post.author_id != request.user.id and not request.user.is_staff:
         raise Http404()
+
+    redirect_resp = _require_phone_verified(request)
+    if redirect_resp:
+        messages.info(request, '글 수정을 위해 휴대폰 본인인증이 필요합니다.')
+        return redirect_resp
 
     if request.method == 'POST':
         title = (request.POST.get('title') or '').strip()
@@ -1767,12 +1763,7 @@ def exam_edit(request, pk):
         category = (request.POST.get('category') or '').strip()
         equipment = (request.POST.get('equipment') or '').strip()
         youtube_url = (request.POST.get('youtube_url') or '').strip()
-        uploads = [f for f in request.FILES.getlist('files') if f]
-        legacy_upload = request.FILES.get('file')
-        if legacy_upload:
-            uploads.append(legacy_upload)
-        invalid_upload_names = _validate_exam_attachments(uploads)
-        delete_attachment_ids = [v for v in request.POST.getlist('delete_attachment_ids') if v.isdigit()]
+        upload = request.FILES.get('file')
 
         if not title:
             messages.error(request, '제목을 입력해 주세요.')
@@ -1780,52 +1771,56 @@ def exam_edit(request, pk):
             messages.error(request, '유형을 선택해 주세요.')
         elif equipment not in _EXAM_EQUIPMENT_KEYS:
             messages.error(request, '기종을 선택해 주세요.')
-        elif category == 'video' and not youtube_url:
-            messages.error(request, '시험동영상 유형은 유튜브 URL을 입력해 주세요.')
-        elif category == 'video' and not extract_youtube_id(youtube_url):
-            messages.error(request, '올바른 유튜브 URL을 입력해 주세요.')
-        elif category != 'video' and not content:
+        elif category == 'video':
+            if not youtube_url:
+                messages.error(request, '시험동영상 유형은 유튜브 URL을 입력해 주세요.')
+            elif not extract_youtube_id(youtube_url):
+                messages.error(request, '올바른 유튜브 URL을 입력해 주세요.')
+            else:
+                post.title = title
+                post.content = content
+                post.category = category
+                post.equipment = equipment
+                post.youtube_url = youtube_url
+                if upload:
+                    post.file = upload
+                post.save()
+                messages.success(request, '글이 수정되었습니다.')
+                return redirect('exam_detail', pk=post.pk)
+        elif not content:
             messages.error(request, '내용을 입력해 주세요.')
-        elif invalid_upload_names:
-            messages.error(request, f"첨부는 PDF/HWP만 가능합니다: {', '.join(invalid_upload_names[:3])}")
         else:
             post.title = title
             post.content = content
             post.category = category
             post.equipment = equipment
-            post.youtube_url = youtube_url if category == 'video' else ''
-            post.save(update_fields=['title', 'content', 'category', 'equipment', 'youtube_url'])
-
-            if delete_attachment_ids:
-                post.attachments.filter(id__in=delete_attachment_ids).delete()
-            for upload in uploads:
-                ExamAttachment.objects.create(
-                    post=post,
-                    file=upload,
-                    original_name=getattr(upload, 'name', '')[:255],
-                )
+            post.youtube_url = youtube_url or None
+            if upload:
+                post.file = upload
+            post.save()
             messages.success(request, '글이 수정되었습니다.')
             return redirect('exam_detail', pk=post.pk)
 
     return render(request, 'equipment/exam_form.html', {
+        'post': post,
+        'is_edit': True,
         'exam_category_choices': ExamPost.CATEGORY_CHOICES,
         'exam_equipment_choices': ExamPost.EQUIPMENT_CHOICES,
         'jobs_section': 'exam',
-        'editing_post': post,
-        'existing_attachments': list(post.attachments.all()),
     })
 
 
 @login_required(login_url='/login/')
 def exam_delete(request, pk):
     post = get_object_or_404(ExamPost, pk=pk)
-    if post.author_id != request.user.id:
+    if post.author_id != request.user.id and not request.user.is_staff:
         raise Http404()
-    if request.method != 'POST':
-        return redirect('exam_detail', pk=pk)
-    post.delete()
-    messages.success(request, '글이 삭제되었습니다.')
-    return redirect('exam_list')
+    if request.method == 'POST':
+        post.delete()
+        messages.success(request, '글이 삭제되었습니다.')
+        return redirect('exam_list')
+    messages.warning(request, '삭제는 확인 후 진행해 주세요.')
+    return redirect('exam_detail', pk=pk)
 
 
 # [3-1] 굴삭기 유튜브·정보
@@ -2191,7 +2186,7 @@ def _kakao_geocode(address):
     addr = (address or "").strip()
     if not addr:
         return None
-    key = (getattr(settings, "KAKAO_REST_API_KEY", "") or "").strip()
+    key = get_kakao_rest_key()
     if not key:
         return None
     try:
@@ -2355,6 +2350,7 @@ def driver_delete(request, pk):
         return redirect(f"{reverse('parts_as')}?type=call")
     return redirect("driver_detail", pk=pk)
 
+
 def _equipment_aliases_by_key():
     return {
         "excavator": {"excavator", "굴삭기", "포크레인"},
@@ -2404,8 +2400,40 @@ def _normalize_type_filter(request):
     return mapping.get(raw, "all")
 
 
+def _kakao_place_to_center(item, *, uid_prefix, place_type, center_type_label, equipment_label_by_key, equipment_type, region):
+    item_eq = (item.get("equipment_type") or equipment_type or "other").strip().lower()
+    if equipment_type and equipment_type != "all" and item_eq != equipment_type:
+        if not _match_equipment_type(equipment_type, [item_eq]):
+            return None
+    eq_label = equipment_label_by_key.get(item_eq, item_eq)
+    return {
+        "id": item.get("id"),
+        "uid": f"{uid_prefix}-{item.get('id')}",
+        "type": place_type,
+        "name": item.get("name") or center_type_label,
+        "lat": item.get("lat"),
+        "lng": item.get("lng"),
+        "phone": item.get("phone") or "",
+        "address": item.get("address") or "",
+        "center_type": center_type_label,
+        "center_type_key": place_type,
+        "equipment_label": eq_label if equipment_type != "all" else (eq_label or "건설기계"),
+        "manufacturers": [],
+        "ton_ranges": [],
+        "repair_types": [],
+        "operating_hours": item.get("category_name") or "",
+        "region": item.get("region") or region or "",
+        "rating": 0,
+        "review_count": 0,
+        "rental_price": "",
+        "rental_period": "",
+        "detail_url": item.get("place_url") or "",
+        "is_personal": False,
+    }
+
+
 def service_centers_api(request):
-    """지도/목록 마커용 서비스센터 + 임대 데이터 API."""
+    """지도/목록 마커용 서비스센터 + 임대·지역중기·호출 데이터 API."""
     from rental.models import RentalCompany, RentalPost
 
     equipment_type = (request.GET.get("equipment_type") or "all").strip().lower()
@@ -2415,6 +2443,7 @@ def service_centers_api(request):
     region = (request.GET.get("region") or "").strip()
     type_filter = _normalize_type_filter(request)
     equipment_label_by_key = _equipment_label_by_key()
+    region_scope = region or "전국"
 
     centers = []
 
@@ -2547,35 +2576,49 @@ def service_centers_api(request):
                 "title": post.title,
             })
 
+        for item in fetch_rental_companies(equipment_type=equipment_type, region=region_scope):
+            row = _kakao_place_to_center(
+                item,
+                uid_prefix="rental_kakao",
+                place_type="rental_kakao",
+                center_type_label="임대(카카오)",
+                equipment_label_by_key=equipment_label_by_key,
+                equipment_type=equipment_type,
+                region=region,
+            )
+            if row and row.get("lat") is not None and row.get("lng") is not None:
+                centers.append(row)
+
+        for item in fetch_regional_heavy_companies(equipment_type=equipment_type, region=region_scope):
+            row = _kakao_place_to_center(
+                item,
+                uid_prefix="regional_heavy",
+                place_type="regional_heavy",
+                center_type_label="지역중기",
+                equipment_label_by_key=equipment_label_by_key,
+                equipment_type=equipment_type,
+                region=region,
+            )
+            if row and row.get("lat") is not None and row.get("lng") is not None:
+                if not row.get("operating_hours"):
+                    row["operating_hours"] = "건설기계"
+                centers.append(row)
+
     if type_filter in ("all", "call"):
-        call_companies = fetch_call_companies(equipment_type=equipment_type, region=region or "전국")
-        for item in call_companies:
-            centers.append({
-                "id": item.get("id"),
-                "uid": f"call_kakao-{item.get('id')}",
-                "type": "call_kakao",
-                "name": item.get("name") or "중기 호출 업체",
-                "lat": item.get("lat"),
-                "lng": item.get("lng"),
-                "phone": item.get("phone") or "",
-                "address": item.get("address") or "",
-                "center_type": "중기호출",
-                "center_type_key": "call_kakao",
-                "equipment_label": equipment_label_by_key.get(equipment_type, "건설기계") if equipment_type != "all" else "건설기계",
-                "manufacturers": [],
-                "ton_ranges": [],
-                "repair_types": [],
-                "operating_hours": "",
-                "region": region or "",
-                "rating": 0,
-                "review_count": 0,
-                "rental_price": "",
-                "rental_period": "",
-                "detail_url": item.get("place_url") or "",
-                "is_personal": False,
-                "experience": "",
-                "day_rate": "",
-            })
+        for item in fetch_call_companies(equipment_type=equipment_type, region=region_scope):
+            row = _kakao_place_to_center(
+                item,
+                uid_prefix="call_kakao",
+                place_type="call_kakao",
+                center_type_label="중기호출",
+                equipment_label_by_key=equipment_label_by_key,
+                equipment_type=equipment_type,
+                region=region,
+            )
+            if row and row.get("lat") is not None and row.get("lng") is not None:
+                row["experience"] = ""
+                row["day_rate"] = ""
+                centers.append(row)
 
         driver_qs = DriverProfile.objects.filter(is_available=True)
         if region:
@@ -2817,25 +2860,22 @@ def equipment_detail(request, pk):
             .order_by("-created_at")[:5]
         )
 
-    # 상세 레일·연동: 같은 기종 유료 전문가 (현재 매물 제외). 굴삭기는 좌우 10+10 슬롯용으로 20칸 패딩
+    # 상세 레일: 같은 기종 유료 전문가 명함 (사진·소개·전화)
     _ptype = equipment.equipment_type or None
-    _raw_sidebar = get_premium_equipment_sidebar(
-        limit=max(24, PREMIUM_SIDEBAR_INDEX_TOTAL + 4), equipment_type=_ptype
-    )
-    filtered_sidebar = [eq for eq in _raw_sidebar if eq.pk != equipment.pk]
-    premium_sidebar_list = filtered_sidebar[:8]
     premium_sidebar_expert_title = PREMIUM_SIDEBAR_EXPERT_TITLE_BY_CATEGORY.get(_ptype or "", "")
     if not premium_sidebar_expert_title and _ptype:
         premium_sidebar_expert_title = (
             f"{equipment.get_equipment_type_display()} 전문가들"
         )
-    if _ptype == "excavator":
-        premium_sidebar_slots = pad_premium_sidebar_slots(
-            filtered_sidebar[:PREMIUM_SIDEBAR_INDEX_TOTAL],
-            PREMIUM_SIDEBAR_INDEX_TOTAL,
+    _expert_cards = []
+    if _ptype and premium_sidebar_expert_title:
+        _expert_cards = get_premium_expert_cards(
+            limit=PREMIUM_SIDEBAR_INDEX_PER_SIDE,
+            equipment_type=_ptype,
         )
-    else:
-        premium_sidebar_slots = []
+    right_premium_expert_cards = pad_premium_expert_cards(_expert_cards, PREMIUM_SIDEBAR_INDEX_PER_SIDE)
+    premium_sidebar_list = []
+    premium_sidebar_slots = []
 
     # 이 판매자의 다른 매물 6개 미리보기 (본문 제외)
     author_other_listings = []
@@ -2855,9 +2895,9 @@ def equipment_detail(request, pk):
     if not nearby_parts_shops:
         nearby_parts_shops = list(shops_qs[:6])
 
-    right_premium_slots = premium_sidebar_slots[10:20] if premium_sidebar_slots else []
+    right_premium_slots = []
     has_right_ads = bool(
-        any(right_premium_slots)
+        any(right_premium_expert_cards)
         or left_specialist_cards
         or nearby_parts_shops
     )
@@ -2902,6 +2942,7 @@ def equipment_detail(request, pk):
         'premium_sidebar_list': premium_sidebar_list,
         'premium_sidebar_slots': premium_sidebar_slots,
         'right_premium_slots': right_premium_slots,
+        'right_premium_expert_cards': right_premium_expert_cards,
         'has_right_ads': has_right_ads,
         'premium_sidebar_expert_title': premium_sidebar_expert_title,
         'author_other_listings': author_other_listings,

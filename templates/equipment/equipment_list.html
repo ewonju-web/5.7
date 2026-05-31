@@ -699,9 +699,6 @@
                         {% endif %}
                     </a>
                     <span class="position-absolute text-white {% if equipment.is_sold %}gn-badge-sold{% else %}gn-badge-sale{% endif %}">{% if equipment.is_sold %}판매완료{% else %}팝니다{% endif %}</span>
-                    {% if equipment.author_id in premium_author_ids %}
-                    <span class="position-absolute gn-badge-premium text-white"><i class="bi bi-star-fill"></i> 프리미엄</span>
-                    {% endif %}
                     {% if user.is_authenticated %}
                     <a href="{% url 'toggle_equipment_favorite' equipment.pk %}?next={{ request.get_full_path|urlencode }}" class="position-absolute top-0 end-0 m-1 text-decoration-none gn-card-fav" style="z-index: 3;" title="찜">
                         <i class="bi bi-heart{% if equipment.pk in favorited_equipment_ids %}-fill text-danger{% else %} text-white{% endif %}" style="font-size: 1rem; text-shadow: 0 0 4px rgba(0,0,0,.5);"></i>
@@ -710,8 +707,11 @@
                 </div>
                 <div class="card-body gn-list-card-body">
                     <p class="gn-list-title">
-                        <span class="gn-list-title-bar" aria-hidden="true"></span>
-                        <span class="gn-list-title-text">{% if equipment.model_name %}{{ equipment.model_name }}{% else %}모름{% endif %}</span>
+                        <span class="gn-list-title-main">
+                            <span class="gn-list-title-bar" aria-hidden="true"></span>
+                            <span class="gn-list-title-text">{% if equipment.model_name %}{{ equipment.model_name }}{% else %}모름{% endif %}</span>
+                        </span>
+                        {% include "equipment/partials/premium_title_badge.html" %}
                     </p>
                     <table class="table table-sm table-borderless mb-0 gn-list-spec">
                         <tbody>
@@ -722,7 +722,6 @@
                         </tbody>
                     </table>
                     <p class="mb-0 mt-1 text-end d-flex align-items-center justify-content-end gap-1 flex-wrap gn-list-price-row">
-                        {% if equipment.author_id in premium_author_ids %}<span class="badge bg-warning text-dark small">프리미엄</span>{% endif %}
                         {% if equipment.vehicle_number %}<span class="badge badge-verified">번호등록</span>{% endif %}
                         <span class="gn-list-price">
                           {% if equipment.listing_price is not None %}
@@ -759,9 +758,6 @@
                         {% endif %}
                     </a>
                     <span class="position-absolute text-white {% if equipment.is_sold %}gn-badge-sold{% else %}gn-badge-sale{% endif %}">{% if equipment.is_sold %}판매완료{% else %}팝니다{% endif %}</span>
-                    {% if equipment.author_id in premium_author_ids %}
-                    <span class="position-absolute gn-badge-premium text-white"><i class="bi bi-star-fill"></i> 프리미엄</span>
-                    {% endif %}
                     {% if user.is_authenticated %}
                     <a href="{% url 'toggle_equipment_favorite' equipment.pk %}?next={{ request.get_full_path|urlencode }}" class="position-absolute top-0 end-0 m-1 text-decoration-none gn-card-fav" style="z-index: 3;" title="찜">
                         <i class="bi bi-heart{% if equipment.pk in favorited_equipment_ids %}-fill text-danger{% else %} text-white{% endif %}" style="font-size: 1rem; text-shadow: 0 0 4px rgba(0,0,0,.5);"></i>
@@ -770,8 +766,11 @@
                 </div>
                 <div class="card-body gn-list-card-body">
                     <p class="gn-list-title">
-                        <span class="gn-list-title-bar" aria-hidden="true"></span>
-                        <span class="gn-list-title-text">{% if equipment.model_name %}{{ equipment.model_name }}{% else %}모름{% endif %}</span>
+                        <span class="gn-list-title-main">
+                            <span class="gn-list-title-bar" aria-hidden="true"></span>
+                            <span class="gn-list-title-text">{% if equipment.model_name %}{{ equipment.model_name }}{% else %}모름{% endif %}</span>
+                        </span>
+                        {% include "equipment/partials/premium_title_badge.html" %}
                     </p>
                     <table class="table table-sm table-borderless mb-0 gn-list-spec">
                         <tbody>
@@ -782,7 +781,6 @@
                         </tbody>
                     </table>
                     <p class="mb-0 mt-1 text-end d-flex align-items-center justify-content-end gap-1 flex-wrap gn-list-price-row">
-                        {% if equipment.author_id in premium_author_ids %}<span class="badge bg-warning text-dark small">프리미엄</span>{% endif %}
                         {% if equipment.vehicle_number %}<span class="badge badge-verified">번호등록</span>{% endif %}
                         <span class="gn-list-price">
                           {% if equipment.listing_price is not None %}
@@ -893,8 +891,11 @@
                 {% endif %}
                 <div class="card-body p-2 p-md-3 order-1 order-md-2 flex-grow-0">
                     <h5 class="fw-bold gn-pc-card-title mb-1 mb-md-2" style="font-size: 1.02rem;">
-                        <span class="text-danger me-1" style="border-left: 3px solid #c00; padding-left: 4px;">|</span>
-                        {% if equipment.model_name %}{{ equipment.model_name }}{% else %}모름{% endif %}
+                        <span class="gn-pc-card-title-main">
+                            <span class="text-danger me-1" style="border-left: 3px solid #c00; padding-left: 4px;">|</span>
+                            <span class="gn-pc-card-title-text">{% if equipment.model_name %}{{ equipment.model_name }}{% else %}모름{% endif %}</span>
+                        </span>
+                        {% include "equipment/partials/premium_title_badge.html" %}
                     </h5>
                     <table class="table table-sm table-borderless mb-0 small gn-pc-card-table" style="font-size: 0.86rem;">
                         <tbody>
@@ -905,7 +906,6 @@
                         </tbody>
                     </table>
                     <p class="mb-0 mt-1 mt-md-2 text-end d-flex align-items-center justify-content-end gap-1 flex-wrap">
-                        {% if equipment.author_id in premium_author_ids %}<span class="badge bg-warning text-dark small">프리미엄</span>{% endif %}
                         {% if equipment.vehicle_number %}<span class="badge badge-verified">번호등록</span>{% endif %}
                         <span class="fw-bold gn-pc-card-price">
                           {% if equipment.listing_price is not None %}
@@ -923,9 +923,6 @@
                     <div class="w-100 h-100 d-flex align-items-center justify-content-center text-secondary" style="font-size: 0.7rem;">이미지 준비중</div>
                     {% endif %}
                     <span class="position-absolute top-0 start-0 m-1 px-1 py-0 rounded text-white fw-bold" style="background: #c00; font-size: 0.8rem;">{% if equipment.is_sold %}판매완료{% else %}팝니다{% endif %}</span>
-                    {% if equipment.author_id in premium_author_ids %}
-                    <span class="position-absolute top-0 start-0 m-1 mt-4 px-1 py-0 rounded text-white fw-bold" style="background: #e8a317; font-size: 0.7rem;"><i class="bi bi-star-fill"></i> 프리미엄</span>
-                    {% endif %}
                 </a>
                 <a href="{% url 'equipment_detail' equipment.pk %}?next={{ equipment_detail_next_q }}" class="stretched-link"></a>
             </div>
@@ -1219,8 +1216,23 @@
     box-shadow: none !important;
   }
   .gn-pc-card .gn-pc-card-title {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.35rem;
     color: #0f172a !important;
     font-weight: 700 !important;
+  }
+  .gn-pc-card-title-main {
+    display: flex;
+    align-items: center;
+    min-width: 0;
+    flex: 1 1 auto;
+  }
+  .gn-pc-card-title-text {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
   .gn-pc-card .gn-pc-card-label {
     color: #475569 !important;
@@ -1310,9 +1322,9 @@
     color: #111827;
   }
 
-  /* PC/태블릿에서도 너무 좌우로 퍼지지 않도록 전체 폭 제한 */
+  /* 상단 메뉴 폭과 더 자연스럽게 맞도록 전체 폭을 소폭 확장 */
   .gn-index-container {
-    max-width: 1200px;
+    max-width: 1320px;
     margin-left: auto;
     margin-right: auto;
   }
@@ -1715,19 +1727,6 @@
   .gn-list-card .gn-badge-sold {
     background: rgba(100, 108, 118, 0.9) !important;
   }
-  .gn-list-card .gn-badge-premium {
-    top: 1.32rem;
-    left: 0;
-    margin: 0 !important;
-    z-index: 2;
-    padding: 0.16rem 0.38rem;
-    border-radius: 0;
-    font-size: 0.65rem;
-    font-weight: 600;
-    line-height: 1.2;
-    background: #e8a317 !important;
-    color: #1a1a1a !important;
-  }
   /* 카드 본문: 위·아래 여백으로 안정감 (direct-nara 스타일) */
   .gn-list-card-body {
     padding: 0.55rem 0.55rem 0.65rem !important;
@@ -1739,6 +1738,7 @@
   .gn-list-card-body .gn-list-title {
     display: flex;
     align-items: center;
+    justify-content: space-between;
     gap: 0.35rem;
     font-size: 0.86rem;
     font-weight: 700;
@@ -1746,6 +1746,26 @@
     margin-bottom: 0.4rem !important;
     margin-top: 0.05rem;
     color: #0f172a !important;
+  }
+  .gn-list-title-main {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+    min-width: 0;
+    flex: 1 1 auto;
+  }
+  .gn-title-premium-badge {
+    font-size: 0.62rem;
+    font-weight: 700;
+    line-height: 1.2;
+    padding: 0.1rem 0.36rem;
+    border-radius: 3px;
+    background: #e8a317;
+    color: #1a1a1a;
+    white-space: nowrap;
+  }
+  .gn-title-premium-badge .bi {
+    font-size: 0.58rem;
   }
   /* 사진 아래 빨간 세로 한 줄 + 모델명 (| 문자 제거, 막대만) */
   .gn-list-card-body .gn-list-title-bar {

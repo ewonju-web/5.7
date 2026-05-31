@@ -8,8 +8,11 @@
         {% endif %}
         <div class="card-body p-2 p-md-3 order-1 order-md-2 flex-grow-0">
             <h5 class="fw-bold gn-pc-card-title mb-1 mb-md-2" style="font-size: 1.02rem;">
-                <span class="text-danger me-1" style="border-left: 3px solid #c00; padding-left: 4px;">|</span>
-                {% if equipment.model_name %}{{ equipment.model_name }}{% else %}모름{% endif %}
+                <span class="gn-pc-card-title-main">
+                    <span class="text-danger me-1" style="border-left: 3px solid #c00; padding-left: 4px;">|</span>
+                    <span class="gn-pc-card-title-text">{% if equipment.model_name %}{{ equipment.model_name }}{% else %}모름{% endif %}</span>
+                </span>
+                {% include "equipment/partials/premium_title_badge.html" %}
             </h5>
             <table class="table table-sm table-borderless mb-0 small gn-pc-card-table" style="font-size: 0.86rem;">
                 <tbody>
@@ -20,7 +23,6 @@
                 </tbody>
             </table>
             <p class="mb-0 mt-1 mt-md-2 text-end d-flex align-items-center justify-content-end gap-1 flex-wrap">
-                {% if equipment.author_id in premium_author_ids %}<span class="badge bg-warning text-dark small">프리미엄</span>{% endif %}
                 {% if equipment.vehicle_number %}<span class="badge badge-verified">번호등록</span>{% endif %}
                 <span class="fw-bold gn-pc-card-price">
                   {% if equipment.listing_price is not None %}
@@ -38,9 +40,6 @@
             <div class="w-100 h-100 d-flex align-items-center justify-content-center text-secondary" style="font-size: 0.7rem;">이미지 준비중</div>
             {% endif %}
             <span class="position-absolute top-0 start-0 m-1 px-1 py-0 rounded text-white fw-bold" style="background: #c00; font-size: 0.8rem;">{% if equipment.is_sold %}판매완료{% else %}팝니다{% endif %}</span>
-            {% if equipment.author_id in premium_author_ids %}
-            <span class="position-absolute top-0 start-0 m-1 mt-4 px-1 py-0 rounded text-white fw-bold" style="background: #e8a317; font-size: 0.7rem;"><i class="bi bi-star-fill"></i> 프리미엄</span>
-            {% endif %}
         </a>
         <a href="{% url 'equipment_detail' equipment.pk %}?next={{ equipment_detail_next_q }}" class="stretched-link"></a>
     </div>

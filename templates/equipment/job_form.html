@@ -4,7 +4,7 @@
 <link rel="stylesheet" href="{% static 'css/jobs.css' %}">
 {% endblock %}
 {% block content %}
-<div class="container py-4" style="max-width: 640px;">
+<div class="container py-4" style="max-width: 760px;">
     <h2 class="section-title mb-4">{% if mode == 'edit' %}구인구직 수정{% else %}구인구직 글쓰기{% endif %}</h2>
     {% if messages %}
     <div class="alert alert-danger py-2 small mb-3">{% for m in messages %}{{ m }}{% endfor %}</div>

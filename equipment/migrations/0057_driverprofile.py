@@ -8,7 +8,7 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('equipment', '0056_examattachment'),
+        ('equipment', '0055_exam_video_remove_community'),
         migrations.swappable_dependency(settings.AUTH_USER_MODEL),
     ]
 

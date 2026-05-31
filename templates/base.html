@@ -104,6 +104,26 @@
             color: var(--gn-accent) !important;
             background: var(--gn-nav-hover);
         }
+        /* 로그인 시 계정(마이페이지) — 매물보기 active와 동일하게 항상 강조, 줄바꿈 방지 */
+        .navbar-gn .gn-nav-actions {
+            flex-wrap: nowrap;
+            flex-shrink: 0;
+        }
+        .navbar-gn .nav-link.gn-nav-account {
+            color: var(--gn-accent) !important;
+            background: var(--gn-nav-hover);
+            font-weight: 600;
+            white-space: nowrap;
+        }
+        .navbar-gn .nav-link.gn-nav-account:hover,
+        .navbar-gn .nav-link.gn-nav-account:focus {
+            color: #ffcc40 !important;
+            background: var(--gn-nav-hover);
+        }
+        .navbar-gn .nav-link.gn-nav-account strong {
+            color: inherit;
+            font-weight: 700;
+        }
         /* 현장 자재 나눔 메뉴: 기본 메뉴 톤과 통일 */
         .navbar-gn .nav-link.soil-nav {
             font-weight: 500;
@@ -847,7 +867,7 @@
                     <li class="nav-item"><a class="nav-link {% if request.resolver_match.url_name == 'parts_as' or request.resolver_match.url_name == 'parts_as_register' %}active{% endif %}" href="{% url 'parts_as' %}">{{ LANG|tr:"nav_parts_as" }}</a></li>
                     <li class="nav-item"><a class="nav-link soil-nav {% if request.resolver_match.url_name == 'soil_list' or request.resolver_match.url_name == 'soil_create' or request.resolver_match.url_name == 'soil_detail' or request.resolver_match.url_name == 'soil_edit' %}active{% endif %}" href="{% url 'soil_list' %}">{{ LANG|tr:"nav_soil" }}</a></li>
                 </ul>
-                <div class="d-flex align-items-center gap-2">
+                <div class="d-flex align-items-center gap-2 gn-nav-actions">
                     <div class="dropdown">
                         <button class="btn btn-outline-light btn-sm dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false" title="언어">{{ LANG|tr:"lang_label" }}</button>
                         <ul class="dropdown-menu dropdown-menu-end">
@@ -858,9 +878,8 @@
                         </ul>
                     </div>
                     {% if user.is_authenticated %}
-                        <a href="{% url 'chat_room_list' %}" class="nav-link d-none d-md-inline-block"><i class="bi bi-chat-dots me-1"></i>{{ LANG|tr:"nav_chat" }}{% if unread_total > 0 %} <span class="badge bg-danger rounded-pill ms-1" style="font-size: 0.65rem;">{{ unread_total }}</span>{% endif %}</a>
-                        <a href="{% url 'my_page' %}" class="nav-link d-none d-md-inline-block"><strong>{{ user.username }}</strong>{{ LANG|tr:"username_suffix" }}</a>
-                        <a href="{% url 'logout' %}" class="btn btn-accent btn-sm">{{ LANG|tr:"nav_logout" }}</a>
+                        <a href="{% url 'chat_room_list' %}" class="nav-link d-none d-md-inline-block text-nowrap"><i class="bi bi-chat-dots me-1"></i>{{ LANG|tr:"nav_chat" }}{% if unread_total > 0 %} <span class="badge bg-danger rounded-pill ms-1" style="font-size: 0.65rem;">{{ unread_total }}</span>{% endif %}</a>
+                        <a href="{% url 'my_page' %}" class="nav-link gn-nav-account d-none d-md-inline-block{% if request.resolver_match.url_name == 'my_page' %} active{% endif %}"><strong>{{ user.username }}</strong>{{ LANG|tr:"username_suffix" }}</a>
                     {% else %}
                         <a href="{% url 'login' %}?next={{ request.get_full_path|urlencode }}" class="btn btn-outline-light btn-sm">{{ LANG|tr:"nav_login" }}</a>
                         <a href="{% url 'join_choice' %}" class="btn btn-accent btn-sm">{{ LANG|tr:"nav_signup" }}</a>
@@ -936,11 +955,8 @@
                 <div class="gn-account-inline-row">
                     <div class="gn-account-inline-name">
                         <i class="bi bi-person-circle" aria-hidden="true"></i>
-                        <span>{{ user.username }}</span>
+                        <span>{{ user.username }}{{ LANG|tr:"username_suffix" }}</span>
                     </div>
-                    <a href="{% url 'logout' %}" class="gn-service-offcanvas-link gn-account-inline-logout">
-                        <i class="bi bi-box-arrow-right" aria-hidden="true"></i>{{ LANG|tr:"nav_logout" }}
-                    </a>
                 </div>
             </div>
             {% endif %}
