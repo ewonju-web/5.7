@@ -2026,83 +2026,104 @@ def finance(request):
         source_listing = Equipment.objects.filter(pk=int(listing_id_raw)).first()
 
     if request.method == "POST":
-        applicant_name = (request.POST.get("applicant_name") or "").strip()
-        contact = (request.POST.get("contact") or "").strip()
-        desired_equipment_select = (request.POST.get("desired_equipment_select") or "").strip()
-        desired_equipment_custom = (request.POST.get("desired_equipment_custom") or "").strip()
-        budget_raw = (request.POST.get("budget_manwon") or "").strip().replace(",", "")
-        desired_months_raw = (request.POST.get("desired_months") or "").strip()
-        memo = (request.POST.get("memo") or "").strip()
+        from .finance_security import (
+            check_finance_consult_rate_limit,
+            get_client_ip,
+            verify_recaptcha_v3,
+        )
 
-        desired_equipment = desired_equipment_custom if desired_equipment_select == "custom" else desired_equipment_select
-        if desired_equipment_select in ("", "none") and desired_equipment_custom:
-            desired_equipment = desired_equipment_custom
+        security_passed = True
+        client_ip = get_client_ip(request)
+        allowed, rate_msg = check_finance_consult_rate_limit(client_ip)
+        if not allowed:
+            messages.error(request, rate_msg)
+            security_passed = False
+        if security_passed:
+            captcha_token = (request.POST.get("g-recaptcha-response") or "").strip()
+            captcha_ok, captcha_msg = verify_recaptcha_v3(captcha_token, client_ip)
+            if not captcha_ok:
+                messages.error(request, captcha_msg)
+                security_passed = False
 
-        errors = []
-        if not applicant_name:
-            errors.append("신청자 이름을 입력해 주세요.")
-        if not contact:
-            errors.append("연락처를 입력해 주세요.")
-        if not desired_equipment:
-            errors.append("희망 장비를 선택하거나 직접 입력해 주세요.")
-        try:
-            budget_manwon = int(budget_raw)
-            if budget_manwon <= 0:
-                raise ValueError
-        except Exception:
-            budget_manwon = 0
-            errors.append("구입 예산(만원)을 올바르게 입력해 주세요.")
-        try:
-            desired_months = int(desired_months_raw)
-            if desired_months not in months_options:
-                raise ValueError
-        except Exception:
-            desired_months = 0
-            errors.append("희망 할부기간을 선택해 주세요.")
+        if security_passed:
+            applicant_name = (request.POST.get("applicant_name") or "").strip()
+            contact = (request.POST.get("contact") or "").strip()
+            desired_equipment_select = (request.POST.get("desired_equipment_select") or "").strip()
+            desired_equipment_custom = (request.POST.get("desired_equipment_custom") or "").strip()
+            budget_raw = (request.POST.get("budget_manwon") or "").strip().replace(",", "")
+            desired_months_raw = (request.POST.get("desired_months") or "").strip()
+            memo = (request.POST.get("memo") or "").strip()
 
-        if errors:
-            for err in errors:
-                messages.error(request, err)
-        else:
-            FinanceConsultation.objects.create(
-                applicant_name=applicant_name,
-                contact=contact,
-                desired_equipment=desired_equipment,
-                budget_manwon=budget_manwon,
-                desired_months=desired_months,
-                memo=memo,
-            )
-            admin_phone = normalize_phone_digits(getattr(settings, "FINANCE_ADMIN_PHONE", ""))
-            contact_digits = normalize_phone_digits(contact)
-            if source_listing:
-                admin_msg = (
-                    "[굴삭기나라] 매물 할부상담 신청\n"
-                    f"매물명: {source_listing.model_name or source_listing.get_equipment_type_display()}\n"
-                    f"이름: {applicant_name}\n"
-                    f"연락처: {contact}\n"
-                    f"희망 할부기간: {desired_months}개월"
-                )
+            desired_equipment = desired_equipment_custom if desired_equipment_select == "custom" else desired_equipment_select
+            if desired_equipment_select in ("", "none") and desired_equipment_custom:
+                desired_equipment = desired_equipment_custom
+
+            errors = []
+            if not applicant_name:
+                errors.append("신청자 이름을 입력해 주세요.")
+            if not contact:
+                errors.append("연락처를 입력해 주세요.")
+            if not desired_equipment:
+                errors.append("희망 장비를 선택하거나 직접 입력해 주세요.")
+            try:
+                budget_manwon = int(budget_raw)
+                if budget_manwon <= 0:
+                    raise ValueError
+            except Exception:
+                budget_manwon = 0
+                errors.append("구입 예산(만원)을 올바르게 입력해 주세요.")
+            try:
+                desired_months = int(desired_months_raw)
+                if desired_months not in months_options:
+                    raise ValueError
+            except Exception:
+                desired_months = 0
+                errors.append("희망 할부기간을 선택해 주세요.")
+
+            if errors:
+                for err in errors:
+                    messages.error(request, err)
             else:
-                admin_msg = (
-                    "[굴삭기나라] 할부상담 신청\n"
-                    f"이름: {applicant_name}\n"
-                    f"연락처: {contact}\n"
-                    f"희망장비: {desired_equipment}\n"
-                    f"예산: {budget_manwon:,}원\n"
-                    f"할부기간: {desired_months}개월"
+                FinanceConsultation.objects.create(
+                    applicant_name=applicant_name,
+                    contact=contact,
+                    desired_equipment=desired_equipment,
+                    budget_manwon=budget_manwon,
+                    desired_months=desired_months,
+                    memo=memo,
                 )
-            if admin_phone:
-                send_sms(admin_phone, admin_msg)
-            messages.success(request, "할부 상담 신청이 접수되었습니다.")
-            if source_listing:
-                return redirect(f"{reverse('finance')}?listing_id={source_listing.pk}")
-            return redirect("finance")
+                admin_phone = normalize_phone_digits(getattr(settings, "FINANCE_ADMIN_PHONE", ""))
+                contact_digits = normalize_phone_digits(contact)
+                if source_listing:
+                    admin_msg = (
+                        "[굴삭기나라] 매물 할부상담 신청\n"
+                        f"매물명: {source_listing.model_name or source_listing.get_equipment_type_display()}\n"
+                        f"이름: {applicant_name}\n"
+                        f"연락처: {contact}\n"
+                        f"희망 할부기간: {desired_months}개월"
+                    )
+                else:
+                    admin_msg = (
+                        "[굴삭기나라] 할부상담 신청\n"
+                        f"이름: {applicant_name}\n"
+                        f"연락처: {contact}\n"
+                        f"희망장비: {desired_equipment}\n"
+                        f"예산: {budget_manwon:,}원\n"
+                        f"할부기간: {desired_months}개월"
+                    )
+                if admin_phone:
+                    send_sms(admin_phone, admin_msg)
+                messages.success(request, "할부 상담 신청이 접수되었습니다.")
+                if source_listing:
+                    return redirect(f"{reverse('finance')}?listing_id={source_listing.pk}")
+                return redirect("finance")
 
     return render(request, "equipment/finance.html", {
         "months_options": months_options,
         "equipment_options": equipment_options,
         "default_rate": "5.9",
         "source_listing": source_listing,
+        "recaptcha_site_key": (getattr(settings, "RECAPTCHA_SITE_KEY", "") or "").strip(),
     })
 
 

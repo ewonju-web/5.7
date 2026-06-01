@@ -121,8 +121,9 @@
             상담 대상 매물: <strong>{{ source_listing.model_name|default:source_listing.get_equipment_type_display }}</strong>
           </div>
           {% endif %}
-          <form method="post">
+          <form method="post" id="financeConsultForm">
             {% csrf_token %}
+            <input type="hidden" name="g-recaptcha-response" id="recaptchaToken" value="">
             <input type="hidden" name="listing_id" value="{% if source_listing %}{{ source_listing.pk }}{% endif %}">
             <div class="mb-2">
               <label class="small text-muted mb-1 d-block">신청자 이름</label>
@@ -173,6 +174,9 @@
 {% endblock %}
 
 {% block extra_js %}
+{% if recaptcha_site_key %}
+<script src="https://www.google.com/recaptcha/api.js?render={{ recaptcha_site_key }}"></script>
+{% endif %}
 <script>
   (function () {
     const $ = (id) => document.getElementById(id);
@@ -268,6 +272,29 @@
 
     priceEl.value = formatDigits(priceEl.value);
     calc();
+    const financeForm = document.getElementById("financeConsultForm");
+    const recaptchaSiteKey = "{{ recaptcha_site_key|escapejs }}";
+    if (financeForm && recaptchaSiteKey) {
+      financeForm.addEventListener("submit", function (e) {
+        if (financeForm.dataset.recaptchaDone === "1") {
+          financeForm.dataset.recaptchaDone = "0";
+          return;
+        }
+        e.preventDefault();
+        if (typeof grecaptcha === "undefined") {
+          alert("?? ??? ???? ?????. ?? ? ?? ??? ???.");
+          return;
+        }
+        grecaptcha.ready(function () {
+          grecaptcha.execute(recaptchaSiteKey, { action: "finance_consult" }).then(function (token) {
+            document.getElementById("recaptchaToken").value = token;
+            financeForm.dataset.recaptchaDone = "1";
+            financeForm.submit();
+          });
+        });
+      });
+    }
+
   })();
 </script>
 {% endblock %}
