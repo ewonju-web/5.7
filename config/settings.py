@@ -11,7 +11,7 @@ SECRET_KEY = os.getenv("SECRET_KEY")
 # 운영 서버에서는 DJANGO_DEBUG=false를 명시하세요.
 # 로컬 개발 편의를 위해 환경변수가 없으면 DEBUG=True로 동작합니다.
 DEBUG = os.getenv("DJANGO_DEBUG", "true").lower() in ("1", "true", "yes")
-ALLOWED_HOSTS = ['211.110.140.201', '127.0.0.1', 'localhost']
+ALLOWED_HOSTS = ['211.110.140.201', '61.111.38.50', '127.0.0.1', 'localhost']
 if DEBUG:
     ALLOWED_HOSTS = ["*"]
 
@@ -233,6 +233,7 @@ SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
 CSRF_TRUSTED_ORIGINS = [
     'http://211.110.140.201', 'https://211.110.140.201',
     'http://211.110.140.201:8001', 'https://211.110.140.201:8001',
+    'http://61.111.38.50', 'https://61.111.38.50',
 ]
 _csrf_extra = _env_str("CSRF_TRUSTED_ORIGINS_EXTRA", "")
 if _csrf_extra:
