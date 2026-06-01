@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="container py-5" style="max-width: 440px;">
+    <div class="card border-0 shadow-sm rounded-3 overflow-hidden">
+        <div class="card-body p-4 p-md-5 text-center">
+            <div class="mb-3" style="font-size: 2.5rem;">🚧</div>
+            <h1 class="h5 fw-bold mb-2" style="color: var(--gn-text);">회원가입 준비 중</h1>
+            <p class="text-muted small mb-4" style="line-height: 1.55;">
+                굴삭기나라는 곧 정식 오픈합니다.<br>
+                신규 회원가입은 오픈 후 이용하실 수 있습니다.
+            </p>
+            <div class="d-grid gap-2">
+                <a href="{% url 'login' %}" class="btn fw-bold py-2 text-dark" style="background: var(--gn-accent); border-radius: 10px;">로그인</a>
+                <a href="{% url 'legacy_convert_intro' %}" class="btn btn-outline-secondary py-2" style="border-radius: 10px;">예전 사이트 기존 회원 전환</a>
+                <a href="{% url 'index' %}" class="btn btn-link text-muted small">첫 화면으로</a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

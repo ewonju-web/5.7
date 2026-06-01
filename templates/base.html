@@ -957,6 +957,7 @@
                         <i class="bi bi-person-circle" aria-hidden="true"></i>
                         <span>{{ user.username }}{{ LANG|tr:"username_suffix" }}</span>
                     </div>
+                    <a href="{% url 'logout' %}" class="gn-account-inline-logout">{{ LANG|tr:"nav_logout" }}</a>
                 </div>
             </div>
             {% endif %}
@@ -1017,10 +1018,10 @@
     <footer>
         <div class="container">
             <div class="footer-nav mb-3">
-                <a href="#">회사소개</a>
+                <a href="{% url 'company_intro' %}">회사소개</a>
                 <a href="#">이용약관</a>
                 <a href="#">개인정보처리방침</a>
-                <a href="#">광고안내</a>
+                <a href="{% url 'billing_upgrade' %}">광고안내</a>
             </div>
             <p class="footer-disclaimer small mb-2">굴삭기 나라의 모든 거래는 구매자와 판매자에게 있으며, 굴삭기 나라에서는 일체의 책임을 지지 않습니다.</p>
             <div class="footer-company mb-2">

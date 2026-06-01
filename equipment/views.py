@@ -40,7 +40,10 @@ from .premium_utils import (
     get_listing_monthly_limit,
     FREE_LISTING_LIMIT,
     PREMIUM_LISTING_LIMIT,
+    PREMIUM_MONTHLY_PRICE,
+    PREMIUM_BID_SWITCH_MEMBER_COUNT,
     BUMP_WEEKLY_LIMIT,
+    get_user_bump_status,
     get_premium_user_ids,
     get_premium_equipment_rotation,
     get_premium_expert_cards,
@@ -597,6 +600,21 @@ def user_logout(request):
     return redirect('index')
 
 
+def _signup_open_required(request):
+    """신규 가입 비활성 시 안내 페이지."""
+    from django.conf import settings
+    if getattr(settings, 'SIGNUP_ENABLED', True):
+        return None
+    return render(request, 'registration/signup_soon.html')
+
+
+def signup_soon(request):
+    """신규 회원가입 준비 중 안내 (SIGNUP_ENABLED=False)."""
+    if request.user.is_authenticated:
+        return redirect('my_page')
+    return render(request, 'registration/signup_soon.html')
+
+
 def join_choice(request):
     """회원가입 진입: 휴대폰 입력 → 기존 회원인지 확인 → 기존 전환 또는 신규 가입 안내."""
     if request.user.is_authenticated:
@@ -741,6 +759,9 @@ def legacy_convert_intro(request):
 
 def signup_choices(request):
     """신규 회원가입: 카카오/네이버/일반 선택 (필요 시점에만 휴대폰 인증·사업자·유료)."""
+    blocked = _signup_open_required(request)
+    if blocked:
+        return blocked
     if request.user.is_authenticated:
         return redirect('my_page')
     from urllib.parse import quote
@@ -755,6 +776,9 @@ def signup_choices(request):
 
 
 def signup(request):
+    blocked = _signup_open_required(request)
+    if blocked:
+        return blocked
     if request.method == "POST":
         form = UserSignupForm(request.POST)
         if form.is_valid():
@@ -781,7 +805,10 @@ def signup_done(request):
 
 
 def check_username(request):
+    from django.conf import settings
     from django.http import JsonResponse
+    if not getattr(settings, 'SIGNUP_ENABLED', True):
+        return JsonResponse({"ok": False, "msg": "회원가입은 곧 오픈됩니다."})
     username = (request.GET.get("username") or "").strip()
     if not username:
         return JsonResponse({"ok": False, "msg": "아이디를 입력하세요."})
@@ -889,25 +916,43 @@ def my_page(request):
         'grade_label': '유료회원' if profile.is_premium_active else '무료회원',
     }
     is_legacy_user = request.user.username.startswith('legacy_')
+    bump_status = get_user_bump_status(request.user)
     return render(request, 'registration/my_page.html', {
         'profile': profile,
         'my_equipments': my_equipments,
+        'bump_status': bump_status,
+        'bump_weekly_limit': BUMP_WEEKLY_LIMIT,
         'fav_equipments': fav_equipments,
         'fav_parts': fav_parts,
         'stats': stats,
         'is_legacy_user': is_legacy_user,
         'free_listing_limit': FREE_LISTING_LIMIT,
+        'premium_monthly_price': PREMIUM_MONTHLY_PRICE,
         'premium_region_inquiry_alerts': premium_region_inquiry_alerts,
         'premium_expert_bio_max_length': PREMIUM_EXPERT_BIO_MAX_LENGTH,
     })
 
 
-@login_required(login_url='/login/')
 def billing_upgrade(request):
-    """유료 회원 안내 페이지(로그인 필수)."""
+    """유료 회원 · 광고 안내 페이지."""
     return render(request, 'billing/upgrade.html', {
         'kakao_inquiry_url': getattr(settings, 'KAKAO_INQUIRY_URL', 'https://open.kakao.com/'),
         'slot': (request.GET.get('slot') or '').strip(),
+        'premium_monthly_price': PREMIUM_MONTHLY_PRICE,
+        'premium_bid_switch_count': PREMIUM_BID_SWITCH_MEMBER_COUNT,
+        'free_listing_limit': FREE_LISTING_LIMIT,
+        'premium_listing_limit': PREMIUM_LISTING_LIMIT,
+        'bump_weekly_limit': BUMP_WEEKLY_LIMIT,
+    })
+
+
+def company_intro(request):
+    """회사소개 페이지."""
+    return render(request, 'equipment/company_intro.html', {
+        'company_address': '충청북도 음성군 소이면 소이로 313',
+        'company_lat': 36.9312186590944,
+        'company_lng': 127.752392155881,
+        'kakao_map_js_key': _get_kakao_map_js_key(),
     })
 
 
@@ -2874,17 +2919,23 @@ def equipment_detail(request, pk):
             equipment_type=_ptype,
         )
     right_premium_expert_cards = pad_premium_expert_cards(_expert_cards, PREMIUM_SIDEBAR_INDEX_PER_SIDE)
+    if equipment.author_id:
+        for card in right_premium_expert_cards:
+            if card and card.get('user_id') == equipment.author_id:
+                url = card.get('detail_url') or ''
+                sep = '&' if '?' in url else '?'
+                card['detail_url'] = f'{url}{sep}equipment={equipment.pk}'
     premium_sidebar_list = []
     premium_sidebar_slots = []
 
-    # 이 판매자의 다른 매물 6개 미리보기 (본문 제외)
+    # 이 판매자의 다른 매물 2개 미리보기 (유료회원·본문 제외)
     author_other_listings = []
     if equipment.author_id:
         author_other_listings = list(
             Equipment.objects.visible()
             .filter(author_id=equipment.author_id, is_sold=False)
             .exclude(pk=equipment.pk)
-            .order_by('-created_at')[:6]
+            .order_by('-created_at')[:2]
         )
 
     # 우측 레일: 전국 부품점 A/S 센터(지도 이동 링크용)
@@ -2902,62 +2953,7 @@ def equipment_detail(request, pk):
         or nearby_parts_shops
     )
 
-    # 끌어올리기: 본인 매물 + 유료회원 + 최근 7일 기준 최대 3회 제한
-    can_bump = False
-    next_bump_at = None
-    if request.user.is_authenticated and equipment.author_id == request.user.id and author_is_premium:
-        from datetime import timedelta
-        from .models import EquipmentBumpLog
-        now = timezone.now()
-        week_ago = now - timedelta(days=7)
-        week_logs = EquipmentBumpLog.objects.filter(
-            user=request.user,
-            bumped_at__gt=week_ago,
-        ).order_by('bumped_at')
-        if week_logs.count() < BUMP_WEEKLY_LIMIT:
-            can_bump = True
-        else:
-            next_bump_at = week_logs.first().bumped_at + timedelta(days=7)
-
     detail_back_url, detail_back_label = _resolve_equipment_detail_back_url(request, equipment)
-
-    seller_manner_score = None
-    seller_item_scores = {}
-    seller_item_bars = []
-    seller_manner_tier_label = ''
-    trust_bad_tag_choices = []
-    trust_report_choices = []
-    trust_can_review = False
-    trust_has_reviewed = False
-    if equipment.author_id:
-        from equipment.templatetags.i18n_extras import translate
-        from trust.i18n_helpers import translated_bad_tag_choices, translated_report_choices
-        from trust.services import (
-            ITEM_SCORE_LABELS,
-            SCORE_FIELDS,
-            buyer_can_review_equipment,
-            get_or_create_manner_score,
-            get_seller_item_averages,
-            user_reviewed_equipment,
-        )
-
-        seller_manner_score = get_or_create_manner_score(equipment.author)
-        seller_item_scores = get_seller_item_averages(equipment.author)
-        seller_item_bars = [
-            {
-                'field': field,
-                'label_key': ITEM_SCORE_LABELS[field],
-                'avg': seller_item_scores.get(field, 0.0),
-            }
-            for field in SCORE_FIELDS
-        ]
-        _lang = (request.session.get('lang') or 'ko').strip().lower()
-        seller_manner_tier_label = translate(_lang, f'trust_tier_{seller_manner_score.tier}')
-        trust_bad_tag_choices = translated_bad_tag_choices(request)
-        trust_report_choices = translated_report_choices(request)
-        if request.user.is_authenticated:
-            trust_can_review = buyer_can_review_equipment(request.user, equipment)
-            trust_has_reviewed = user_reviewed_equipment(request.user, equipment)
 
     return render(request, 'equipment/equipment_detail.html', {
         'equipment': equipment,
@@ -2986,16 +2982,6 @@ def equipment_detail(request, pk):
         'author_other_listings': author_other_listings,
         'nearby_parts_shops': nearby_parts_shops,
         'kakao_map_js_key': _get_kakao_map_js_key(),
-        'can_bump': can_bump,
-        'next_bump_at': next_bump_at,
-        'seller_manner_score': seller_manner_score,
-        'seller_item_scores': seller_item_scores,
-        'seller_item_bars': seller_item_bars,
-        'seller_manner_tier_label': seller_manner_tier_label,
-        'trust_bad_tag_choices': trust_bad_tag_choices,
-        'trust_report_choices': trust_report_choices,
-        'trust_can_review': trust_can_review,
-        'trust_has_reviewed': trust_has_reviewed,
     })
 
 
@@ -3235,37 +3221,44 @@ def equipment_delete(request, pk):
 
 
 def equipment_bump(request, pk):
-    """끌어올리기 — 유료회원만, 최근 7일 기준 최대 3회."""
+    """끌어올리기 — 유료회원만, 최근 7일 기준 최대 3회. 마이페이지에서 이용."""
     equipment = get_object_or_404(Equipment, pk=pk)
+    bump_back = reverse('my_page')
+
     if not request.user.is_authenticated:
         messages.info(request, '로그인 후 이용해 주세요.')
         return redirect('login')
     if equipment.author_id != request.user.id:
         messages.error(request, '본인 매물만 끌어올릴 수 있습니다.')
-        return redirect('equipment_detail', pk=pk)
+        return redirect(bump_back)
     if not is_user_premium(request.user):
         messages.error(request, '끌어올리기는 유료 회원만 이용할 수 있습니다.')
-        return redirect('equipment_detail', pk=pk)
+        return redirect(bump_back)
+
+    status = get_user_bump_status(request.user)
+    if not status['can_bump']:
+        next_at = status.get('next_bump_at')
+        if next_at:
+            messages.warning(
+                request,
+                f'끌어올리기는 최근 7일 기준 최대 {BUMP_WEEKLY_LIMIT}회만 가능합니다. '
+                f'다음 이용 가능: {next_at.strftime("%Y-%m-%d %H:%M")}',
+            )
+        else:
+            messages.warning(
+                request,
+                f'끌어올리기는 최근 7일 기준 최대 {BUMP_WEEKLY_LIMIT}회만 가능합니다.',
+            )
+        return redirect(bump_back)
+
     now = timezone.now()
-    from datetime import timedelta
-    week_ago = now - timedelta(days=7)
     from .models import EquipmentBumpLog
-    week_logs = EquipmentBumpLog.objects.filter(
-        user=request.user,
-        bumped_at__gt=week_ago,
-    ).order_by('bumped_at')
-    if week_logs.count() >= BUMP_WEEKLY_LIMIT:
-        next_at = week_logs.first().bumped_at + timedelta(days=7)
-        messages.warning(
-            request,
-            f'끌어올리기는 최근 7일 기준 최대 {BUMP_WEEKLY_LIMIT}회만 가능합니다. 다음 이용 가능: {next_at.strftime("%Y-%m-%d %H:%M")}'
-        )
-        return redirect('equipment_detail', pk=pk)
+
     equipment.last_bumped_at = now
     equipment.save(update_fields=['last_bumped_at'])
     EquipmentBumpLog.objects.create(user=request.user, equipment=equipment)
     messages.success(request, '끌어올리기가 완료되었습니다. 최신순 목록 상단에 노출됩니다.')
-    return redirect('equipment_detail', pk=pk)
+    return redirect(bump_back)
 
 
 def toggle_equipment_favorite(request, pk):
@@ -3314,8 +3307,17 @@ def author_listings(request, user_id):
     featured_listings = list(base_qs.order_by('-created_at')[:3])
     total_count = len(listings)
     sold_count = sum(1 for item in listings if item.is_sold)
-    trust_score = 5 if (author_profile and author_profile.is_premium_active) else 4
     avg_response_text = "빠름"
+
+    from trust.services import build_seller_trust_template_context
+
+    trust_review_equipment = None
+    eq_param = (request.GET.get('equipment') or '').strip()
+    if eq_param.isdigit():
+        trust_review_equipment = base_qs.filter(pk=int(eq_param)).first()
+    trust_ctx = build_seller_trust_template_context(
+        request, author_user, equipment=trust_review_equipment
+    )
     favorited_ids = set()
     if request.user.is_authenticated:
         favorited_ids = set(
@@ -3337,10 +3339,10 @@ def author_listings(request, user_id):
         'sort_param': sort,
         'total_count': total_count,
         'sold_count': sold_count,
-        'trust_score': trust_score,
         'avg_response_text': avg_response_text,
         'list_back_url': request.get_full_path,
         'equipment_detail_next': quote(request.get_full_path(), safe=''),
+        **trust_ctx,
     })
 
 

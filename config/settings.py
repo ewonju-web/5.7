@@ -82,6 +82,8 @@ TEMPLATES = [
                 'chat.context_processors.lang',
                 # 채팅 미읽음 총합 (상단 채팅 메뉴 뱃지)
                 'chat.context_processors.chat_unread',
+                'trust.context_processors.trust_flags',
+                'equipment.context_processors.site_flags',
             ],
         },
     },
@@ -273,6 +275,13 @@ FINANCE_ADMIN_PHONE = _env_str("FINANCE_ADMIN_PHONE", "01024693800")
 YOUTUBE_API_KEY = _env_str("YOUTUBE_API_KEY")
 # 카카오맵 JS SDK 키 (없으면 카카오 로그인 REST 키를 임시로 사용)
 KAKAO_MAP_JS_KEY = _env_str("KAKAO_MAP_JS_KEY", _env_str("KAKAO_REST_API_KEY"))
+
+# 판매자 신뢰도·매너점수·거래평가 UI (False=숨김, 코드·DB·API는 유지)
+# 회원 수가 늘면 True 또는 .env TRUST_SYSTEM_ENABLED=true 로 활성화
+TRUST_SYSTEM_ENABLED = os.getenv('TRUST_SYSTEM_ENABLED', 'false').lower() in ('1', 'true', 'yes')
+
+# 신규 회원가입 (기본 켜짐. 임시 중단 시 .env SIGNUP_ENABLED=false)
+SIGNUP_ENABLED = os.getenv('SIGNUP_ENABLED', 'true').lower() in ('1', 'true', 'yes')
 
 # 비밀번호 찾기 메일: .env에 EMAIL_HOST 있으면 SMTP 발송, 없으면 콘솔 출력
 # .env 예시 (실제 발송 시):

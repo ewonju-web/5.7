@@ -31,7 +31,8 @@
   var reviewsUrl = section.getAttribute("data-reviews-url");
   var reviewCreateUrl = section.getAttribute("data-review-create-url");
   var reportCreateUrl = section.getAttribute("data-report-create-url");
-  var equipmentId = parseInt(section.getAttribute("data-equipment-id"), 10);
+  var equipmentIdRaw = (section.getAttribute("data-equipment-id") || "").trim();
+  var equipmentId = equipmentIdRaw ? parseInt(equipmentIdRaw, 10) : null;
   var sellerId = parseInt(section.getAttribute("data-seller-id"), 10);
 
   var currentReviewType = "all";
@@ -165,11 +166,11 @@
     reviewSubmit.addEventListener("click", function () {
       var reviewType = document.querySelector('input[name="trustReviewType"]:checked').value;
       var payload = {
-        equipment_id: equipmentId,
         review_type: reviewType,
         comment: (document.getElementById("trustReviewComment") || {}).value || "",
         bad_tags: [],
       };
+      if (equipmentId) payload.equipment_id = equipmentId;
       Object.keys(scoreSelections).forEach(function (k) {
         payload[k] = scoreSelections[k];
       });

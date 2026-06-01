@@ -1,5 +1,6 @@
 """판매자 매너점수 계산·조회·등록 제한."""
 
+from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.core.exceptions import ValidationError
 from django.db.models import Avg
@@ -26,6 +27,10 @@ ITEM_SCORE_LABELS = {
 
 DEFAULT_SCORE = 70.0
 DEFAULT_TIER = 'verified'
+
+
+def is_trust_system_enabled() -> bool:
+    return getattr(settings, 'TRUST_SYSTEM_ENABLED', False)
 
 
 class SellerListingBlocked(ValidationError):
@@ -177,6 +182,45 @@ def manner_score_to_dict(ms: MannerScore | None) -> dict:
         'good_count': ms.good_count,
         'bad_count': ms.bad_count,
     }
+
+
+def build_seller_trust_template_context(request, seller_user, equipment=None):
+    """매물 상세·판매자 미니홈 공통 신뢰도 템플릿 컨텍스트."""
+    if not is_trust_system_enabled():
+        return {}
+
+    from equipment.templatetags.i18n_extras import translate
+
+    from trust.i18n_helpers import translated_bad_tag_choices, translated_report_choices
+
+    if not seller_user or not seller_user.pk:
+        return {}
+
+    ms = get_or_create_manner_score(seller_user)
+    item_scores = get_seller_item_averages(seller_user)
+    item_bars = [
+        {'field': field, 'label_key': ITEM_SCORE_LABELS[field], 'avg': item_scores.get(field, 0.0)}
+        for field in SCORE_FIELDS
+    ]
+    lang = (getattr(request, 'session', None) and request.session.get('lang')) or 'ko'
+    lang = (lang or 'ko').strip().lower()
+
+    ctx = {
+        'trust_seller_id': seller_user.pk,
+        'trust_equipment_id': equipment.pk if equipment else None,
+        'seller_manner_score': ms,
+        'seller_item_scores': item_scores,
+        'seller_item_bars': item_bars,
+        'seller_manner_tier_label': translate(lang, f'trust_tier_{ms.tier}'),
+        'trust_bad_tag_choices': translated_bad_tag_choices(request),
+        'trust_report_choices': translated_report_choices(request),
+        'trust_can_review': False,
+        'trust_has_reviewed': False,
+    }
+    if equipment and getattr(request, 'user', None) and request.user.is_authenticated:
+        ctx['trust_can_review'] = buyer_can_review_equipment(request.user, equipment)
+        ctx['trust_has_reviewed'] = user_reviewed_equipment(request.user, equipment)
+    return ctx
 
 
 def review_to_dict(review: SellerReview) -> dict:

@@ -1,0 +1,75 @@
+{% load i18n_extras %}
+<div class="modal fade" id="trustReviewModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-scrollable">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">{{ LANG|tr:"trust_modal_review_title" }}</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <div class="mb-3">
+          <label class="form-label fw-bold">{{ LANG|tr:"trust_review_type" }}</label>
+          <div class="d-flex gap-2" id="trustReviewTypeGroup">
+            <label class="btn btn-outline-success btn-sm active"><input type="radio" name="trustReviewType" value="good" class="d-none" checked> {{ LANG|tr:"trust_review_good_label" }}</label>
+            <label class="btn btn-outline-secondary btn-sm"><input type="radio" name="trustReviewType" value="bad" class="d-none"> {{ LANG|tr:"trust_review_bad_label" }}</label>
+          </div>
+        </div>
+        <div id="trustScoreFields" class="mb-3">
+          {% for bar in seller_item_bars %}
+          <div class="mb-2">
+            <label class="form-label small mb-1">{{ LANG|tr:bar.label_key }}</label>
+            <div class="btn-group btn-group-sm w-100 trust-score-btns" role="group" data-score-field="{{ bar.field }}">
+              <button type="button" class="btn btn-outline-secondary" data-score="1">1</button>
+              <button type="button" class="btn btn-outline-secondary" data-score="2">2</button>
+              <button type="button" class="btn btn-outline-secondary" data-score="3">3</button>
+              <button type="button" class="btn btn-outline-secondary" data-score="4">4</button>
+              <button type="button" class="btn btn-outline-secondary" data-score="5">5</button>
+            </div>
+          </div>
+          {% endfor %}
+        </div>
+        <div id="trustBadTagsWrap" class="mb-3 d-none">
+          <label class="form-label small fw-bold">{{ LANG|tr:"trust_bad_tags" }}</label>
+          <div class="d-flex flex-wrap gap-1" id="trustBadTagsGroup">
+            {% for val, label in trust_bad_tag_choices %}
+            <label class="btn btn-sm btn-outline-secondary">
+              <input type="checkbox" class="d-none trust-bad-tag" value="{{ val }}"> {{ label }}
+            </label>
+            {% endfor %}
+          </div>
+        </div>
+        <textarea class="form-control form-control-sm" id="trustReviewComment" rows="2" maxlength="500" placeholder="{{ LANG|tr:"trust_review_comment_ph" }}"></textarea>
+        <div id="trustReviewError" class="text-danger small mt-2 d-none"></div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">{{ LANG|tr:"btn_cancel" }}</button>
+        <button type="button" class="btn btn-primary btn-sm" id="trustReviewSubmit">{{ LANG|tr:"trust_btn_submit_review" }}</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="modal fade" id="trustReportModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">{{ LANG|tr:"trust_modal_report_title" }}</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <label class="form-label fw-bold">{{ LANG|tr:"trust_report_reason" }}</label>
+        <select class="form-select form-select-sm mb-2" id="trustReportReason">
+          {% for val, label in trust_report_choices %}
+          <option value="{{ val }}">{{ label }}</option>
+          {% endfor %}
+        </select>
+        <textarea class="form-control form-control-sm" id="trustReportDetail" rows="3" maxlength="2000" placeholder="{{ LANG|tr:"trust_report_detail_ph" }}"></textarea>
+        <div id="trustReportError" class="text-danger small mt-2 d-none"></div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">{{ LANG|tr:"btn_cancel" }}</button>
+        <button type="button" class="btn btn-danger btn-sm" id="trustReportSubmit">{{ LANG|tr:"trust_btn_submit_report" }}</button>
+      </div>
+    </div>
+  </div>
+</div>

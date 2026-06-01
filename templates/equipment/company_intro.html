@@ -1,0 +1,123 @@
+{% extends "base.html" %}
+
+{% block extra_css %}
+<style>
+  .gn-company-page {
+    background: #fff;
+    padding: 2.5rem 0 0;
+  }
+  .gn-company-hero {
+    max-width: 920px;
+    margin: 0 auto;
+    padding: 0 1rem 2.5rem;
+    text-align: center;
+  }
+  .gn-company-title {
+    font-size: clamp(1.55rem, 3.2vw, 2.15rem);
+    font-weight: 800;
+    color: #111827;
+    line-height: 1.45;
+    letter-spacing: -0.02em;
+    margin-bottom: 2rem;
+  }
+  .gn-company-greeting {
+    font-size: 1.05rem;
+    font-weight: 700;
+    color: #1f2937;
+    margin-bottom: 1.25rem;
+  }
+  .gn-company-body {
+    font-size: 0.98rem;
+    line-height: 1.95;
+    color: #374151;
+    margin-bottom: 0;
+  }
+  .gn-company-body p + p {
+    margin-top: 1rem;
+  }
+  .gn-company-thanks {
+    margin-top: 1.5rem;
+    font-size: 1rem;
+    font-weight: 700;
+    color: #111827;
+  }
+  .gn-company-map-wrap {
+    width: 100%;
+    border-top: 1px solid #e5e7eb;
+    background: #f8fafc;
+  }
+  .gn-company-map-head {
+    max-width: 920px;
+    margin: 0 auto;
+    padding: 1rem 1rem 0.5rem;
+    font-size: 0.92rem;
+    color: #475569;
+  }
+  .gn-company-map-head strong {
+    color: #111827;
+  }
+  #companyIntroMap {
+    width: 100%;
+    height: min(520px, 62vh);
+    min-height: 360px;
+    background: #e2e8f0;
+  }
+  @media (max-width: 767.98px) {
+    .gn-company-page { padding-top: 1.5rem; }
+    .gn-company-hero { padding-bottom: 1.75rem; }
+    #companyIntroMap { min-height: 280px; }
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="gn-company-page">
+  <section class="gn-company-hero">
+    <h1 class="gn-company-title">신뢰를 바탕으로 한<br class="d-md-none"> 제일의 굴삭기 매매 정보를 제공합니다.</h1>
+    <p class="gn-company-greeting">안녕하십니까?</p>
+    <div class="gn-company-body">
+      <p>
+        굴삭기나라를 이용해 주시는 고객 여러분께 진심으로 감사드립니다.<br>
+        저희는 고객 만족과 신뢰를 최우선으로 하며, 양질의 서비스를 제공하기 위해 끊임없이 노력하고 있습니다.
+      </p>
+      <p>
+        앞으로도 다양한 정보를 제공하여 건설 환경에 기여할 수 있도록 최선을 다하겠습니다.
+      </p>
+    </div>
+    <p class="gn-company-thanks">감사합니다.</p>
+  </section>
+
+  <section class="gn-company-map-wrap">
+    <div class="gn-company-map-head">
+      <strong>{{ company_address }}</strong>
+    </div>
+    <div id="companyIntroMap" aria-label="굴삭기나라 사업장 위치"></div>
+  </section>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+{% if kakao_map_js_key %}
+<script src="https://dapi.kakao.com/v2/maps/sdk.js?appkey={{ kakao_map_js_key }}&autoload=false"></script>
+<script>
+  kakao.maps.load(function () {
+    var pos = new kakao.maps.LatLng({{ company_lat }}, {{ company_lng }});
+    var map = new kakao.maps.Map(document.getElementById("companyIntroMap"), {
+      center: pos,
+      level: 4,
+    });
+    var marker = new kakao.maps.Marker({ position: pos, title: "{{ company_address|escapejs }}" });
+    marker.setMap(map);
+    var info = new kakao.maps.InfoWindow({
+      content: '<div style="padding:8px 10px;font-size:12px;line-height:1.5;min-width:180px;"><strong>굴삭기나라</strong><br>{{ company_address|escapejs }}</div>',
+    });
+    info.open(map, marker);
+  });
+</script>
+{% else %}
+<script>
+  document.getElementById("companyIntroMap").innerHTML =
+    '<div class="d-flex align-items-center justify-content-center h-100 text-muted small px-3 text-center">지도를 표시할 수 없습니다. 주소: {{ company_address|escapejs }}</div>';
+</script>
+{% endif %}
+{% endblock %}

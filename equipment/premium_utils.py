@@ -186,6 +186,8 @@ def get_monthly_listing_count(user):
 
 FREE_LISTING_LIMIT = 20  # 무료 회원 한 달 매물 20건까지
 PREMIUM_LISTING_LIMIT = 50  # 유료 회원 한 달 매물 50건까지
+PREMIUM_MONTHLY_PRICE = 40000  # 유료 회원 월 이용료 (원)
+PREMIUM_BID_SWITCH_MEMBER_COUNT = 20  # 이 인원 초과 시 입찰 방식 전환 예정
 BUMP_WEEKLY_LIMIT = 3  # 유료 회원 주간 끌어올리기 3회
 
 
@@ -199,3 +201,37 @@ def get_listing_monthly_limit(user):
 def get_free_listing_count(user):
     """하위 호환용 별칭."""
     return get_monthly_listing_count(user)
+
+
+def get_user_bump_status(user):
+    """유료 회원 주간 끌어올리기 잔여 횟수·다음 가능 시각."""
+    from datetime import timedelta
+
+    from django.utils import timezone
+
+    from equipment.models import EquipmentBumpLog
+
+    status = {
+        'is_premium': is_user_premium(user) if user and user.is_authenticated else False,
+        'can_bump': False,
+        'used': 0,
+        'remaining': 0,
+        'limit': BUMP_WEEKLY_LIMIT,
+        'next_bump_at': None,
+    }
+    if not status['is_premium']:
+        return status
+
+    now = timezone.now()
+    week_ago = now - timedelta(days=7)
+    week_logs = list(
+        EquipmentBumpLog.objects.filter(user=user, bumped_at__gt=week_ago).order_by('bumped_at')
+    )
+    used = len(week_logs)
+    status['used'] = used
+    status['remaining'] = max(0, BUMP_WEEKLY_LIMIT - used)
+    if used < BUMP_WEEKLY_LIMIT:
+        status['can_bump'] = True
+    elif week_logs:
+        status['next_bump_at'] = week_logs[0].bumped_at + timedelta(days=7)
+    return status

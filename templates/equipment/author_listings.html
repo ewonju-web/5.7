@@ -6,43 +6,54 @@
   {% with first_listing=listings|first %}
   <section class="card border shadow-sm mb-4 overflow-hidden gn-author-id-card">
     <div class="card-body p-3 p-md-4">
-      <div class="gn-author-id-top d-flex gap-3 align-items-start">
-        <div class="gn-author-photo flex-shrink-0">
-          {% if author_profile and author_profile.profile_photo %}
-          <img src="{{ author_profile.profile_photo.url }}" alt="" loading="lazy">
-          {% else %}
-          <div class="gn-author-photo-empty"><i class="bi bi-person-badge"></i></div>
-          {% endif %}
-        </div>
-        <div class="min-width-0 flex-grow-1">
-          <div class="d-flex flex-wrap align-items-center gap-2 mb-1">
-            <h1 class="h5 fw-bold mb-0 text-dark">
-              {% if author_profile and author_profile.company_name %}
-                {{ author_profile.company_name }}
+      <div class="row g-3 align-items-start gn-author-id-top">
+        <div class="col-12 {% if TRUST_SYSTEM_ENABLED %}col-lg-6{% else %}col-lg-12{% endif %}">
+          <div class="d-flex gap-3 align-items-start">
+            <div class="gn-author-photo flex-shrink-0">
+              {% if author_profile and author_profile.profile_photo %}
+              <img src="{{ author_profile.profile_photo.url }}" alt="" loading="lazy">
               {% else %}
-                {{ author_user.get_full_name|default:author_user.username }}
+              <div class="gn-author-photo-empty"><i class="bi bi-person-badge"></i></div>
               {% endif %}
-            </h1>
-            {% if author_profile and author_profile.is_premium_active %}
-            <span class="badge bg-warning text-dark fw-bold"><i class="bi bi-check-circle-fill me-1"></i>유료회원</span>
-            {% endif %}
-          </div>
-          {% if author_profile and author_profile.phone %}
-          <div class="gn-author-phone fw-bold">{{ author_profile.phone|format_phone }}</div>
-          {% endif %}
-          <div class="gn-author-meta-line small text-muted">
-            <i class="bi bi-geo-alt me-1"></i>
-            {% if first_listing and first_listing.current_location %}
-              {{ first_listing.current_location }}
-            {% elif first_listing and first_listing.region_sido %}
-              {{ first_listing.region_sido }}{% if first_listing.region_sigungu %} {{ first_listing.region_sigungu }}{% endif %}
-            {% else %}
-              지역 정보 없음
-            {% endif %}
-            <span class="mx-1">·</span>
-            {% if author_profile and author_profile.user_type == 'DEALER' %}매매상사{% else %}개인판매자{% endif %}
+            </div>
+            <div class="min-width-0 flex-grow-1">
+              <div class="d-flex flex-wrap align-items-center gap-2 mb-1">
+                <h1 class="h5 fw-bold mb-0 text-dark">
+                  {% if author_profile and author_profile.company_name %}
+                    {{ author_profile.company_name }}
+                  {% else %}
+                    {{ author_user.get_full_name|default:author_user.username }}
+                  {% endif %}
+                </h1>
+                {% if author_profile and author_profile.is_premium_active %}
+                <span class="badge bg-warning text-dark fw-bold"><i class="bi bi-check-circle-fill me-1"></i>유료회원</span>
+                {% endif %}
+              </div>
+              {% if author_profile and author_profile.phone %}
+              <div class="gn-author-phone fw-bold">{{ author_profile.phone|format_phone }}</div>
+              {% endif %}
+              <div class="gn-author-meta-line small text-muted">
+                <i class="bi bi-geo-alt me-1"></i>
+                {% if first_listing and first_listing.current_location %}
+                  {{ first_listing.current_location }}
+                {% elif first_listing and first_listing.region_sido %}
+                  {{ first_listing.region_sido }}{% if first_listing.region_sigungu %} {{ first_listing.region_sigungu }}{% endif %}
+                {% else %}
+                  지역 정보 없음
+                {% endif %}
+                <span class="mx-1">·</span>
+                {% if author_profile and author_profile.user_type == 'DEALER' %}매매상사{% else %}개인판매자{% endif %}
+              </div>
+            </div>
           </div>
         </div>
+        {% if TRUST_SYSTEM_ENABLED %}
+        <div class="col-12 col-lg-6">
+          {% with trust_compact=1 %}
+          {% include "trust/partials/seller_trust_section.html" %}
+          {% endwith %}
+        </div>
+        {% endif %}
       </div>
       {% if author_profile and author_profile.bio %}
       <p class="gn-author-id-bio mb-0">{{ author_profile.bio }}</p>
@@ -60,12 +71,14 @@
             <div class="gn-stat-value">{{ sold_count }}건</div>
           </div>
         </div>
+        {% if TRUST_SYSTEM_ENABLED %}
         <div class="col-6 col-md-3">
           <div class="gn-stat-box">
-            <div class="gn-stat-label">신뢰도</div>
-            <div class="gn-stat-value">★{{ trust_score }}</div>
+            <div class="gn-stat-label">매너점수</div>
+            <div class="gn-stat-value">{% if seller_manner_score %}{{ seller_manner_score.score|floatformat:0 }}{% else %}—{% endif %}</div>
           </div>
         </div>
+        {% endif %}
         <div class="col-6 col-md-3">
           <div class="gn-stat-box">
             <div class="gn-stat-label">평균응답</div>
@@ -192,6 +205,26 @@
     background: #fff;
     border-color: #e5e7eb !important;
     border-radius: 12px;
+  }
+  .gn-seller-trust-compact {
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 10px;
+    padding: 0.65rem 0.75rem;
+    height: 100%;
+  }
+  .gn-seller-trust-compact .gn-trust-reviews-list {
+    max-height: 100px;
+    overflow-y: auto;
+  }
+  .gn-seller-trust-compact .gn-trust-tier-best { background: #1D9E75; color: #fff; }
+  .gn-seller-trust-compact .gn-trust-tier-verified { background: #378ADD; color: #fff; }
+  .gn-seller-trust-compact .gn-trust-tier-caution { background: #EF9F27; color: #1a1a1a; }
+  .gn-seller-trust-compact .gn-trust-tier-blocked { background: #E24B4A; color: #fff; }
+  .gn-seller-trust-compact .gn-trust-bar-fill { background: #378ADD; }
+  .gn-seller-trust-compact .gn-trust-review-tabs .nav-link { cursor: pointer; font-size: 0.72rem; }
+  @media (max-width: 991.98px) {
+    .gn-seller-trust-compact { margin-top: 0.25rem; }
   }
   .gn-author-photo {
     width: 96px;

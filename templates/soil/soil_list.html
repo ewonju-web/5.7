@@ -3,26 +3,26 @@
 {% block content %}
 <div class="container py-4">
     <div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-4">
-        <div>
-            <h2 class="section-title mb-1">{{ LANG|tr:"nav_soil" }}</h2>
-            <p class="small mb-0 gn-soil-desc-strong">흙·모래·자갈·잔석·블록 등 현장 자재를 나누거나 가져가세요</p>
+        <div class="gn-soil-page-head">
+            <h2 class="section-title mb-1 gn-soil-page-title">{{ LANG|tr:"nav_soil" }}</h2>
+            <p class="mb-0 gn-soil-desc-strong">흙·모래·자갈·잔석·블록 등 현장 자재를 나누거나 가져가세요</p>
         </div>
         {% if user.is_authenticated %}
-        <a href="{% url 'soil_create' %}" class="btn btn-warning fw-bold px-4 ms-auto ms-md-0" style="border-radius: 10px;">{{ LANG|tr:"soil_write" }}</a>
+        <a href="{% url 'soil_create' %}" class="btn btn-warning fw-bold px-4 py-2 gn-soil-write-btn ms-auto ms-md-0">{{ LANG|tr:"soil_write" }}</a>
         {% else %}
-        <a href="{% url 'login' %}?next={% url 'soil_create' %}" class="btn btn-warning fw-bold px-4 ms-auto ms-md-0" style="border-radius: 10px;">{{ LANG|tr:"soil_write" }}</a>
+        <a href="{% url 'login' %}?next={% url 'soil_create' %}" class="btn btn-warning fw-bold px-4 py-2 gn-soil-write-btn ms-auto ms-md-0">{{ LANG|tr:"soil_write" }}</a>
         {% endif %}
     </div>
 
     <div class="card border-0 shadow-sm rounded-3 mb-3">
         <div class="card-body p-3">
-            <div class="small text-muted fw-bold mb-2">자재 유형</div>
+            <div class="gn-soil-filter-label mb-2">자재 유형</div>
             <div class="gn-soil-material-scroll mb-3" aria-label="자재 유형 선택">
                 {% for key, label in material_tabs %}
                 <a href="{% url 'soil_list' %}?material={{ key }}&type={{ selected_post_type }}" class="gn-cat-pill {% if selected_material == key %}active{% endif %}">{{ label }}</a>
                 {% endfor %}
             </div>
-            <div class="small text-muted fw-bold mb-2">게시글 유형</div>
+            <div class="gn-soil-filter-label mb-2">게시글 유형</div>
             <div class="d-flex flex-wrap gap-2 gn-soil-type-wrap">
                 {% for key, label in post_type_tabs %}
                 <a href="{% url 'soil_list' %}?material={{ selected_material }}&type={{ key }}" class="gn-soil-filter-pill {% if selected_post_type == key %}active{% endif %}">{{ label }}</a>
@@ -43,8 +43,8 @@
                     <span class="badge rounded-pill text-bg-primary">가져가실분</span>
                     {% endif %}
                 </div>
-                <h6 class="mb-1 fw-bold">{{ post.title }}</h6>
-                <p class="small text-muted mb-0">
+                <p class="gn-soil-post-title mb-1">{{ post.title }}</p>
+                <p class="gn-soil-post-meta mb-0">
                     {% if post.quantity %}<i class="bi bi-box me-1"></i>{{ post.quantity }} · {% endif %}
                     <i class="bi bi-geo-alt me-1"></i>{{ post.location }}
                     {% if post.contact %} · <i class="bi bi-telephone me-1"></i>{{ post.contact }}{% endif %}
@@ -65,11 +65,24 @@
 .gn-soil-material-scroll {
     display: flex;
     flex-wrap: nowrap;
-    gap: 0.35rem;
+    gap: 0.45rem;
     overflow-x: auto;
     -webkit-overflow-scrolling: touch;
     white-space: nowrap;
     padding-bottom: 2px;
+}
+.gn-soil-filter-label {
+    color: #475569;
+    font-size: 0.92rem;
+    font-weight: 700;
+}
+.gn-soil-write-btn {
+    border-radius: 10px;
+    font-size: 1rem;
+    min-height: 2.65rem;
+}
+.gn-soil-type-wrap {
+    gap: 0.45rem !important;
 }
 .gn-soil-material-scroll::-webkit-scrollbar {
     height: 0;
@@ -82,17 +95,19 @@
     border: 1px solid #e2e8f0;
     background: #f1f5f9;
     color: #334155;
-    font-size: .92rem;
+    font-size: 1rem;
     font-weight: 600;
-    padding: .42rem .88rem;
+    padding: .52rem 1rem;
+    min-height: 2.45rem;
     text-decoration: none;
     display: inline-flex;
     align-items: center;
     transition: background-color .18s ease, transform .18s ease, box-shadow .18s ease, color .18s ease, border-color .18s ease;
 }
 .gn-soil-type-wrap .gn-soil-filter-pill {
-    font-size: .88rem;
-    padding: .38rem .82rem;
+    font-size: .96rem;
+    padding: .48rem .95rem;
+    min-height: 2.35rem;
 }
 @media (hover: hover) {
     .gn-soil-material-scroll .gn-cat-pill:hover,
@@ -120,9 +135,40 @@
     font-weight: 700;
     box-shadow: 0 4px 10px rgba(232, 163, 23, .25);
 }
+.gn-soil-page-title {
+    font-size: 1.45rem;
+    margin-bottom: 0.55rem !important;
+}
 .gn-soil-desc-strong {
     color: #334155 !important;
     font-weight: 700;
+    font-size: 0.98rem;
+    line-height: 1.55;
+}
+@media (min-width: 768px) {
+    .gn-soil-page-title {
+        font-size: 1.55rem;
+    }
+    .gn-soil-desc-strong {
+        font-size: 1.02rem;
+    }
+}
+.gn-soil-post-title {
+    font-size: 1.0625rem;
+    font-weight: 700;
+    line-height: 1.45;
+    color: #111827;
+    letter-spacing: -0.01em;
+}
+.gn-soil-post-meta {
+    font-size: 0.875rem;
+    line-height: 1.5;
+    color: #64748b;
+}
+@media (min-width: 768px) {
+    .gn-soil-post-title {
+        font-size: 1.125rem;
+    }
 }
 
 /* PC에서만 흙 목록 아이템 hover 반응 */
@@ -134,8 +180,8 @@
         background: rgba(232, 163, 23, 0.12) !important;
         color: var(--gn-text) !important;
     }
-    .gn-soil-list-item:hover .text-muted {
-        color: var(--gn-muted) !important;
+    .gn-soil-list-item:hover .gn-soil-post-meta {
+        color: #64748b !important;
     }
     .gn-soil-list-item:hover .bi-chevron-right {
         color: var(--gn-accent) !important;

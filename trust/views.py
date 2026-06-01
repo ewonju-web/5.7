@@ -1,5 +1,6 @@
 import json
 
+from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.core.paginator import Paginator
 from django.http import JsonResponse
@@ -34,6 +35,16 @@ def _json_error(message, status=400):
     return JsonResponse({'ok': False, 'error': message}, status=status)
 
 
+def _trust_disabled_json():
+    return _json_error('판매자 신뢰도 기능은 준비 중입니다.', status=503)
+
+
+def _require_trust_enabled():
+    if not getattr(settings, 'TRUST_SYSTEM_ENABLED', False):
+        return _trust_disabled_json()
+    return None
+
+
 def _parse_json_body(request):
     if request.content_type and 'application/json' in request.content_type:
         try:
@@ -45,6 +56,9 @@ def _parse_json_body(request):
 
 @require_GET
 def seller_profile(request, user_id):
+    disabled = _require_trust_enabled()
+    if disabled:
+        return disabled
     seller = get_object_or_404(User, pk=user_id)
     ms = get_or_create_manner_score(seller)
     items = get_seller_item_averages(seller)
@@ -61,6 +75,9 @@ def seller_profile(request, user_id):
 
 @require_GET
 def seller_reviews(request, user_id):
+    disabled = _require_trust_enabled()
+    if disabled:
+        return disabled
     seller = get_object_or_404(User, pk=user_id)
     review_type = (request.GET.get('type') or 'all').strip().lower()
     qs = SellerReview.objects.filter(seller=seller).select_related('reviewer').prefetch_related('bad_tags')
@@ -86,6 +103,9 @@ def seller_reviews(request, user_id):
 
 @require_POST
 def review_create(request):
+    disabled = _require_trust_enabled()
+    if disabled:
+        return disabled
     if not request.user.is_authenticated:
         return _json_error('로그인이 필요합니다.', 401)
 
@@ -149,6 +169,9 @@ def review_create(request):
 
 @require_POST
 def report_create(request):
+    disabled = _require_trust_enabled()
+    if disabled:
+        return disabled
     data = _parse_json_body(request)
     if data is None:
         return _json_error('잘못된 요청 형식입니다.')

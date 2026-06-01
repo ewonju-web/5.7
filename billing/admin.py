@@ -50,7 +50,8 @@ class ProductAdmin(admin.ModelAdmin):
             """
             <div style="line-height:1.7;">
               <div><strong>제목:</strong> 유료회원 안내</div>
-              <div><strong>요금:</strong> 월 100,000원 / 연 800,000원 (연간 결제 시 2개월 무료)</div>
+              <div><strong>요금:</strong> 월 40,000원</div>
+              <div><strong>운영:</strong> 유료회원 20명 초과 시 입찰 방식 전환 예정 · 마찰·평점 저조 시 일시 정지 가능</div>
               <div><strong>혜택 4가지:</strong></div>
               <ol style="margin:6px 0 6px 18px;">
                 <li>매물 검색 상단 우선 노출</li>

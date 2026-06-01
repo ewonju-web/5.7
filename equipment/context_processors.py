@@ -1,7 +1,17 @@
 from datetime import timedelta
+
+from django.conf import settings
 from django.contrib.auth import logout
 from django.utils.timezone import localdate
+
 from .models import VisitorCount
+
+
+def site_flags(request):
+    """템플릿: 신규 가입·신뢰도 등 기능 토글."""
+    return {
+        'SIGNUP_ENABLED': getattr(settings, 'SIGNUP_ENABLED', True),
+    }
 
 def visitor_stats(request):
     # 운영 환경에서 미들웨어 누락/순서 문제로 관리자 세션이 프론트에 남는 경우를 방지한다.

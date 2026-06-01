@@ -154,11 +154,24 @@
         <a href="#account-settings" class="gn-quick-item"><i class="bi bi-gear"></i><span>설정</span></a>
     </div>
 
-    <section class="gn-section-card mb-4">
+    <section class="gn-section-card mb-4" id="my-listings-manage">
         <div class="gn-section-head">
             <h5 class="gn-section-title">내가 올린 매물</h5>
             <a href="{% url 'equipment_create' %}" class="btn gn-gold-btn">매물등록 +</a>
         </div>
+        {% if bump_status.is_premium %}
+        <div class="gn-bump-status-bar small text-muted mb-3 px-1">
+            <i class="bi bi-arrow-up-circle text-warning"></i>
+            <strong>끌어올리기</strong> — 최근 7일
+            <span class="fw-semibold text-dark">{{ bump_status.used }}/{{ bump_weekly_limit }}</span>회 사용
+            {% if bump_status.can_bump %}
+            <span class="text-success">· 남은 {{ bump_status.remaining }}회</span>
+            {% elif bump_status.next_bump_at %}
+            <span>· 다음 가능 {{ bump_status.next_bump_at|date:"m/d H:i" }}</span>
+            {% endif %}
+            <span class="d-block mt-1" style="font-size:0.78rem;">목록 최신순 상단에 노출됩니다.</span>
+        </div>
+        {% endif %}
         {% if my_equipments %}
         <div class="gn-my-listings-grid">
             {% for e in my_equipments %}
@@ -185,10 +198,20 @@
                       <span>{{ e.created_at|date:"Y-m-d" }}</span>
                     </p>
                     <p class="gn-listing-price mb-2">{{ e.listing_price|floatformat:0|intcomma }}만원</p>
-                    <div class="d-flex gap-2">
-                        <a href="{% url 'equipment_detail' e.pk %}?from=mypage" class="btn btn-sm btn-outline-secondary">보기</a>
-                        <a href="{% url 'equipment_edit' e.pk %}" class="btn btn-sm gn-btn-edit">수정</a>
-                        <a href="{% url 'equipment_delete' e.pk %}?next={{ request.get_full_path|urlencode }}" class="btn btn-sm gn-btn-delete">삭제</a>
+                    <div class="gn-listing-actions">
+                        <div class="d-flex gap-2 gn-listing-actions-row">
+                            <a href="{% url 'equipment_detail' e.pk %}?from=mypage" class="btn btn-sm btn-outline-secondary flex-fill">보기</a>
+                            <a href="{% url 'equipment_edit' e.pk %}" class="btn btn-sm gn-btn-edit flex-fill">수정</a>
+                            <a href="{% url 'equipment_delete' e.pk %}?next={{ request.get_full_path|urlencode }}" class="btn btn-sm gn-btn-delete flex-fill">삭제</a>
+                        </div>
+                        {% if bump_status.is_premium and bump_status.can_bump and not e.is_sold %}
+                        <form method="post" action="{% url 'equipment_bump' e.pk %}" class="gn-listing-bump-form m-0">
+                            {% csrf_token %}
+                            <button type="submit" class="btn btn-sm btn-warning fw-semibold w-100" title="목록 상단 노출">
+                                <i class="bi bi-arrow-up-circle"></i> 끌어올리기
+                            </button>
+                        </form>
+                        {% endif %}
                     </div>
                 </div>
             </div>
@@ -293,7 +316,7 @@
                         <li>✓ 상세페이지에서 이 회원이 판매하는 다른 매물 보기</li>
                         <li>✓ 지역별 구매 문의 알림</li>
                     </ul>
-                    <div class="fw-bold mb-2">100,000원/월</div>
+                    <div class="fw-bold mb-2">{{ premium_monthly_price|intcomma }}원/월</div>
                     <a href="{% url 'billing_upgrade' %}" class="btn gn-gold-btn w-100">지금 업그레이드</a>
                 </div>
             </div>
@@ -383,6 +406,13 @@
     border-radius: 8px; font-size: 0.72rem; padding: 0.28rem 0.55rem; white-space: nowrap;
   }
   .gn-premium-card-open-btn:hover { background: #e3a12d; color: #1f2937; }
+  .gn-bump-status-bar {
+    background: #fffbeb;
+    border: 1px solid #fde68a;
+    border-radius: 10px;
+    padding: 0.55rem 0.75rem;
+    line-height: 1.45;
+  }
 
   .gn-quick-grid { display: grid; grid-template-columns: repeat(5, minmax(0,1fr)); gap: 0.6rem; }
   .gn-quick-item {
@@ -500,6 +530,17 @@
   .gn-listing-body .btn.btn-sm {
     font-size: 14px;
     padding: 7px 10px;
+  }
+  .gn-listing-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .gn-listing-actions-row .btn {
+    min-width: 0;
+  }
+  .gn-listing-bump-form .btn {
+    padding: 8px 10px;
   }
   .gn-fav-listing-card .gn-listing-cover {
     border-bottom: 0.5px solid #e5e7eb;
