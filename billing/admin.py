@@ -56,7 +56,7 @@ class ProductAdmin(admin.ModelAdmin):
               <ol style="margin:6px 0 6px 18px;">
                 <li>매물 검색 상단 우선 노출</li>
                 <li>메인 화면 프리미엄 영역 노출</li>
-                <li>주 1회 끌어올리기</li>
+                <li>끌어올리기 — 등록 매물 수 × 4회/월</li>
                 <li>매물 등록 무제한 (무료: 월 10건)</li>
               </ol>
               <div><strong>신청 방법:</strong> Tel. 010-2469-3800</div>

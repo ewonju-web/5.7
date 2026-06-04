@@ -456,6 +456,72 @@ _UI_EXTRA = {
 for _code in LANGUAGE_ORDER:
     I18N[_code].update(_UI_EXTRA.get(_code, _UI_EXTRA["en"]))
 
+# 장비 상세·우측 레일·부품A/S 카드 (|tr 용)
+_EQ_DETAIL_I18N = {
+    "ko": {
+        "eq_detail_title_description": "상세 설명",
+        "eq_detail_description_empty": "내용이 없습니다.",
+        "eq_detail_title_photos": "사진 보기",
+        "eq_detail_title_similar_stats": "비슷한 기종·년식 시세",
+        "eq_detail_similar_none": "같은 제조사·비슷한 년식의 다른 매물이 없어 시세를 산출할 수 없습니다.",
+        "eq_detail_title_similar_list": "비슷한 매물 보기",
+        "eq_detail_back_to_list": "목록으로",
+        "eq_detail_right_title_attachment_ad": "어태치먼트·타이어 광고",
+        "eq_detail_register_guide": "등록안내",
+        "eq_detail_ad_empty": "유료 광고가 등록되면 이곳에 표시됩니다.",
+        "eq_detail_attachment_site_link": "업체 사이트 연결",
+        "eq_detail_attachment_intro": "공식 업체 명함",
+        "eq_detail_inquiry_title": "문의하기",
+        "eq_detail_no_contact": "연락처 없음",
+        "eq_detail_chat_inquiry": "카톡·채팅 문의",
+        "eq_detail_my_listing": "내 매물",
+        "eq_detail_favorite_add": "찜하기",
+        "eq_detail_favorite_remove": "찜 해제",
+        "eq_detail_link_copy": "링크 복사",
+        "eq_detail_link_copied": "✓ 링크 복사 완료",
+        "parts_as_card_title": "전국 부품점 A/S센터",
+        "parts_as_view_all": "전체보기",
+        "parts_as_filter_all": "전체",
+        "parts_as_filter_as": "AS센터",
+        "parts_as_filter_parts": "부품점",
+        "parts_as_filter_rental": "지역중기",
+        "parts_as_map_aria": "전국 부품점 A/S 지도",
+        "parts_as_map_fallback": "전국 부품 A/S 지도 보기",
+    },
+    "en": {
+        "eq_detail_title_description": "Description",
+        "eq_detail_description_empty": "No description provided.",
+        "eq_detail_title_photos": "Photos",
+        "eq_detail_title_similar_stats": "Similar Model/Year Pricing",
+        "eq_detail_similar_none": "No comparable listings were found for this maker and similar year range.",
+        "eq_detail_title_similar_list": "View Similar Listings",
+        "eq_detail_back_to_list": "Back to List",
+        "eq_detail_right_title_attachment_ad": "Attachment/Tire Ads",
+        "eq_detail_register_guide": "Guide",
+        "eq_detail_ad_empty": "Paid ads will appear here once registered.",
+        "eq_detail_attachment_site_link": "Open company site",
+        "eq_detail_attachment_intro": "Official company card",
+        "eq_detail_inquiry_title": "Contact",
+        "eq_detail_no_contact": "No contact",
+        "eq_detail_chat_inquiry": "Kakao/Chat Inquiry",
+        "eq_detail_my_listing": "My Listing",
+        "eq_detail_favorite_add": "Add Favorite",
+        "eq_detail_favorite_remove": "Remove Favorite",
+        "eq_detail_link_copy": "Copy Link",
+        "eq_detail_link_copied": "✓ Link copied",
+        "parts_as_card_title": "Nationwide Parts A/S Centers",
+        "parts_as_view_all": "View All",
+        "parts_as_filter_all": "All",
+        "parts_as_filter_as": "A/S",
+        "parts_as_filter_parts": "Parts",
+        "parts_as_filter_rental": "Regional Heavy",
+        "parts_as_map_aria": "Nationwide parts A/S map",
+        "parts_as_map_fallback": "Open Parts A/S map",
+    },
+}
+for _code in LANGUAGE_ORDER:
+    I18N[_code].update(_EQ_DETAIL_I18N.get(_code, _EQ_DETAIL_I18N["en"]))
+
 # 판매자 매너점수·신고 (|tr 용)
 _TRUST_I18N = {
     "ko": {
@@ -606,6 +672,25 @@ def format_phone(value: str) -> str:
         return f"{digits[0:3]}-{digits[3:6]}-{digits[6:10]}"
 
     return raw
+
+
+@register.filter
+def mask_phone(value: str) -> str:
+    """비회원용 연락처 표시 (예: 010-****-1234)."""
+    if not value:
+        return ""
+    digits = re.sub(r"[^0-9]", "", str(value))
+    m010 = re.search(r"(010\d{8})", digits)
+    if m010:
+        d = m010.group(1)
+        return f"{d[0:3]}-****-{d[7:11]}"
+    m10 = re.search(r"(\d{10,11})", digits)
+    if m10:
+        d = m10.group(1)
+        if len(d) >= 11:
+            return f"{d[0:3]}-****-{d[-4:]}"
+        return f"{d[0:3]}-****-{d[-4:]}"
+    return "***-****-****"
 
 
 @register.filter

@@ -42,7 +42,8 @@
                             <input type="text" name="phone" class="form-control" placeholder="010-0000-0000" value="{{ form.phone.value|default:'' }}" maxlength="13" inputmode="numeric" style="border-radius: 10px;">
                             {% if form.phone.errors %}<div class="text-danger small">{{ form.phone.errors.0 }}</div>{% endif %}
                         </div>
-                        <button type="submit" class="btn w-100 fw-bold py-2 text-dark mb-3" style="background: var(--gn-accent); border-radius: 10px;">가입하기</button>
+                        {% include "registration/partials/signup_agreements.html" %}
+                        <button type="submit" id="signup-submit-btn" class="btn w-100 fw-bold py-2 text-dark mb-3" style="background: var(--gn-accent); border-radius: 10px;">가입하기</button>
                     </form>
                     <p class="text-center text-muted small mb-0">이미 계정이 있으신가요? <a href="{% url 'login' %}" class="fw-bold" style="color: var(--gn-accent);">로그인</a> · <a href="{% url 'join_choice' %}" class="text-muted small">처음으로</a></p>
                 </div>
@@ -80,5 +81,26 @@ if (phoneInput) {
   });
   phoneInput.value = formatPhoneNumber(phoneInput.value);
 }
+
+(function () {
+  var form = document.getElementById("signup-form");
+  var submitBtn = document.getElementById("signup-submit-btn");
+  var requiredChecks = form ? form.querySelectorAll(".gn-agree-required") : [];
+  function syncSubmitState() {
+    if (!submitBtn) return;
+    var ok = true;
+    requiredChecks.forEach(function (el) { if (!el.checked) ok = false; });
+    submitBtn.disabled = !ok;
+    submitBtn.style.opacity = ok ? "1" : "0.55";
+  }
+  requiredChecks.forEach(function (el) { el.addEventListener("change", syncSubmitState); });
+  syncSubmitState();
+  if (form) {
+    form.addEventListener("submit", function (e) {
+      syncSubmitState();
+      if (submitBtn && submitBtn.disabled) e.preventDefault();
+    });
+  }
+})();
 </script>
 {% endblock %}

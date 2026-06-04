@@ -28,6 +28,11 @@ class Profile(models.Model):
     youtube_url = models.URLField(blank=True, null=True, verbose_name='유튜브 채널 주소')
     # 유료 회원: 무제한 매물 등록, 첫화면/우측 배너 노출, "이 회원 매물 전체 보기" 이용 가능
     is_premium = models.BooleanField(default=False, verbose_name="유료 회원 여부")
+    attachment_tire_ad_active = models.BooleanField(
+        default=False,
+        verbose_name="어태치먼트·타이어 광고 노출",
+        help_text="승인된 업체만 상세 우측 광고란에 표시됩니다.",
+    )
     premium_until = models.DateField(null=True, blank=True, verbose_name="유료 만료일")
     # direct-nara 이관: 기존 회원 PK. 재이관·중복 방지·정식 전환 대상 식별용
     legacy_member_id = models.IntegerField(null=True, blank=True, db_index=True, verbose_name="(이관) 기존 회원 PK")
@@ -36,6 +41,8 @@ class Profile(models.Model):
     phone_verified_at = models.DateTimeField(null=True, blank=True, verbose_name="휴대폰 인증 시각")
     withdrawn_at = models.DateTimeField(null=True, blank=True, verbose_name="탈퇴 처리 시각")
     listing_purge_at = models.DateTimeField(null=True, blank=True, verbose_name="매물 삭제 예정 시각")
+    marketing_consent = models.BooleanField(default=False, verbose_name="마케팅 수신 동의")
+    marketing_consent_at = models.DateTimeField(null=True, blank=True, verbose_name="마케팅 수신 동의 시각")
 
     class Meta:
         verbose_name = "사용자 프로필"

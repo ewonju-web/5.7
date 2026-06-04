@@ -37,6 +37,7 @@ def _exclude_mislabeled_mini_crawler_in_tire_heavy_search(sub_type: str, weight_
 
 VALID_CATEGORIES = ('excavator', 'forklift', 'dump', 'loader', 'crane', 'attachment', 'other')
 INDEX_INITIAL_COUNT = 20
+INDEX_FILTER_MAX = 120  # 상세필터 시 한 번에 로드 상한
 
 # 어드민 changelist는 모델 필드명과 같은 GET(sub_type 등)을 거부하므로 xsf_ 접두사 사용.
 EXCAVATOR_ADMIN_QUERY_KEYS = frozenset({
@@ -236,11 +237,11 @@ def parse_index_params(request):
     )
 
     try:
-        list_per_page = int(request.GET.get('per_page', '80'))
+        list_per_page = int(request.GET.get('per_page', '40'))
     except (TypeError, ValueError):
-        list_per_page = 80
-    if list_per_page not in (40, 80):
-        list_per_page = 80
+        list_per_page = 40
+    if list_per_page not in (24, 40, 60):
+        list_per_page = 40
 
     return {
         'query': query,

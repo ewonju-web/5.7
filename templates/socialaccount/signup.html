@@ -41,12 +41,13 @@
                             <span id="username-msg" class="form-text small"></span>
                             {% if form.username.errors %}<div class="text-danger small">{{ form.username.errors.0 }}</div>{% endif %}
                         </div>
-                        <div class="mb-4">
+                        <div class="mb-3">
                             <label class="form-label small fw-bold text-secondary">휴대폰번호</label>
                             <input type="text" name="phone" class="form-control" placeholder="010-0000-0000" value="{{ form.phone.value|default:'' }}" required maxlength="13" inputmode="numeric" style="border-radius: 10px;">
                             {% if form.phone.errors %}<div class="text-danger small">{{ form.phone.errors.0 }}</div>{% endif %}
                         </div>
-                        <button type="submit" class="btn w-100 fw-bold py-2 text-dark mb-2" style="background: var(--gn-accent); border-radius: 10px;">가입 완료</button>
+                        {% include "registration/partials/signup_agreements.html" %}
+                        <button type="submit" id="social-signup-submit-btn" class="btn w-100 fw-bold py-2 text-dark mb-2" style="background: var(--gn-accent); border-radius: 10px;">가입 완료</button>
                     </form>
                 </div>
             </div>
@@ -94,5 +95,26 @@ if (phoneInput) {
   });
   phoneInput.value = formatPhoneNumber(phoneInput.value);
 }
+
+(function () {
+  var form = document.querySelector('form[action*="socialaccount"]') || document.querySelector("form");
+  var submitBtn = document.getElementById("social-signup-submit-btn");
+  var requiredChecks = form ? form.querySelectorAll(".gn-agree-required") : [];
+  function syncSubmitState() {
+    if (!submitBtn) return;
+    var ok = true;
+    requiredChecks.forEach(function (el) { if (!el.checked) ok = false; });
+    submitBtn.disabled = !ok;
+    submitBtn.style.opacity = ok ? "1" : "0.55";
+  }
+  requiredChecks.forEach(function (el) { el.addEventListener("change", syncSubmitState); });
+  syncSubmitState();
+  if (form) {
+    form.addEventListener("submit", function (e) {
+      syncSubmitState();
+      if (submitBtn && submitBtn.disabled) e.preventDefault();
+    });
+  }
+})();
 </script>
 {% endblock %}

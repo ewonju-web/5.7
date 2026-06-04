@@ -1,0 +1,11 @@
+{% if job.author_id %}
+  {% if user.is_authenticated and job.author_id != user.id %}
+  <a href="{% url 'job_chat_start' job.pk %}" class="btn btn-sm btn-success fw-bold gn-job-contact-kakao">
+    <i class="bi bi-chat-dots-fill me-1" aria-hidden="true"></i>카카오톡 문의
+  </a>
+  {% elif not user.is_authenticated %}
+  <a href="{% url 'login' %}?next={% url 'job_chat_start' job.pk %}" class="btn btn-sm btn-success fw-bold gn-job-contact-kakao">
+    <i class="bi bi-chat-dots-fill me-1" aria-hidden="true"></i>카카오톡 문의
+  </a>
+  {% endif %}
+{% endif %}

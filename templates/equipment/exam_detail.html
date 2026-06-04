@@ -34,7 +34,20 @@
                 <h2 class="gn-job-card-title">{% if post.category == 'video' %}설명{% else %}본문{% endif %}</h2>
                 <div class="gn-job-content">{{ post.content|linebreaksbr }}</div>
                 {% endif %}
-                {% if post.file %}
+                {% if attachments %}
+                <div class="mt-3 pt-3 border-top">
+                    <h2 class="gn-job-card-title mb-2">기출 파일 <span class="text-muted fw-normal">({{ attachments|length }})</span></h2>
+                    <ul class="list-unstyled exam-attachment-list mb-0" style="max-height: 420px; overflow-y: auto;">
+                        {% for att in attachments %}
+                        <li class="mb-2">
+                            <a href="{{ att.file.url }}" class="btn btn-sm job-btn-view text-start w-100" download>
+                                <i class="bi bi-download me-1"></i>{{ att.original_name|default:att.file.name }}
+                            </a>
+                        </li>
+                        {% endfor %}
+                    </ul>
+                </div>
+                {% elif post.file %}
                 <div class="mt-3 pt-3 border-top">
                     <a href="{{ post.file.url }}" class="btn btn-sm job-btn-view" download>
                         <i class="bi bi-download me-1"></i>첨부 파일 다운로드

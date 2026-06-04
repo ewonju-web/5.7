@@ -6,14 +6,14 @@
     <meta name="google" content="notranslate">
     <meta http-equiv="Content-Language" content="{{ LANG|default:'ko' }}">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-    <meta name="theme-color" content="#181E2E">
+    <meta name="theme-color" content="#DADCE0">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="굴삭기나라">
-    <link rel="manifest" href="{% static 'manifest.webmanifest' %}">
-    <link rel="icon" type="image/png" sizes="192x192" href="{% static 'img/icon-192.png' %}">
-    <link rel="apple-touch-icon" sizes="180x180" href="{% static 'img/apple-touch-icon.png' %}">
+    <link rel="manifest" href="{% static 'manifest.webmanifest' %}?v=20260611">
+    <link rel="icon" type="image/png" sizes="192x192" href="{% static 'img/icon-192.png' %}?v=20260611">
+    <link rel="apple-touch-icon" sizes="180x180" href="{% static 'img/apple-touch-icon.png' %}?v=20260611">
     <title>{% block title %}굴삭기나라{% endblock %}</title>
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
@@ -239,6 +239,40 @@
         footer a { color: #374151; text-decoration: none; }
         footer a:hover { color: var(--gn-accent); }
         .footer-nav { display: flex; flex-wrap: wrap; gap: 0.75rem 1.25rem; justify-content: center; }
+        .gn-free-slogan {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.35rem;
+            max-width: 42rem;
+            margin: 0 auto 0.75rem;
+            padding: 0.5rem 1rem;
+            font-size: 0.92rem;
+            font-weight: 700;
+            line-height: 1.45;
+            text-align: center;
+            color: #92400e;
+            background: linear-gradient(135deg, #fef9c3 0%, #fde68a 100%);
+            border: 1px solid #fbbf24;
+            border-radius: 12px;
+            box-shadow: 0 1px 4px rgba(251, 191, 36, 0.25);
+        }
+        .gn-free-slogan i {
+            color: #d97706;
+            font-size: 1rem;
+            flex-shrink: 0;
+        }
+        @media (max-width: 767.98px) {
+            .gn-free-slogan {
+                flex-wrap: wrap;
+                align-items: flex-start;
+            }
+            .gn-free-slogan-note {
+                flex-basis: 100%;
+                text-align: center;
+                margin-top: 0.15rem;
+            }
+        }
         .footer-disclaimer {
             color: var(--gn-muted);
             line-height: 1.6;
@@ -327,29 +361,6 @@
         }
         .gn-mobile-bottom a:hover, .gn-mobile-bottom a.active { color: var(--gn-accent); }
         .gn-mobile-bottom .nav-icon { font-size: 1.55rem; display: block; margin-bottom: 3px; }
-        .gn-pwa-install {
-            display: none;
-            position: fixed;
-            left: 0.75rem;
-            right: 0.75rem;
-            bottom: calc(1rem + env(safe-area-inset-bottom, 0px));
-            z-index: 1030;
-            background: #1f2937;
-            color: #f9fafb;
-            border-radius: 12px;
-            padding: 0.65rem 0.85rem;
-            font-size: 0.82rem;
-            line-height: 1.35;
-            box-shadow: 0 8px 24px rgba(0,0,0,.22);
-            align-items: center;
-            gap: 0.5rem;
-        }
-        .gn-pwa-install.show { display: flex; }
-        .gn-pwa-install .gn-pwa-install-text { flex: 1; }
-        .gn-pwa-install .btn { white-space: nowrap; font-size: 0.78rem; padding: 0.25rem 0.55rem; }
-        @media (display-mode: standalone) {
-            .gn-pwa-install { display: none !important; }
-        }
         .gn-fab {
             display: none;
             position: fixed;
@@ -368,6 +379,55 @@
             text-decoration: none;
         }
         .gn-fab:hover { color: #0c1929; background: var(--gn-accent-hover); }
+        /* 카카오톡 채널 상담 플로팅 (전 페이지) */
+        .gn-kakao-fab {
+            position: fixed;
+            right: 1.25rem;
+            bottom: calc(1.25rem + env(safe-area-inset-bottom, 0px));
+            z-index: 1040;
+            display: inline-flex;
+            flex-direction: row;
+            align-items: center;
+            justify-content: center;
+            gap: 0.4rem;
+            min-height: 52px;
+            padding: 0.6rem 1.05rem 0.6rem 0.85rem;
+            border-radius: 999px;
+            background: #FEE500;
+            color: #3C1E1E;
+            font-size: 0.9rem;
+            font-weight: 700;
+            line-height: 1.2;
+            text-decoration: none;
+            white-space: nowrap;
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.18);
+            transition: transform 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
+        }
+        .gn-kakao-fab:hover,
+        .gn-kakao-fab:focus-visible {
+            color: #3C1E1E;
+            background: #f5dc00;
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.22);
+        }
+        .gn-kakao-fab:active {
+            transform: translateY(0);
+        }
+        .gn-kakao-fab-icon {
+            width: 24px;
+            height: 24px;
+            fill: currentColor;
+            flex-shrink: 0;
+            display: block;
+        }
+        .gn-kakao-fab-label {
+            letter-spacing: -0.02em;
+        }
+        @media (max-width: 767.98px) {
+            .gn-kakao-fab {
+                display: none !important;
+            }
+        }
         @media (max-width: 767.98px) {
             /* rem 기반 UI 전역 가독성 (16px → 17px) */
             html { font-size: 106.25%; }
@@ -944,14 +1004,20 @@
                     <div><div class="gn-service-item-title">{{ LANG|tr:"nav_soil" }}</div></div>
                 </a>
             </div>
-            {% if user.is_authenticated %}
             <div class="px-3 mt-2 gn-service-account-block">
                 <div class="gn-service-section-title">계정</div>
                 <div class="list-group list-group-flush">
+                    {% if user.is_authenticated %}
                     <a href="{% url 'chat_room_list' %}" class="list-group-item list-group-item-action gn-service-offcanvas-link" style="background: transparent; color: var(--gn-text); border-color: transparent;"><i class="bi bi-chat-dots me-2"></i>{{ LANG|tr:"nav_chat" }}{% if unread_total > 0 %} <span class="badge bg-danger rounded-pill ms-1" style="font-size: 0.65rem;">{{ unread_total }}</span>{% endif %}</a>
                     <a href="{% url 'my_page' %}" class="list-group-item list-group-item-action gn-service-offcanvas-link" style="background: transparent; color: var(--gn-text); border-color: transparent;"><i class="bi bi-person me-2"></i>{{ LANG|tr:"nav_mypage" }}</a>
                     <a href="/accounts/3rdparty/" class="list-group-item list-group-item-action gn-service-offcanvas-link" style="background: transparent; color: var(--gn-text); border-color: transparent;"><i class="bi bi-person-check me-2"></i>{{ LANG|tr:"service_social_connect" }}</a>
+                    {% else %}
+                    <a href="{% url 'login' %}?next={% url 'chat_room_list'|urlencode %}" class="list-group-item list-group-item-action gn-service-offcanvas-link" style="background: transparent; color: var(--gn-text); border-color: transparent;"><i class="bi bi-chat-dots me-2"></i>{{ LANG|tr:"nav_chat" }}</a>
+                    <a href="{% url 'login' %}?next={% url 'my_page'|urlencode %}" class="list-group-item list-group-item-action gn-service-offcanvas-link" style="background: transparent; color: var(--gn-text); border-color: transparent;"><i class="bi bi-person me-2"></i>{{ LANG|tr:"nav_mypage" }}</a>
+                    <a href="{% url 'login' %}?next=/accounts/3rdparty/" class="list-group-item list-group-item-action gn-service-offcanvas-link" style="background: transparent; color: var(--gn-text); border-color: transparent;"><i class="bi bi-person-check me-2"></i>{{ LANG|tr:"service_social_connect" }}</a>
+                    {% endif %}
                 </div>
+                {% if user.is_authenticated %}
                 <div class="gn-account-inline-row">
                     <div class="gn-account-inline-name">
                         <i class="bi bi-person-circle" aria-hidden="true"></i>
@@ -959,8 +1025,8 @@
                     </div>
                     <a href="{% url 'logout' %}" class="gn-account-inline-logout">{{ LANG|tr:"nav_logout" }}</a>
                 </div>
+                {% endif %}
             </div>
-            {% endif %}
         </div>
     </div>
     <script>
@@ -989,13 +1055,6 @@
     })();
     </script>
 
-    <!-- 홈 화면 추가 시 브라우저 주소창 없이 앱처럼 사용 (당근 앱과 유사) -->
-    <div id="gn-pwa-install" class="gn-pwa-install" role="dialog" aria-label="홈 화면에 추가 안내" hidden>
-        <span class="gn-pwa-install-text">브라우저 아래 주소줄 없이 쓰려면 <strong>홈 화면에 추가</strong>해 주세요.</span>
-        <button type="button" class="btn btn-warning btn-sm fw-bold" id="gn-pwa-install-btn">추가하기</button>
-        <button type="button" class="btn btn-outline-light btn-sm" id="gn-pwa-install-close" aria-label="닫기">닫기</button>
-    </div>
-
     <main>
         {% if messages %}
         <div class="container container-fluid py-2">
@@ -1017,10 +1076,14 @@
     </main>
     <footer>
         <div class="container">
+            <p class="gn-free-slogan" role="note">
+                <i class="bi bi-gift" aria-hidden="true"></i>
+                {% block footer_free_slogan %}<span class="gn-free-slogan-text">굴삭기나라의 모든 이용은 무료입니다.</span><span class="gn-free-slogan-note">단, 광고성 프리미엄 서비스 제외</span>{% endblock %}
+            </p>
             <div class="footer-nav mb-3">
                 <a href="{% url 'company_intro' %}">회사소개</a>
-                <a href="#">이용약관</a>
-                <a href="#">개인정보처리방침</a>
+                <a href="{% url 'terms' %}">이용약관</a>
+                <a href="{% url 'privacy' %}">개인정보처리방침</a>
                 <a href="{% url 'billing_upgrade' %}">광고안내</a>
             </div>
             <p class="footer-disclaimer small mb-2">굴삭기 나라의 모든 거래는 구매자와 판매자에게 있으며, 굴삭기 나라에서는 일체의 책임을 지지 않습니다.</p>
@@ -1056,6 +1119,19 @@
             </div>
         </div>
     </footer>
+
+    <a href="http://pf.kakao.com/_ftXGX/chat"
+       class="gn-kakao-fab"
+       target="_blank"
+       rel="noopener noreferrer"
+       aria-label="카카오톡 문의"
+       title="카카오톡 문의">
+        <svg class="gn-kakao-fab-icon" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+            <path d="M12 3C6.48 3 2 6.58 2 11c0 2.84 1.87 5.35 4.71 6.84L5.5 21l3.94-2.07c1.12.39 2.31.57 3.56.57 5.52 0 10-3.58 10-8s-4.48-8-10-8z"/>
+        </svg>
+        <span class="gn-kakao-fab-label">카카오톡 문의</span>
+    </a>
+
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     {{ I18N_PAGE|json_script:"gn-i18n-page" }}
     <script>
@@ -1204,60 +1280,6 @@
           document.addEventListener("DOMContentLoaded", bindAllPhoneInputs);
         } else {
           bindAllPhoneInputs();
-        }
-      })();
-    </script>
-    <script>
-      (function () {
-        var DISMISS_KEY = "gn_pwa_install_dismissed";
-        var isStandalone = window.matchMedia("(display-mode: standalone)").matches
-          || window.navigator.standalone === true;
-        if (isStandalone) return;
-
-        var banner = document.getElementById("gn-pwa-install");
-        var installBtn = document.getElementById("gn-pwa-install-btn");
-        var closeBtn = document.getElementById("gn-pwa-install-close");
-        if (!banner || !installBtn || !closeBtn) return;
-
-        var deferredPrompt = null;
-        var isMobile = window.matchMedia("(max-width: 767.98px)").matches;
-
-        function hideBanner() {
-          banner.classList.remove("show");
-          banner.hidden = true;
-        }
-
-        function showBanner() {
-          if (localStorage.getItem(DISMISS_KEY) === "1" || !isMobile) return;
-          banner.hidden = false;
-          banner.classList.add("show");
-        }
-
-        window.addEventListener("beforeinstallprompt", function (e) {
-          e.preventDefault();
-          deferredPrompt = e;
-          showBanner();
-        });
-
-        installBtn.addEventListener("click", function () {
-          if (deferredPrompt) {
-            deferredPrompt.prompt();
-            deferredPrompt.userChoice.finally(function () {
-              deferredPrompt = null;
-              hideBanner();
-            });
-            return;
-          }
-          alert("크롬: 주소창 옆 ⋮ 메뉴 → 「홈 화면에 추가」\n\n삼성 인터넷: 하단 ≡ → 「현재 페이지 추가」 → 「홈 화면」\n\niPhone Safari: 공유 버튼 → 「홈 화면에 추가」");
-        });
-
-        closeBtn.addEventListener("click", function () {
-          localStorage.setItem(DISMISS_KEY, "1");
-          hideBanner();
-        });
-
-        if (isMobile && !localStorage.getItem(DISMISS_KEY)) {
-          setTimeout(showBanner, 2500);
         }
       })();
     </script>

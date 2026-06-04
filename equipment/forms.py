@@ -175,9 +175,39 @@ class PartForm(forms.ModelForm):
 from django import forms
 from django.contrib.auth.models import User
 from django.core.exceptions import ValidationError
+from django.utils import timezone
+
+from .models import Profile
 
 
-class UserSignupForm(forms.ModelForm):
+class TermsAgreementFieldsMixin:
+    """회원가입 약관 동의 (필수 2 + 선택 1)."""
+
+    agree_terms = forms.BooleanField(
+        label="이용약관 동의",
+        required=True,
+        error_messages={"required": "이용약관에 동의해 주세요."},
+    )
+    agree_privacy = forms.BooleanField(
+        label="개인정보처리방침 동의",
+        required=True,
+        error_messages={"required": "개인정보처리방침에 동의해 주세요."},
+    )
+    agree_marketing = forms.BooleanField(
+        label="마케팅 수신 동의",
+        required=False,
+    )
+
+    def _apply_marketing_consent(self, profile):
+        if self.cleaned_data.get("agree_marketing"):
+            profile.marketing_consent = True
+            profile.marketing_consent_at = timezone.now()
+        else:
+            profile.marketing_consent = False
+            profile.marketing_consent_at = None
+
+
+class UserSignupForm(TermsAgreementFieldsMixin, forms.ModelForm):
     """회원가입 폼 - 이름, 아이디, 이메일, 비밀번호 재입력, 휴대폰"""
     name = forms.CharField(label="이름", max_length=50, required=True, widget=forms.TextInput(attrs={"placeholder": "이름"}))
     username = forms.CharField(label="아이디", max_length=150, widget=forms.TextInput(attrs={"placeholder": "아이디 입력"}))
@@ -240,7 +270,8 @@ class UserSignupForm(forms.ModelForm):
                 profile.phone = self.cleaned_data.get("phone", "") or ""
                 profile.withdrawn_at = None
                 profile.listing_purge_at = None
-                profile.save(update_fields=["phone", "withdrawn_at", "listing_purge_at"])
+                self._apply_marketing_consent(profile)
+                profile.save(update_fields=["phone", "withdrawn_at", "listing_purge_at", "marketing_consent", "marketing_consent_at"])
             return user
 
         user = super().save(commit=False)
@@ -250,5 +281,6 @@ class UserSignupForm(forms.ModelForm):
             user.save()
             profile, _ = Profile.objects.get_or_create(user=user)
             profile.phone = self.cleaned_data.get("phone", "") or ""
-            profile.save(update_fields=["phone"])
+            self._apply_marketing_consent(profile)
+            profile.save(update_fields=["phone", "marketing_consent", "marketing_consent_at"])
         return user

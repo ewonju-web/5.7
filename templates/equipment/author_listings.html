@@ -90,42 +90,6 @@
   </section>
   {% endwith %}
 
-  {% if featured_listings %}
-  <section class="mb-4">
-    <div id="authorFeaturedCarousel" class="carousel slide" data-bs-ride="carousel">
-      <div class="carousel-inner rounded-3 overflow-hidden border">
-        {% for equipment in featured_listings %}
-        <div class="carousel-item {% if forloop.first %}active{% endif %}">
-          <a href="{% url 'equipment_detail' equipment.pk %}?next={{ equipment_detail_next_q }}" class="d-block text-decoration-none">
-            <div class="position-relative gn-author-featured-slide gn-author-img-frame">
-              {% if equipment.images.first %}
-              <img src="{{ equipment.images.first.image.url }}" class="gn-author-img-contain" alt="{{ equipment.model_name|default:'매물' }}">
-              {% else %}
-              <div class="gn-author-img-empty">이미지 없음</div>
-              {% endif %}
-              <div class="position-absolute bottom-0 start-0 end-0 p-3 gn-author-featured-caption">
-                <div class="fw-bold text-white">{{ equipment.model_name|default:"모름" }}</div>
-                <div class="small text-white-50">
-                  {% if equipment.listing_price is not None %}{{ equipment.listing_price|floatformat:0|intcomma }}만원{% else %}문의{% endif %}
-                </div>
-              </div>
-            </div>
-          </a>
-        </div>
-        {% endfor %}
-      </div>
-      <button class="carousel-control-prev" type="button" data-bs-target="#authorFeaturedCarousel" data-bs-slide="prev">
-        <span class="carousel-control-prev-icon" aria-hidden="true"></span>
-        <span class="visually-hidden">이전</span>
-      </button>
-      <button class="carousel-control-next" type="button" data-bs-target="#authorFeaturedCarousel" data-bs-slide="next">
-        <span class="carousel-control-next-icon" aria-hidden="true"></span>
-        <span class="visually-hidden">다음</span>
-      </button>
-    </div>
-  </section>
-  {% endif %}
-
   <section>
     <h2 class="h6 fw-bold mb-3 border-start border-4 border-danger ps-2">
       {% if author_profile and author_profile.company_name %}

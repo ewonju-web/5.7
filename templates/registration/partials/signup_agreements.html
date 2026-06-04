@@ -1,0 +1,28 @@
+<div class="gn-signup-agreements border rounded-3 p-3 mb-4 bg-light">
+    <p class="small fw-bold text-secondary mb-2">약관 동의</p>
+    <div class="form-check mb-2">
+        <input class="form-check-input gn-agree-required" type="checkbox" name="agree_terms" id="agree_terms" value="1"
+               {% if form.agree_terms.value %}checked{% endif %} required>
+        <label class="form-check-label small" for="agree_terms">
+            <span class="text-danger fw-semibold">(필수)</span> 이용약관 동의
+            <a href="{% url 'terms' %}" target="_blank" rel="noopener noreferrer" class="ms-1 fw-semibold">내용보기</a>
+        </label>
+        {% if form.agree_terms.errors %}<div class="text-danger small mt-1">{{ form.agree_terms.errors.0 }}</div>{% endif %}
+    </div>
+    <div class="form-check mb-2">
+        <input class="form-check-input gn-agree-required" type="checkbox" name="agree_privacy" id="agree_privacy" value="1"
+               {% if form.agree_privacy.value %}checked{% endif %} required>
+        <label class="form-check-label small" for="agree_privacy">
+            <span class="text-danger fw-semibold">(필수)</span> 개인정보처리방침 동의
+            <a href="{% url 'privacy' %}" target="_blank" rel="noopener noreferrer" class="ms-1 fw-semibold">내용보기</a>
+        </label>
+        {% if form.agree_privacy.errors %}<div class="text-danger small mt-1">{{ form.agree_privacy.errors.0 }}</div>{% endif %}
+    </div>
+    <div class="form-check mb-0">
+        <input class="form-check-input" type="checkbox" name="agree_marketing" id="agree_marketing" value="1"
+               {% if form.agree_marketing.value %}checked{% endif %}>
+        <label class="form-check-label small" for="agree_marketing">
+            <span class="text-muted fw-semibold">(선택)</span> 마케팅 수신 동의
+        </label>
+    </div>
+</div>

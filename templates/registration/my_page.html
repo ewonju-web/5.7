@@ -162,14 +162,15 @@
         {% if bump_status.is_premium %}
         <div class="gn-bump-status-bar small text-muted mb-3 px-1">
             <i class="bi bi-arrow-up-circle text-warning"></i>
-            <strong>끌어올리기</strong> — 최근 7일
-            <span class="fw-semibold text-dark">{{ bump_status.used }}/{{ bump_weekly_limit }}</span>회 사용
+            <strong>끌어올리기</strong> — 이번 달
+            <span class="fw-semibold text-dark">{{ bump_status.used }}/{{ bump_status.limit }}</span>회 사용
+            · 매물 {{ bump_status.listing_count }}개 × 4주
             {% if bump_status.can_bump %}
             <span class="text-success">· 남은 {{ bump_status.remaining }}회</span>
             {% elif bump_status.next_bump_at %}
             <span>· 다음 가능 {{ bump_status.next_bump_at|date:"m/d H:i" }}</span>
             {% endif %}
-            <span class="d-block mt-1" style="font-size:0.78rem;">목록 최신순 상단에 노출됩니다.</span>
+            <span class="d-block mt-1" style="font-size:0.78rem;">목록 최신순 상단에 노출됩니다. 매물당 7일에 1회, 월 한도는 등록 매물 수 × 4회입니다.</span>
         </div>
         {% endif %}
         {% if my_equipments %}
@@ -204,13 +205,24 @@
                             <a href="{% url 'equipment_edit' e.pk %}" class="btn btn-sm gn-btn-edit flex-fill">수정</a>
                             <a href="{% url 'equipment_delete' e.pk %}?next={{ request.get_full_path|urlencode }}" class="btn btn-sm gn-btn-delete flex-fill">삭제</a>
                         </div>
-                        {% if bump_status.is_premium and bump_status.can_bump and not e.is_sold %}
+                        {% if e.bump_ui == 'ready' %}
                         <form method="post" action="{% url 'equipment_bump' e.pk %}" class="gn-listing-bump-form m-0">
                             {% csrf_token %}
-                            <button type="submit" class="btn btn-sm btn-warning fw-semibold w-100" title="목록 상단 노출">
+                            <button type="submit" class="btn btn-sm gn-bump-btn-ready fw-semibold w-100" title="목록 상단 노출">
                                 <i class="bi bi-arrow-up-circle"></i> 끌어올리기
                             </button>
                         </form>
+                        {% elif e.bump_ui == 'cooldown' %}
+                        <button type="button" class="btn btn-sm gn-bump-btn-cooldown fw-semibold w-100" disabled
+                                title="{{ e.bump_next_at|date:'Y-m-d H:i' }}부터 다시 이용 가능">
+                            <i class="bi bi-check-circle"></i> 끌어올리기 완료
+                            <span class="gn-bump-cooldown-sub">· {{ e.bump_days_left }}일 후 다시 가능</span>
+                        </button>
+                        {% elif e.bump_ui == 'monthly_exhausted' %}
+                        <button type="button" class="btn btn-sm gn-bump-btn-exhausted fw-semibold w-100" disabled
+                                title="이번 달 끌어올리기 한도를 모두 사용했습니다">
+                            <i class="bi bi-pause-circle"></i> 이번 달 한도 소진
+                        </button>
                         {% endif %}
                     </div>
                 </div>
@@ -310,7 +322,7 @@
                     <ul class="small mb-2">
                         <li>✓ 매물 검색 상단 우선 노출</li>
                         <li>✓ 메인 화면 프리미엄 영역 노출</li>
-                        <li>✓ 최근 7일 기준 최대 3회 끌어올리기</li>
+                        <li>✓ 끌어올리기 — 등록 매물 수 × 4회/월 (매물당 주 1회 × 4주)</li>
                         <li>✓ 매물 등록 월 50건 (무료: 월 {{ free_listing_limit|default:20 }}건)</li>
                         <li>✓ 각 기종별 전문가 명함 노출</li>
                         <li>✓ 상세페이지에서 이 회원이 판매하는 다른 매물 보기</li>
@@ -540,6 +552,39 @@
     min-width: 0;
   }
   .gn-listing-bump-form .btn {
+    padding: 8px 10px;
+  }
+  .gn-bump-btn-ready {
+    background: #F5A623;
+    border: 1px solid #e3a12d;
+    color: #1f2937;
+  }
+  .gn-bump-btn-ready:hover {
+    background: #e3a12d;
+    color: #1f2937;
+  }
+  .gn-bump-btn-cooldown {
+    background: #e5e7eb;
+    border: 1px solid #d1d5db;
+    color: #6b7280;
+    cursor: not-allowed;
+    opacity: 1;
+    padding: 8px 10px;
+    line-height: 1.25;
+  }
+  .gn-bump-cooldown-sub {
+    display: block;
+    font-size: 0.72rem;
+    font-weight: 600;
+    margin-top: 2px;
+    color: #9ca3af;
+  }
+  .gn-bump-btn-exhausted {
+    background: #f3f4f6;
+    border: 1px solid #e5e7eb;
+    color: #9ca3af;
+    cursor: not-allowed;
+    opacity: 1;
     padding: 8px 10px;
   }
   .gn-fav-listing-card .gn-listing-cover {

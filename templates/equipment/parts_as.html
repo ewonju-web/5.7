@@ -7,6 +7,7 @@
   .gn-partsas-page { background: transparent; padding: 1rem 0 1.6rem; }
   .gn-partsas-header { display:flex; justify-content:space-between; align-items:center; gap:.8rem; margin-bottom:.85rem; }
   .gn-partsas-title { margin:0; color:var(--gn-text); font-size:1.5rem; font-weight:800; letter-spacing:-.01em; }
+  .gn-partsas-back { border-radius: 10px; font-weight: 700; white-space: nowrap; }
   .gn-partsas-title::before { content:""; display:inline-block; width:4px; height:1.1rem; margin-right:.55rem; border-radius:2px; background:var(--gn-accent); vertical-align:middle; }
   .gn-search-card { background:#fff; border:1px solid var(--gn-border); border-radius:12px; padding:1rem; margin-bottom:.85rem; box-shadow:var(--gn-shadow); }
   .gn-pill-wrap, .gn-chip-wrap { display:flex; flex-wrap:wrap; gap:.45rem; }
@@ -148,8 +149,13 @@
 <div class="gn-partsas-page">
   <div class="container">
     <div class="gn-partsas-header">
-      <h2 class="gn-partsas-title">장비 임대 · 부품 A/S 센터 찾기</h2>
-      <div class="d-flex gap-2">
+      <div class="d-flex align-items-center gap-2 flex-wrap">
+        {% if parts_as_back_url %}
+        <a href="{{ parts_as_back_url }}" class="btn btn-sm btn-outline-secondary gn-partsas-back"><i class="bi bi-arrow-left"></i> 돌아가기</a>
+        {% endif %}
+        <h2 class="gn-partsas-title mb-0">장비 임대 · 부품 A/S 센터 찾기</h2>
+      </div>
+      <div class="d-flex gap-2 flex-shrink-0">
         {% if show_driver_register_button %}
         <a href="{% url 'driver_register' %}" class="btn btn-sm fw-bold text-dark" style="background:#f9a8d4;border:1px solid #f9a8d4;border-radius:10px;">기사 등록하기</a>
         {% endif %}

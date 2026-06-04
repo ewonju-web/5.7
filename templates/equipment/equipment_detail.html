@@ -16,7 +16,7 @@
       <div class="card gn-card-sharp gn-detail-photo-card" style="border-radius: 10px; overflow: hidden;">
         {% if detail_images %}
           <div class="position-relative bg-dark bg-opacity-10 gn-detail-main-wrap">
-            <img id="detailMainImg"
+            <img loading="lazy" decoding="async" id="detailMainImg"
                  src="{{ detail_images.0.image.url }}"
                  class="img-fluid w-100 cursor-pointer gn-detail-main-img"
                  style="cursor: zoom-in;"
@@ -41,7 +41,7 @@
                     data-src="{{ image.image.url }}"
                     data-index="{{ forloop.counter0 }}"
                     aria-label="사진 {{ forloop.counter }}">
-              <img src="{{ image.image.url }}" class="w-100 h-100" style="object-fit: cover;" alt="">
+              <img loading="lazy" decoding="async" src="{{ image.image.url }}" class="w-100 h-100" style="object-fit: cover;" alt="">
             </button>
             {% endfor %}
           </div>
@@ -97,7 +97,42 @@
         </table>
       </div>
 
-      <!-- 3. 이 판매자의 다른 매물 2개 미리보기 (유료회원 전용) -->
+      <!-- 3. 문의하기 / 전화걸기 / 카톡상담 -->
+      <div class="card gn-card-sharp gn-card-light p-3 mb-3" style="border-radius: 10px;">
+        <h6 class="small text-muted text-uppercase mb-2">{{ LANG|tr:"eq_detail_inquiry_title" }}</h6>
+        <div class="d-grid gap-2">
+          {% if author_phone %}
+          <a href="tel:{{ author_phone|format_phone|cut:'-'|cut:' ' }}" class="gn-call-btn-unified">
+            <div class="gn-call-btn-phone">{{ author_phone|format_phone }}</div>
+            <div class="gn-call-btn-label">📞 전화 걸기</div>
+          </a>
+          {% else %}
+          <button class="btn gn-btn-secondary py-2 fw-bold" disabled><i class="bi bi-telephone-fill me-2"></i> {{ LANG|tr:"eq_detail_no_contact" }}</button>
+          {% endif %}
+          {% if user.is_authenticated and equipment.author and equipment.author_id != user.id %}
+          <a href="{% url 'equipment_chat_start' equipment.pk %}" class="btn btn-success py-2 fw-bold text-white">
+            <i class="bi bi-chat-dots-fill me-2"></i> {{ LANG|tr:"eq_detail_chat_inquiry" }}
+          </a>
+          {% elif not user.is_authenticated %}
+          <a href="{% url 'login' %}?next={{ request.get_full_path|urlencode }}" class="btn btn-success py-2 fw-bold text-white">
+            <i class="bi bi-chat-dots-fill me-2"></i> {{ LANG|tr:"eq_detail_chat_inquiry" }}
+          </a>
+          {% else %}
+          <button class="btn gn-btn-secondary py-2 fw-bold" disabled><i class="bi bi-chat-dots me-2"></i> {{ LANG|tr:"eq_detail_my_listing" }}</button>
+          {% endif %}
+          {% if user.is_authenticated %}
+          <a href="{% url 'toggle_equipment_favorite' equipment.pk %}?next={{ request.get_full_path|urlencode }}" class="btn gn-btn-wishlist py-2">
+            <i class="bi bi-heart{% if is_favorited %}-fill{% endif %}"></i> {% if is_favorited %}{{ LANG|tr:"eq_detail_favorite_remove" }}{% else %}{{ LANG|tr:"eq_detail_favorite_add" }}{% endif %}
+          </a>
+          {% endif %}
+          <button type="button" class="btn gn-btn-secondary py-2" onclick="navigator.clipboard && navigator.clipboard.writeText(window.location.href); this.innerText='{{ LANG|tr:'eq_detail_link_copied'|escapejs }}';">
+            <i class="bi bi-share me-2"></i> {{ LANG|tr:"eq_detail_link_copy" }}
+          </button>
+        </div>
+      </div>
+
+
+      <!-- 4. 이 판매자의 다른 매물 2개 미리보기 (유료회원 전용) -->
       {% if author_is_premium and author_other_listings %}
       <div class="card gn-card-sharp gn-card-light p-3 mb-3" style="border-radius: 10px;">
         <h6 class="gn-section-heading mb-2 small">이 판매자의 다른 매물 보기</h6>
@@ -107,7 +142,7 @@
             <a href="{% url 'equipment_detail' eq.pk %}" class="d-block text-decoration-none rounded overflow-hidden border" style="background: #f8fafc;">
               <div class="position-relative" style="height: 56px;">
                 {% if eq.images.first %}
-                <img src="{{ eq.images.first.image.url }}" class="w-100 h-100" style="object-fit: cover;" alt="">
+                <img loading="lazy" decoding="async" src="{{ eq.images.first.image.url }}" class="w-100 h-100" style="object-fit: cover;" alt="">
                 {% else %}
                 <div class="w-100 h-100 d-flex align-items-center justify-content-center text-muted small">이미지 없음</div>
                 {% endif %}
@@ -123,39 +158,6 @@
       </div>
       {% endif %}
 
-      <!-- 4. 문의하기 / 전화걸기 / 카톡상담 -->
-      <div class="card gn-card-sharp gn-card-light p-3 mb-3" style="border-radius: 10px;">
-        <h6 class="small text-muted text-uppercase mb-2">문의하기</h6>
-        <div class="d-grid gap-2">
-          {% if author_phone %}
-          <a href="tel:{{ author_phone|format_phone|cut:'-'|cut:' ' }}" class="gn-call-btn-unified">
-            <div class="gn-call-btn-phone">{{ author_phone|format_phone }}</div>
-            <div class="gn-call-btn-label">📞 전화 걸기</div>
-          </a>
-          {% else %}
-          <button class="btn gn-btn-secondary py-2 fw-bold" disabled><i class="bi bi-telephone-fill me-2"></i> 연락처 없음</button>
-          {% endif %}
-          {% if user.is_authenticated and equipment.author and equipment.author_id != user.id %}
-          <a href="{% url 'equipment_chat_start' equipment.pk %}" class="btn btn-success py-2 fw-bold text-white">
-            <i class="bi bi-chat-dots-fill me-2"></i> 카톡·채팅 문의
-          </a>
-          {% elif not user.is_authenticated %}
-          <a href="{% url 'login' %}?next={{ request.get_full_path|urlencode }}" class="btn btn-success py-2 fw-bold text-white">
-            <i class="bi bi-chat-dots-fill me-2"></i> 카톡·채팅 문의
-          </a>
-          {% else %}
-          <button class="btn gn-btn-secondary py-2 fw-bold" disabled><i class="bi bi-chat-dots me-2"></i> 내 매물</button>
-          {% endif %}
-          {% if user.is_authenticated %}
-          <a href="{% url 'toggle_equipment_favorite' equipment.pk %}?next={{ request.get_full_path|urlencode }}" class="btn gn-btn-wishlist py-2">
-            <i class="bi bi-heart{% if is_favorited %}-fill{% endif %}"></i> {% if is_favorited %}찜 해제{% else %}찜하기{% endif %}
-          </a>
-          {% endif %}
-          <button type="button" class="btn gn-btn-secondary py-2" onclick="navigator.clipboard && navigator.clipboard.writeText(window.location.href); this.innerText='✓ 링크 복사 완료';">
-            <i class="bi bi-share me-2"></i> 링크 복사
-          </button>
-        </div>
-      </div>
     </div>
   </div>
 
@@ -163,8 +165,8 @@
   <div class="row mt-4 g-3 g-lg-4 align-items-stretch gn-detail-mid-cards">
     <div class="{% if finance_limit or finance_monthly_60 %}col-12 col-lg-6{% else %}col-12{% endif %}">
       <div class="card gn-card-sharp gn-card-light p-4 h-100" style="border-radius: 10px;">
-        <h5 class="gn-section-heading mb-3">상세 설명</h5>
-        <div class="gn-detail-desc">{% if equipment.description %}{{ equipment.description }}{% else %}내용이 없습니다.{% endif %}</div>
+        <h5 class="gn-section-heading mb-3">{{ LANG|tr:"eq_detail_title_description" }}</h5>
+        <div class="gn-detail-desc">{% if equipment.description %}{{ equipment.description }}{% else %}{{ LANG|tr:"eq_detail_description_empty" }}{% endif %}</div>
       </div>
     </div>
 
@@ -201,7 +203,7 @@
   {% if detail_images %}
   <div class="row mt-4">
     <div class="col-12">
-      <h5 class="fw-bold mb-3" style="border-left: 4px solid #c00; padding-left: 12px;">사진 보기</h5>
+      <h5 class="fw-bold mb-3" style="border-left: 4px solid #c00; padding-left: 12px;">{{ LANG|tr:"eq_detail_title_photos" }}</h5>
       <div class="gn-detail-photo-stack">
         {% for image in detail_images %}
         <button type="button"
@@ -210,7 +212,7 @@
                 data-lightbox-index="{{ forloop.counter0 }}"
                 data-lightbox-src="{{ image.image.url }}"
                 aria-label="사진 {{ forloop.counter }} 크게 보기">
-          <img src="{{ image.image.url }}" class="img-fluid w-100" alt="{{ equipment.model_name }} {{ forloop.counter }}" style="cursor: zoom-in;">
+          <img loading="lazy" decoding="async" src="{{ image.image.url }}" class="img-fluid w-100" alt="{{ equipment.model_name }} {{ forloop.counter }}" style="cursor: zoom-in;">
         </button>
         {% endfor %}
       </div>
@@ -223,7 +225,7 @@
     <div class="col-12">
       <div class="card gn-card-sharp gn-card-dark rounded-3 overflow-hidden">
         <div class="card-body p-4">
-          <h5 class="gn-section-heading gn-section-heading-accent mb-4">비슷한 기종·년식 시세</h5>
+          <h5 class="gn-section-heading gn-section-heading-accent mb-4">{{ LANG|tr:"eq_detail_title_similar_stats" }}</h5>
           <p class="gn-dark-desc small mb-4">같은 제조사, 이 매물 년식 ±2년 내 매물 기준 (판매완료 제외)</p>
           {% if similar_stats.cnt and similar_stats.cnt > 0 %}
           <div class="row g-3 mb-4">
@@ -253,7 +255,7 @@
             </div>
           </div>
           {% if similar_list %}
-          <h6 class="fw-bold mb-3">비슷한 매물 보기</h6>
+          <h6 class="fw-bold mb-3">{{ LANG|tr:"eq_detail_title_similar_list" }}</h6>
           <div class="row g-3">
             {% for other in similar_list %}
             <div class="col-6 col-lg-4">
@@ -261,7 +263,7 @@
                 <div class="card border h-100 gn-similar-item-card">
                   <div style="height: 100px; background: #e2e8f0;">
                     {% if other.images.all %}
-                    <img src="{{ other.images.first.image.url }}" class="w-100 h-100" style="object-fit: cover;" alt="">
+                    <img loading="lazy" decoding="async" src="{{ other.images.first.image.url }}" class="w-100 h-100" style="object-fit: cover;" alt="">
                     {% else %}
                     <div class="w-100 h-100 d-flex align-items-center justify-content-center text-muted small">이미지 없음</div>
                     {% endif %}
@@ -278,12 +280,18 @@
           </div>
           {% endif %}
           {% else %}
-          <p class="gn-dark-desc mb-0">같은 제조사·비슷한 년식의 다른 매물이 없어 시세를 산출할 수 없습니다.</p>
+          <p class="gn-dark-desc mb-0">{{ LANG|tr:"eq_detail_similar_none" }}</p>
           {% endif %}
         </div>
       </div>
     </div>
   </div>
+
+  {% if show_parts_as_section %}
+  <div class="d-lg-none mt-4 gn-detail-parts-as-mobile">
+    {% include "equipment/partials/detail_parts_as_section.html" with map_canvas_id="gnDetailPartsAsMapMobile" %}
+  </div>
+  {% endif %}
 
   <!-- 하단: 마이페이지에서 온 경우 뒤로가기, 그 외 목록으로 -->
   <div class="mt-4 mb-3 text-center">
@@ -337,108 +345,55 @@
           </div>
         </div>
         {% endif %}
-        <div class="card gn-card-sharp border shadow-sm gn-detail-premium-experts gn-detail-attachment-ad-card gn-rail-section-card overflow-hidden">
+        <div class="card gn-card-sharp border shadow-sm gn-detail-premium-experts gn-detail-attachment-ad-card gn-rail-section-card overflow-hidden{% if not left_specialist_cards %} gn-detail-attachment-ad-card--empty{% endif %}">
           <div class="card-header gn-rail-section-head py-2 px-2 gn-detail-premium-experts-head d-flex align-items-center justify-content-between gap-2">
-            <span class="gn-ad-card-title gn-rail-card-title"><i class="bi bi-megaphone text-warning me-1"></i>어태치먼트·타이어 광고</span>
+            <span class="gn-ad-card-title gn-rail-card-title"><i class="bi bi-megaphone text-warning me-1"></i>{{ LANG|tr:"eq_detail_right_title_attachment_ad" }}</span>
             <a href="{% url 'billing_upgrade' %}?slot=attachment" class="btn btn-sm btn-outline-primary py-1 px-2 gn-rail-btn-outline">
-              등록안내
+              {{ LANG|tr:"eq_detail_register_guide" }}
             </a>
           </div>
           <div class="card-body gn-rail-card-body gn-rail-ad-list p-2">
             {% if left_specialist_cards %}
             {% for eq in left_specialist_cards %}
-            <a href="{% url 'equipment_detail' eq.pk %}" class="d-block text-decoration-none gn-rail-ad-row gn-rail-ad-card">
-              <div class="d-flex gap-2 align-items-center">
-                <div class="flex-shrink-0 gn-rail-ad-thumb">
+            <a href="{% url 'attachment_ad_site_redirect' eq.pk %}"
+               class="d-block text-decoration-none gn-rail-ad-row gn-rail-ad-card gn-premium-expert-card">
+              <div class="d-flex gap-2 align-items-start gn-premium-expert-card-inner">
+                <div class="flex-shrink-0 gn-rail-ad-thumb gn-premium-expert-thumb">
                   {% if eq.images.first %}
                   <img src="{{ eq.images.first.image.url }}" alt="" width="52" height="52" loading="lazy" decoding="async">
                   {% else %}
-                  <div class="gn-rail-thumb-fallback d-flex align-items-center justify-content-center text-muted">—</div>
+                  <div class="gn-rail-thumb-fallback d-flex align-items-center justify-content-center text-muted"><i class="bi bi-tools"></i></div>
                   {% endif %}
                 </div>
-                <div class="min-width-0 flex-grow-1">
-                  <div class="fw-bold text-truncate text-dark gn-rail-text">{{ eq.model_name|default:"-" }}</div>
-                  <div class="fw-bold gn-rail-text gn-rail-contact">{{ eq|equipment_row_contact|default:"문의" }}</div>
+                <div class="gn-premium-expert-text min-width-0 flex-grow-1">
+                  <div class="fw-bold gn-premium-expert-name">{% if eq.company_name %}{{ eq.company_name }}{% else %}{{ eq.model_name|default:"-" }}{% endif %}</div>
+                  <div class="gn-premium-expert-bio" title="{% if eq.company_name %}{{ eq.company_name }}{% else %}{{ eq.current_location|default:'어태치먼트·타이어 광고' }}{% endif %}">
+                    {% if eq.current_location %}{{ eq.current_location }}{% else %}{{ LANG|tr:"eq_detail_attachment_intro" }}{% endif %}
+                  </div>
+                  <div class="gn-premium-expert-phone">{{ eq|equipment_row_contact|default:"문의" }}</div>
+                  <div class="small text-primary fw-semibold mt-1">{{ LANG|tr:"eq_detail_attachment_site_link" }}</div>
                 </div>
               </div>
             </a>
             {% endfor %}
             {% else %}
-            <p class="text-muted mb-0 text-center py-2 px-1 gn-rail-text gn-rail-empty">현재 등록된 광고가 없습니다.</p>
+            <div class="gn-attachment-ad-empty-guide text-center px-2 py-2">
+              <p class="small text-muted mb-2">{{ LANG|tr:"eq_detail_ad_empty" }}</p>
+              <a href="{% url 'billing_upgrade' %}?slot=attachment" class="btn btn-sm btn-outline-primary fw-semibold w-100">
+                <i class="bi bi-megaphone me-1"></i>{{ LANG|tr:"eq_detail_register_guide" }}
+              </a>
+            </div>
             {% endif %}
           </div>
         </div>
 
-        <div class="card gn-card-sharp border shadow-sm overflow-hidden gn-detail-parts-as-card gn-rail-section-card">
-          <div class="card-header gn-rail-section-head py-2 px-2 d-flex align-items-center justify-content-between gn-detail-parts-as-head">
-            <span class="gn-rail-card-title"><i class="bi bi-geo-alt-fill text-primary me-1"></i>전국 부품점 A/S센터</span>
-            <a href="{% url 'parts_as' %}" class="text-decoration-none text-primary gn-rail-link">전체보기</a>
-          </div>
-          <div class="card-body gn-rail-card-body gn-rail-ad-list p-2">
-            {% if nearby_parts_shops %}
-            {% for shop in nearby_parts_shops %}
-            <div class="gn-detail-parts-as-item gn-rail-ad-card">
-              <div class="fw-bold text-dark text-truncate gn-rail-text">{{ shop.name }}</div>
-              <div class="text-muted text-truncate gn-rail-text-muted">📍 {{ shop.region }}{% if shop.address %} · {{ shop.address }}{% endif %}</div>
-              <div class="d-flex align-items-center justify-content-between mt-1">
-                <a href="tel:{{ shop.contact|cut:'-'|cut:' ' }}" class="text-decoration-none fw-bold gn-rail-text gn-rail-contact">
-                  <i class="bi bi-telephone me-1"></i>{{ shop.contact }}
-                </a>
-                {% if kakao_map_js_key %}
-                <button type="button" class="btn btn-sm btn-outline-primary py-0 px-2 gn-rail-btn-outline gn-parts-map-open"
-                        data-shop-id="{{ shop.pk }}"
-                        data-shop-name="{{ shop.name|escape }}"
-                        data-shop-lat="{% if shop.lat %}{{ shop.lat }}{% endif %}"
-                        data-shop-lng="{% if shop.lng %}{{ shop.lng }}{% endif %}"
-                        data-shop-address="{{ shop.address|default:shop.region|escape }}"
-                        data-shop-phone="{{ shop.contact|escape }}"
-                        data-shop-kind="{{ shop.shop_kind }}"
-                        data-parts-as-url="{% url 'parts_as' %}?shop={{ shop.pk }}">
-                  지도
-                </button>
-                {% else %}
-                <a href="{% url 'parts_as' %}?shop={{ shop.pk }}" class="btn btn-sm btn-outline-primary py-0 px-2 gn-rail-btn-outline">지도</a>
-                {% endif %}
-              </div>
-            </div>
-            {% endfor %}
-            {% else %}
-            <p class="text-muted mb-0 text-center py-2 gn-rail-text gn-rail-empty">등록된 부품점 정보가 없습니다.</p>
-            {% endif %}
-          </div>
-        </div>
+        {% include "equipment/partials/detail_parts_as_section.html" with map_canvas_id="gnDetailPartsAsMapRail" %}
       </div>
       </div>
     </aside>
     {% endif %}
   </div><!-- /.gn-detail-layout -->
 </div>
-
-{% if kakao_map_js_key and nearby_parts_shops %}
-<div class="modal fade" id="partsShopMapModal" tabindex="-1" aria-labelledby="partsShopMapModalLabel" aria-hidden="true">
-  <div class="modal-dialog modal-dialog-centered modal-lg modal-dialog-scrollable">
-    <div class="modal-content border-0 shadow-lg overflow-hidden rounded-3">
-      <div class="modal-header py-2 px-3 border-bottom">
-        <div class="min-w-0 me-2">
-          <h5 class="modal-title fs-6 mb-0 text-truncate" id="partsShopMapModalLabel">부품점 위치</h5>
-          <div class="small text-muted text-truncate" id="partsShopMapModalSub"></div>
-        </div>
-        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="닫기"></button>
-      </div>
-      <div class="modal-body p-0 position-relative">
-        <div id="partsShopMapModalMap" class="gn-parts-map-modal-canvas" aria-label="카카오 지도"></div>
-        <div id="partsShopMapModalNoCoords" class="d-none p-4 text-center text-muted small">
-          좌표 정보가 없습니다. 아래 버튼으로 부품 A/S 지도에서 확인해 주세요.
-        </div>
-      </div>
-      <div class="modal-footer py-2 px-3 d-flex flex-wrap gap-2 justify-content-between">
-        <a href="{% url 'parts_as' %}" id="partsShopMapModalFullLink" class="btn btn-sm btn-outline-secondary">부품 A/S 전체 지도</a>
-        <button type="button" class="btn btn-sm btn-primary" data-bs-dismiss="modal">닫기</button>
-      </div>
-    </div>
-  </div>
-</div>
-{% endif %}
 
 {% if detail_images %}
 <!-- 모바일: 새 탭 없이 전체 화면 사진 뷰어 (확대·이전/다음·스와이프) -->
@@ -1006,6 +961,10 @@
       return;
     }
 
+    if (adCard.classList.contains('gn-detail-attachment-ad-card--empty')) {
+      adCard.style.minHeight = '';
+      return;
+    }
     var refHeight = Math.max(refCard.offsetHeight || 0, 360);
     adCard.style.minHeight = refHeight + 'px';
   }
@@ -1021,8 +980,8 @@
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08), 0 1px 2px rgba(0, 0, 0, 0.06) !important;
   }
   .gn-detail-page .gn-card-dark {
-    border: 1px solid #374151 !important;
-    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2) !important;
+    border: 1px solid #D1D5DB !important;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08), 0 1px 2px rgba(0, 0, 0, 0.06) !important;
   }
   .gn-detail-top { margin-bottom: 0.5rem; }
   .gn-detail-desc-section { width: 100%; margin-top: 1.5rem !important; }
@@ -1223,6 +1182,19 @@
   }
   .gn-detail-attachment-ad-card {
     min-height: 360px;
+  }
+  .gn-detail-attachment-ad-card--empty {
+    min-height: 0 !important;
+  }
+  .gn-detail-attachment-ad-card--empty .gn-rail-ad-list {
+    min-height: 0;
+  }
+  .gn-detail-attachment-ad-card--empty .gn-attachment-ad-empty-guide {
+    padding-top: 0.5rem !important;
+    padding-bottom: 0.5rem !important;
+  }
+  .gn-detail-attachment-ad-card--empty .gn-attachment-ad-empty-guide p {
+    margin-bottom: 0.5rem !important;
   }
   .gn-detail-page .gn-premium-dummy-photo {
     background: linear-gradient(135deg, #e2e8f0, #cbd5e1);
@@ -1563,55 +1535,56 @@
     border-color: #EF4444 !important;
   }
 
-  /* ----- 5. 다크 영역: 검정 배경 시 순백/밝은 노랑 ----- */
-  .gn-card-dark .card-body { background: #1F2937 !important; }
+  /* ----- 5. 비슷한 기종·년식 시세: 밝은 배경 ----- */
+  .gn-card-dark .card-body { background: #ffffff !important; }
   .gn-card-dark .gn-section-heading,
-  .gn-card-dark .gn-section-heading-accent {
-    color: #F9FAFB !important;
+  .gn-card-dark .gn-section-heading-accent,
+  .gn-card-dark h6 {
+    color: #111827 !important;
   }
   .gn-card-dark .gn-section-heading-accent {
-    border-left-color: #FDE047;
+    border-left-color: var(--gn-accent, #e8a317);
   }
-  .gn-dark-desc {
-    color: #E5E7EB !important;
+  .gn-card-dark .gn-dark-desc {
+    color: #4B5563 !important;
     font-weight: 600;
   }
-  .gn-stat-box {
-    background: #374151 !important;
-    border: 1px solid #4B5563;
+  .gn-card-dark .gn-stat-box {
+    background: #f3f4f6 !important;
+    border: 1px solid #e5e7eb;
   }
-  .gn-stat-label {
+  .gn-card-dark .gn-stat-label {
     font-size: 0.8rem;
     font-weight: 700;
-    color: #E5E7EB !important;
+    color: #374151 !important;
   }
-  .gn-stat-value {
+  .gn-card-dark .gn-stat-value {
     font-size: 1.1rem;
     font-weight: 800;
-    color: #FFFFFF !important;
+    color: #111827 !important;
   }
-  .gn-stat-min { color: #93C5FD !important; }
-  .gn-stat-max { color: #FCA5A5 !important; }
-  .gn-stat-avg { color: #FDE047 !important; }
+  .gn-card-dark .gn-stat-min { color: #93C5FD !important; }
+  .gn-card-dark .gn-stat-max { color: #FCA5A5 !important; }
+  .gn-card-dark .gn-stat-avg { color: #FDE047 !important; }
 
-  .gn-similar-item-card .card-body {
-    background: #1F2937 !important;
-    border: 1px solid #374151;
+  .gn-card-dark .gn-similar-item-card .card-body {
+    background: #ffffff !important;
+    border: none;
   }
-  .gn-similar-item-card {
-    border: 1px solid #374151 !important;
-    background: #1F2937 !important;
+  .gn-card-dark .gn-similar-item-card {
+    border: 1px solid #e5e7eb !important;
+    background: #ffffff !important;
   }
-  .gn-similar-title {
-    color: #FFFFFF !important;
+  .gn-card-dark .gn-similar-title {
+    color: #111827 !important;
     font-weight: 800;
   }
-  .gn-similar-price {
+  .gn-card-dark .gn-similar-price {
     color: #FDE047 !important;
     font-weight: 800;
   }
-  .gn-similar-year {
-    color: #9CA3AF;
+  .gn-card-dark .gn-similar-year {
+    color: #6B7280;
     font-weight: 600;
   }
 
@@ -1812,26 +1785,71 @@
       max-height: 620px;
     }
   }
-  .gn-parts-map-modal-canvas {
-    width: 100%;
-    height: min(62vh, 480px);
-    min-height: 320px;
+  .gn-detail-parts-as-kind-card {
+    border: 1px solid #e5e7eb;
+    border-radius: 10px;
+    background: #fff;
+    padding: 8px;
+  }
+  .gn-detail-parts-as-kind-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 6px;
+  }
+  .gn-detail-kind-pill {
+    display: block;
+    border: 1px solid #d1d5db;
+    border-radius: 999px;
+    background: #fff;
+    color: #374151;
+    font-size: 0.78rem;
+    font-weight: 700;
+    line-height: 1.2;
+    padding: 0.32rem 0.5rem;
+    text-align: center;
+    text-decoration: none;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .gn-detail-kind-pill.is-active {
+    background: #374151;
+    border-color: #374151;
+    color: #fff;
+  }
+  .gn-detail-parts-as-map-wrap {
+    border-radius: 10px;
+    overflow: hidden;
+    border: 1px solid #e5e7eb;
     background: #f1f5f9;
+    cursor: pointer;
+  }
+  .gn-detail-parts-as-map {
+    width: 100%;
+    height: 192px;
+    border-radius: 0;
+    background: #f1f5f9;
+    border: none;
+    overflow: hidden;
+    pointer-events: none;
+  }
+  .gn-detail-parts-as-map-fallback {
+    min-height: 88px;
+    border-radius: 10px;
+    border: 1px dashed #cbd5e1;
+    background: linear-gradient(180deg, #f8fafc 0%, #eef2ff 100%);
+    color: #2563eb;
+    font-size: 0.88rem;
+    font-weight: 700;
   }
 </style>
-{% if kakao_map_js_key and nearby_parts_shops %}
-<script src="https://dapi.kakao.com/v2/maps/sdk.js?appkey={{ kakao_map_js_key }}&autoload=false"></script>
+{% if kakao_map_js_key and show_parts_as_section %}
+<script src="https://dapi.kakao.com/v2/maps/sdk.js?appkey={{ kakao_map_js_key }}&autoload=false&libraries=clusterer"></script>
 <script>
 (function () {
-  var modalEl = document.getElementById("partsShopMapModal");
-  if (!modalEl) return;
-  var mapEl = document.getElementById("partsShopMapModalMap");
-  var noCoordsEl = document.getElementById("partsShopMapModalNoCoords");
-  var subEl = document.getElementById("partsShopMapModalSub");
-  var fullLinkEl = document.getElementById("partsShopMapModalFullLink");
-  var map, marker, infoWindow;
-  var mapReady = false;
-  var pendingShop = null;
+  var KOREA_CENTER = { lat: 36.0, lng: 127.75 };
+  var KOREA_LEVEL = 15;
+  var centersCache = null;
 
   function esc(v) {
     return (v || "").replace(/[&<>"']/g, function (c) {
@@ -1839,101 +1857,146 @@
     });
   }
 
+  function isRentalType(type) {
+    return type === "rental_company" || type === "rental_kakao" || type === "regional_heavy"
+      || type === "rental_user" || type === "call_kakao" || type === "call_driver";
+  }
+
+  function updateOverlayCounts(centers) {
+    var all = centers.length;
+    var asCount = centers.filter(function (x) { return x.type === "as_center"; }).length;
+    var partsCount = centers.filter(function (x) { return x.type === "parts"; }).length;
+    var rentalCount = centers.filter(function (x) { return isRentalType(x.type); }).length;
+    document.querySelectorAll(".gn-parts-as-count-all").forEach(function (el) { el.textContent = String(all); });
+    document.querySelectorAll(".gn-parts-as-count-as").forEach(function (el) { el.textContent = String(asCount); });
+    document.querySelectorAll(".gn-parts-as-count-parts").forEach(function (el) { el.textContent = String(partsCount); });
+    document.querySelectorAll(".gn-parts-as-count-rental").forEach(function (el) { el.textContent = String(rentalCount); });
+  }
+
+  function loadCenters() {
+    if (centersCache) {
+      return Promise.resolve(centersCache);
+    }
+    return fetch("/api/service-centers/?equipment_type=all&type=all")
+      .then(function (res) { return res.json(); })
+      .then(function (data) {
+        centersCache = Array.isArray(data.centers) ? data.centers : [];
+        updateOverlayCounts(centersCache);
+        return centersCache;
+      })
+      .catch(function () {
+        centersCache = [];
+        return centersCache;
+      });
+  }
+
   function markerImage(kind) {
-    var text = kind === "as" ? "AS" : "부";
-    var fillColor = kind === "as" ? "rgba(37, 99, 235, 0.75)" : "rgba(249, 115, 22, 0.75)";
-    var textColor = kind === "as" ? "#2563eb" : "#f97316";
+    var styles = {
+      as: { text: "AS", fill: "rgba(37, 99, 235, 0.75)", color: "#2563eb" },
+      parts: { text: "부", fill: "rgba(249, 115, 22, 0.75)", color: "#f97316" },
+      rental: { text: "중", fill: "rgba(22, 163, 74, 0.78)", color: "#16a34a" },
+    };
+    var pin = styles[kind] || styles.parts;
     var svg = encodeURIComponent(
-      "<svg xmlns='http://www.w3.org/2000/svg' width='46' height='56'><path d='M23 2C12 2 3 11 3 22c0 14 18 30 20 32 2-2 20-18 20-32C43 11 34 2 23 2z' fill='" + fillColor + "' stroke='white' stroke-width='1.2'/><circle cx='23' cy='22' r='13' fill='white'/><text x='23' y='26' font-size='11' font-family='Arial' font-weight='700' text-anchor='middle' fill='" + textColor + "'>" + text + "</text></svg>"
+      "<svg xmlns='http://www.w3.org/2000/svg' width='46' height='56'><path d='M23 2C12 2 3 11 3 22c0 14 18 30 20 32 2-2 20-18 20-32C43 11 34 2 23 2z' fill='" + pin.fill + "' stroke='white' stroke-width='1.2'/><circle cx='23' cy='22' r='13' fill='white'/><text x='23' y='26' font-size='11' font-family='Arial' font-weight='700' text-anchor='middle' fill='" + pin.color + "'>" + pin.text + "</text></svg>"
     );
     return new kakao.maps.MarkerImage(
       "data:image/svg+xml;charset=UTF-8," + svg,
-      new kakao.maps.Size(34, 42),
-      { offset: new kakao.maps.Point(17, 42) }
+      new kakao.maps.Size(28, 34),
+      { offset: new kakao.maps.Point(14, 34) }
     );
   }
 
-  function shopPosition(shop) {
-    if (!shop) return null;
-    var lat = parseFloat(shop.lat);
-    var lng = parseFloat(shop.lng);
-    if (!isFinite(lat) || !isFinite(lng)) return null;
-    return new kakao.maps.LatLng(lat, lng);
+  function markerKind(center) {
+    if (center.type === "as_center" || center.center_type_key === "as") return "as";
+    if (isRentalType(center.type)) return "rental";
+    return "parts";
   }
 
-  function createMap(shop) {
-    var pos = shopPosition(shop);
-    var center = pos || new kakao.maps.LatLng(36.5, 127.8);
-    map = new kakao.maps.Map(mapEl, { center: center, level: pos ? 3 : 13 });
-    mapReady = true;
+  function clusterStyle(background) {
+    return [{
+      width: "34px",
+      height: "34px",
+      background: background,
+      border: "1px solid rgba(255,255,255,0.95)",
+      borderRadius: "17px",
+      color: "#fff",
+      textAlign: "center",
+      fontWeight: "700",
+      lineHeight: "34px",
+      fontSize: "12px",
+    }];
   }
 
-  function showShopOnMap(shop) {
-    if (!mapReady || !shop) return;
-    var pos = shopPosition(shop);
-    if (!pos) {
-      mapEl.classList.add("d-none");
-      noCoordsEl.classList.remove("d-none");
-      if (marker) marker.setMap(null);
-      marker = null;
-      if (infoWindow) infoWindow.close();
-      return;
-    }
-    mapEl.classList.remove("d-none");
-    noCoordsEl.classList.add("d-none");
-
-    function applyCenter() {
-      if (!map || !pos) return;
-      if (marker) marker.setMap(null);
-      marker = new kakao.maps.Marker({ position: pos, map: map, image: markerImage(shop.kind || "parts") });
-      if (infoWindow) infoWindow.close();
-      infoWindow = new kakao.maps.InfoWindow({
-        content: "<div style='padding:6px 8px;font-size:12px;line-height:1.4;min-width:160px'><strong>" + esc(shop.name) + "</strong><br>" + esc(shop.address) + "<br>" + esc(shop.phone) + "</div>",
-      });
-      infoWindow.open(map, marker);
-      map.relayout();
-      map.setCenter(pos);
-      map.setLevel(3);
-    }
-
-    applyCenter();
-    /* 모달 첫 표시 시 컨테이너 크기 확정 전이라 한국 중앙이 잠깐 보이는 문제 → 지연 relayout */
-    setTimeout(applyCenter, 80);
-    setTimeout(applyCenter, 280);
-  }
-
-  function openFromButton(btn) {
-    pendingShop = {
-      id: btn.dataset.shopId,
-      name: btn.dataset.shopName || "",
-      lat: btn.dataset.shopLat || "",
-      lng: btn.dataset.shopLng || "",
-      address: btn.dataset.shopAddress || "",
-      phone: btn.dataset.shopPhone || "",
-      kind: btn.dataset.shopKind || "parts",
-      partsAsUrl: btn.dataset.partsAsUrl || "",
-    };
-    subEl.textContent = pendingShop.name;
-    if (fullLinkEl && pendingShop.partsAsUrl) fullLinkEl.href = pendingShop.partsAsUrl;
-    var modal = bootstrap.Modal.getOrCreateInstance(modalEl);
-    modal.show();
-  }
-
-  document.querySelectorAll(".gn-parts-map-open").forEach(function (btn) {
-    btn.addEventListener("click", function () {
-      openFromButton(btn);
+  function initRailMap(canvasEl, centers) {
+    if (!canvasEl) return;
+    var map = new kakao.maps.Map(canvasEl, {
+      center: new kakao.maps.LatLng(KOREA_CENTER.lat, KOREA_CENTER.lng),
+      level: KOREA_LEVEL,
+      draggable: false,
+      scrollwheel: false,
+      disableDoubleClick: true,
+      disableDoubleClickZoom: true,
+      keyboardShortcuts: false,
     });
-  });
+    var asClusterer = new kakao.maps.MarkerClusterer({
+      map: map,
+      averageCenter: true,
+      minLevel: 8,
+      styles: clusterStyle("rgba(37, 99, 235, 0.75)"),
+    });
+    var partsClusterer = new kakao.maps.MarkerClusterer({
+      map: map,
+      averageCenter: true,
+      minLevel: 8,
+      styles: clusterStyle("rgba(249, 115, 22, 0.75)"),
+    });
+    var rentalClusterer = new kakao.maps.MarkerClusterer({
+      map: map,
+      averageCenter: true,
+      minLevel: 8,
+      styles: clusterStyle("rgba(22, 163, 74, 0.78)"),
+    });
+    var asMarkers = [];
+    var partsMarkers = [];
+    var rentalMarkers = [];
 
-  modalEl.addEventListener("shown.bs.modal", function () {
-    if (!mapReady) {
-      kakao.maps.load(function () {
-        createMap(pendingShop);
-        showShopOnMap(pendingShop);
+    centers.forEach(function (center) {
+      if (typeof center.lat !== "number" || typeof center.lng !== "number") return;
+      var pos = new kakao.maps.LatLng(center.lat, center.lng);
+      var kind = markerKind(center);
+      var marker = new kakao.maps.Marker({
+        position: pos,
+        title: center.name || "",
+        image: markerImage(kind),
       });
-    } else {
-      showShopOnMap(pendingShop);
+      if (kind === "as") asMarkers.push(marker);
+      else if (kind === "rental") rentalMarkers.push(marker);
+      else partsMarkers.push(marker);
+    });
+
+    if (asMarkers.length) asClusterer.addMarkers(asMarkers);
+    if (partsMarkers.length) partsClusterer.addMarkers(partsMarkers);
+    if (rentalMarkers.length) rentalClusterer.addMarkers(rentalMarkers);
+
+    function fitView() {
+      map.relayout();
+      map.setCenter(new kakao.maps.LatLng(KOREA_CENTER.lat, KOREA_CENTER.lng));
+      map.setLevel(KOREA_LEVEL);
     }
+    fitView();
+    setTimeout(fitView, 120);
+    window.addEventListener("resize", function () {
+      if (canvasEl.offsetParent) fitView();
+    });
+  }
+
+  kakao.maps.load(function () {
+    loadCenters().then(function (centers) {
+      document.querySelectorAll(".gn-detail-parts-as-map").forEach(function (el) {
+        initRailMap(el, centers);
+      });
+    });
   });
 })();
 </script>

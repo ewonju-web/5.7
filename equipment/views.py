@@ -18,6 +18,7 @@ from urllib.parse import parse_qs, quote, urlencode, urlparse
 import json
 
 from django.contrib.contenttypes.models import ContentType
+from django.core.cache import cache
 from django.core.exceptions import ValidationError
 from .models import (
     Equipment, JobPost, ExamPost, ExamComment, Part, EquipmentImage, PartImage, PartsShop,
@@ -44,6 +45,7 @@ from .premium_utils import (
     PREMIUM_BID_SWITCH_MEMBER_COUNT,
     BUMP_WEEKLY_LIMIT,
     get_user_bump_status,
+    attach_equipment_bump_ui_state,
     get_premium_user_ids,
     get_premium_equipment_rotation,
     get_premium_expert_cards,
@@ -64,6 +66,7 @@ from .index_listing import (
     parse_index_params,
     build_index_equipment_queryset,
     INDEX_INITIAL_COUNT,
+    INDEX_FILTER_MAX,
     VALID_CATEGORIES,
 )
 
@@ -442,7 +445,7 @@ def index(request):
     qs = build_index_equipment_queryset(request, params)
     total_count = qs.count()
     if hide_advanced_filters:
-        equipment_list = list(qs)
+        equipment_list = list(qs[:INDEX_FILTER_MAX])
     else:
         equipment_list = list(qs[:INDEX_INITIAL_COUNT])
 
@@ -863,7 +866,7 @@ def my_page(request):
         messages.success(request, '유료회원 명함 정보가 저장되었습니다.')
         return redirect('my_page')
 
-    my_equipments = (
+    my_equipments = list(
         Equipment.objects
         .filter(author=request.user)
         .annotate(wish_count=Count('favorited_by', distinct=True))
@@ -877,7 +880,7 @@ def my_page(request):
         .order_by('-favorited_by__created_at')
     )
     fav_parts = Part.objects.filter(favorited_by__user=request.user).order_by('-favorited_by__created_at')
-    total_views = my_equipments.aggregate(total=Coalesce(Sum('view_count'), 0))['total'] or 0
+    total_views = sum((e.view_count or 0) for e in my_equipments)
     premium_region_inquiry_alerts = []
     if profile.is_premium_active:
         try:
@@ -910,13 +913,14 @@ def my_page(request):
             premium_region_inquiry_alerts = []
 
     stats = {
-        'my_count': my_equipments.count(),
+        'my_count': len(my_equipments),
         'fav_count': fav_equipments.count() + fav_parts.count(),
         'total_views': total_views,
         'grade_label': '유료회원' if profile.is_premium_active else '무료회원',
     }
     is_legacy_user = request.user.username.startswith('legacy_')
     bump_status = get_user_bump_status(request.user)
+    attach_equipment_bump_ui_state(my_equipments, bump_status)
     return render(request, 'registration/my_page.html', {
         'profile': profile,
         'my_equipments': my_equipments,
@@ -946,6 +950,14 @@ def billing_upgrade(request):
     })
 
 
+def terms_of_service(request):
+    return render(request, "legal/terms.html")
+
+
+def privacy_policy(request):
+    return render(request, "legal/privacy.html")
+
+
 def company_intro(request):
     """회사소개 페이지."""
     return render(request, 'equipment/company_intro.html', {
@@ -953,6 +965,7 @@ def company_intro(request):
         'company_lat': 36.9312186590944,
         'company_lng': 127.752392155881,
         'kakao_map_js_key': _get_kakao_map_js_key(),
+        'show_parts_as_section': True,
     })
 
 
@@ -1705,7 +1718,10 @@ def exam_list(request):
 
 
 def exam_detail(request, pk):
-    post = get_object_or_404(ExamPost.objects.select_related('author'), pk=pk)
+    post = get_object_or_404(
+        ExamPost.objects.select_related('author').prefetch_related('attachments'),
+        pk=pk,
+    )
 
     if request.method == 'POST':
         if not request.user.is_authenticated:
@@ -1724,9 +1740,11 @@ def exam_detail(request, pk):
     youtube_id = ''
     if post.category == 'video' and post.youtube_url:
         youtube_id = extract_youtube_id(post.youtube_url)
+    attachments = list(post.attachments.all())
     return render(request, 'equipment/exam_detail.html', {
         'post': post,
         'comments': comments,
+        'attachments': attachments,
         'youtube_id': youtube_id,
         'jobs_section': 'exam',
     })
@@ -2127,21 +2145,38 @@ def finance(request):
     })
 
 
-def _get_kakao_map_js_key():
-    key = (getattr(settings, "KAKAO_MAP_JS_KEY", "") or "").strip()
-    if key:
-        return key
-    try:
-        from allauth.socialaccount.models import SocialApp
-        return (
-            SocialApp.objects.filter(provider="kakao")
-            .values_list("client_id", flat=True)
-            .first()
-            or ""
-        ).strip()
-    except Exception:
-        return ""
+KAKAO_MAP_JS_KEY_CACHE = "kakao_map_js_key_v1"
+KAKAO_MAP_JS_KEY_CACHE_TTL = 3600
 
+
+def _get_kakao_map_js_key():
+    cached = cache.get(KAKAO_MAP_JS_KEY_CACHE)
+    if cached is not None:
+        return cached
+    key = (getattr(settings, "KAKAO_MAP_JS_KEY", "") or "").strip()
+    if not key:
+        try:
+            from allauth.socialaccount.models import SocialApp
+            key = (
+                SocialApp.objects.filter(provider="kakao")
+                .values_list("client_id", flat=True)
+                .first()
+                or ""
+            ).strip()
+        except Exception:
+            key = ""
+    cache.set(KAKAO_MAP_JS_KEY_CACHE, key, KAKAO_MAP_JS_KEY_CACHE_TTL)
+    return key
+
+
+
+
+def _parts_as_back_url(request):
+    """parts_as 새 창에서 돌아갈 이전 페이지 (?back=)."""
+    back = (request.GET.get("back") or "").strip()
+    if back and url_has_allowed_host_and_scheme(back, allowed_hosts={request.get_host()}):
+        return back
+    return ""
 
 def parts_as(request):
     """부품/AS 센터 지도 + 목록 검색 페이지."""
@@ -2180,6 +2215,7 @@ def parts_as(request):
         'excavator_repair_types': PartsShop.REPAIR_TYPE_CHOICES,
         'kakao_map_js_key': kakao_map_js_key,
         'show_driver_register_button': request.user.is_authenticated,
+        'parts_as_back_url': _parts_as_back_url(request),
     })
 
 
@@ -2306,6 +2342,7 @@ def driver_list(request):
         "excavator_repair_types": PartsShop.REPAIR_TYPE_CHOICES,
         "kakao_map_js_key": _get_kakao_map_js_key(),
         "show_driver_register_button": request.user.is_authenticated,
+        "parts_as_back_url": _parts_as_back_url(request),
     })
 
 
@@ -2753,8 +2790,32 @@ def _resolve_equipment_detail_back_url(request, equipment):
 
 
 # [4] 매물 관련
+def attachment_ad_site_redirect(request, pk):
+    """어태치먼트·타이어 광고 카드 → 해당 매물 상세."""
+    return redirect("equipment_detail", pk=pk)
+
+
+
+
+def _bump_equipment_view_count(request, equipment_pk):
+    """조회수 DB 갱신 — 동일 방문자 30분에 1회."""
+    if request.method != "GET":
+        return False
+    if not request.session.session_key:
+        request.session.save()
+    visitor = request.session.session_key or request.META.get("REMOTE_ADDR", "anon")
+    cache_key = f"eqview:{equipment_pk}:{visitor}"
+    if cache.get(cache_key):
+        return False
+    cache.set(cache_key, 1, 1800)
+    Equipment.objects.filter(pk=equipment_pk).update(view_count=F("view_count") + 1)
+    return True
+
 def equipment_detail(request, pk):
-    equipment = get_object_or_404(Equipment, pk=pk)
+    equipment = get_object_or_404(
+        Equipment.objects.select_related("author__profile").prefetch_related("images"),
+        pk=pk,
+    )
     if equipment.author_id is None and not (
         request.user.is_authenticated and request.user.is_staff
     ):
@@ -2791,10 +2852,10 @@ def equipment_detail(request, pk):
             redir += '?' + urlencode(redir_params)
         return redirect(redir)
 
-    if request.method == 'GET':
-        Equipment.objects.filter(pk=equipment.pk).update(view_count=F('view_count') + 1)
+    if _bump_equipment_view_count(request, equipment.pk):
         equipment.refresh_from_db(fields=['view_count'])
 
+    premium_ids = set(get_premium_user_ids())
     author_phone = None
     author_is_dealer = False
     author_is_premium = False
@@ -2813,14 +2874,14 @@ def equipment_detail(request, pk):
                         author_phone = None
                 author_is_dealer = getattr(profile, 'user_type', None) == 'DEALER'
                 author_is_premium = getattr(profile, 'is_premium_active', False) or (
-                    equipment.author_id in set(get_premium_user_ids())
+                    equipment.author_id in premium_ids
                 )
                 author_display = getattr(profile, 'company_name', None) or equipment.author.get_full_name() or equipment.author.username
                 author_company = (getattr(profile, "company_name", None) or "").strip()
                 author_youtube = (getattr(profile, "youtube_url", None) or "").strip()
             else:
                 author_display = equipment.author.get_full_name() or equipment.author.username
-                author_is_premium = equipment.author_id in set(get_premium_user_ids())
+                author_is_premium = equipment.author_id in premium_ids
         except Exception:
             author_display = equipment.author.username if equipment.author else None
 
@@ -2859,19 +2920,15 @@ def equipment_detail(request, pk):
                 if not author_is_premium:
                     author_is_premium = (
                         getattr(sibling_profile, 'is_premium_active', False)
-                        or sibling.author_id in set(get_premium_user_ids())
+                        or sibling.author_id in premium_ids
                     )
                 break
 
-    # 실제 파일이 존재하는 사진만 상세 화면에 노출 (깨진 이미지 방지)
-    detail_images = []
-    for image in equipment.images.all():
-        try:
-            image_name = getattr(image.image, 'name', '') or ''
-            if image_name and image.image.storage.exists(image_name):
-                detail_images.append(image)
-        except Exception:
-            continue
+    # 상세 사진 (prefetch 활용, 디스크 exists 체크 제거로 응답 속도 개선)
+    detail_images = [
+        image for image in equipment.images.all()
+        if (getattr(image.image, 'name', '') or '').strip()
+    ]
 
     # 금융 예상 한도 / 월 납입액(60개월, 연 7% 가정)
     finance_limit = None
@@ -2909,11 +2966,11 @@ def equipment_detail(request, pk):
         price_max=Max('listing_price'),
         price_avg=Avg('listing_price'),
     )
-    similar_list = list(similar_qs.order_by('-created_at')[:6])
+    similar_list = list(similar_qs.prefetch_related('images').order_by('-created_at')[:6])
 
-    # 상세 좌측 레일(굴삭기 전용): 어태치먼트/타이어 전문가 카드
+    # 상세 좌측 레일(굴삭기 전용): 어태치먼트/타이어 광고 (승인 업체만 — 현재 비노출)
     left_specialist_cards = []
-    if (equipment.equipment_type or "") == "excavator":
+    if False and (equipment.equipment_type or "") == "excavator":
         left_specialist_cards = list(
             Equipment.objects.visible()
             .filter(is_sold=False)
@@ -2921,6 +2978,7 @@ def equipment_detail(request, pk):
                 Q(equipment_type="excavator", sub_type="EXC_ATTACHMENT")
                 | Q(equipment_type="excavator", sub_type="EXC_TIRE")
             )
+            .filter(author__profile__attachment_tire_ad_active=True)
             .exclude(pk=equipment.pk)
             .select_related("author__profile")
             .order_by("-created_at")[:5]
@@ -2956,16 +3014,21 @@ def equipment_detail(request, pk):
             Equipment.objects.visible()
             .filter(author_id=equipment.author_id, is_sold=False)
             .exclude(pk=equipment.pk)
+            .prefetch_related('images')
             .order_by('-created_at')[:2]
         )
 
     # 우측 레일: 전국 부품점 A/S 센터(지도 이동 링크용)
-    shops_qs = PartsShop.objects.all().order_by('region', 'name')
     nearby_parts_shops = []
     if equipment.region_sido:
-        nearby_parts_shops = list(shops_qs.filter(region__icontains=equipment.region_sido)[:6])
+        nearby_parts_shops = list(
+            PartsShop.objects.filter(region__icontains=equipment.region_sido)
+            .order_by('region', 'name')[:6]
+        )
     if not nearby_parts_shops:
-        nearby_parts_shops = list(shops_qs[:6])
+        nearby_parts_shops = list(
+            PartsShop.objects.order_by('region', 'name')[:6]
+        )
 
     right_premium_slots = []
     has_right_ads = bool(
@@ -3003,6 +3066,7 @@ def equipment_detail(request, pk):
         'author_other_listings': author_other_listings,
         'nearby_parts_shops': nearby_parts_shops,
         'kakao_map_js_key': _get_kakao_map_js_key(),
+        'show_parts_as_section': True,
     })
 
 
@@ -3356,7 +3420,6 @@ def author_listings(request, user_id):
         'favorited_equipment_ids': favorited_ids,
         'premium_author_ids': premium_author_ids,
         'filter_category_param': cat if cat in valid_cats else '',
-        'featured_listings': featured_listings,
         'sort_param': sort,
         'total_count': total_count,
         'sold_count': sold_count,

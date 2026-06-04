@@ -1,6 +1,7 @@
 # 유료 회원 노출용: 첫화면 로테이션·우측 배너
 import random
 
+from django.core.cache import cache
 from django.db import models
 from django.urls import reverse
 from django.utils import timezone
@@ -24,15 +25,24 @@ PREMIUM_SIDEBAR_EXPERT_TITLE_BY_CATEGORY = {
 }
 
 
+PREMIUM_USER_IDS_CACHE_KEY = "premium_user_ids_v1"
+PREMIUM_USER_IDS_CACHE_TTL = 300  # 5분
+
+
 def _premium_user_ids():
+    cached = cache.get(PREMIUM_USER_IDS_CACHE_KEY)
+    if cached is not None:
+        return set(cached)
     today = timezone.now().date()
-    return set(
+    ids = set(
         Profile.objects.filter(is_premium=True)
         .filter(
             models.Q(premium_until__isnull=True) | models.Q(premium_until__gte=today)
         )
         .values_list("user_id", flat=True)
     )
+    cache.set(PREMIUM_USER_IDS_CACHE_KEY, list(ids), PREMIUM_USER_IDS_CACHE_TTL)
+    return ids
 
 
 def get_premium_equipment_rotation(limit=18, equipment_type: str | None = None):
@@ -188,7 +198,33 @@ FREE_LISTING_LIMIT = 20  # 무료 회원 한 달 매물 20건까지
 PREMIUM_LISTING_LIMIT = 50  # 유료 회원 한 달 매물 50건까지
 PREMIUM_MONTHLY_PRICE = 40000  # 유료 회원 월 이용료 (원)
 PREMIUM_BID_SWITCH_MEMBER_COUNT = 20  # 이 인원 초과 시 입찰 방식 전환 예정
-BUMP_WEEKLY_LIMIT = 3  # 유료 회원 주간 끌어올리기 3회
+BUMP_WEEKS_PER_MONTH = 4  # 매물 1개당 주 1회 × 4주 = 월 한도
+BUMP_LISTING_COOLDOWN_DAYS = 7  # 매물별 끌어올리기 재사용 대기(주 1회)
+BUMP_WEEKLY_LIMIT = 3
+
+
+def get_user_active_listing_count(user):
+    """끌어올리기 한도 산정용: 현재 등록(보유) 매물 수(실시간)."""
+    if not user or not user.is_authenticated:
+        return 0
+    return Equipment.objects.filter(author=user).count()
+
+
+def get_user_monthly_bump_limit(user, listing_count=None):
+    """유료 회원 월 끌어올리기 한도 = 등록 매물 수 × 4."""
+    if listing_count is None:
+        listing_count = get_user_active_listing_count(user)
+    return listing_count * BUMP_WEEKS_PER_MONTH
+
+
+def _month_start(dt):
+    return dt.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+
+
+def _next_month_start(dt):
+    if dt.month == 12:
+        return dt.replace(year=dt.year + 1, month=1, day=1, hour=0, minute=0, second=0, microsecond=0)
+    return dt.replace(month=dt.month + 1, day=1, hour=0, minute=0, second=0, microsecond=0)
 
 
 def get_listing_monthly_limit(user):
@@ -203,12 +239,57 @@ def get_free_listing_count(user):
     return get_monthly_listing_count(user)
 
 
-def get_user_bump_status(user):
-    """유료 회원 주간 끌어올리기 잔여 횟수·다음 가능 시각."""
+def get_listing_bump_cooldown(equipment, *, now=None):
+    """매물별 끌어올리기 쿨다운(최근 7일 이내 사용 시 대기)."""
     from datetime import timedelta
 
-    from django.utils import timezone
+    now = now or timezone.now()
+    last = getattr(equipment, 'last_bumped_at', None)
+    if not last:
+        return {'on_cooldown': False, 'next_bump_at': None}
+    next_at = last + timedelta(days=BUMP_LISTING_COOLDOWN_DAYS)
+    if now >= next_at:
+        return {'on_cooldown': False, 'next_bump_at': None}
+    return {'on_cooldown': True, 'next_bump_at': next_at}
 
+
+def attach_equipment_bump_ui_state(equipments, bump_status, *, now=None):
+    """
+    마이페이지 끌어올리기 버튼 UI 상태 부여.
+    - ready: 사용 가능(활성 색)
+    - cooldown: 해당 매물 7일 대기(비활성·회색)
+    - monthly_exhausted: 당월 계정 한도 소진
+    - hidden: 무료·판매완료 등
+    """
+    import math
+    from datetime import timedelta
+
+    now = now or timezone.now()
+    window = timedelta(days=BUMP_LISTING_COOLDOWN_DAYS)
+    is_premium = bump_status.get('is_premium', False)
+    account_can = bump_status.get('can_bump', False)
+
+    for eq in equipments:
+        eq.bump_ui = 'hidden'
+        eq.bump_next_at = None
+        eq.bump_days_left = 0
+        if not is_premium or getattr(eq, 'is_sold', False):
+            continue
+        last = getattr(eq, 'last_bumped_at', None)
+        if last and (now - last) < window:
+            eq.bump_ui = 'cooldown'
+            eq.bump_next_at = last + window
+            remaining_sec = (eq.bump_next_at - now).total_seconds()
+            eq.bump_days_left = max(1, math.ceil(remaining_sec / 86400)) if remaining_sec > 0 else 0
+            continue
+        if account_can:
+            eq.bump_ui = 'ready'
+        else:
+            eq.bump_ui = 'monthly_exhausted'
+
+
+def get_user_bump_status(user):
+    """유료 회원 월간 끌어올리기 잔여 횟수·다음 가능 시각(매물 수 × 4 기준)."""
     from equipment.models import EquipmentBumpLog
 
     status = {
@@ -216,22 +297,30 @@ def get_user_bump_status(user):
         'can_bump': False,
         'used': 0,
         'remaining': 0,
-        'limit': BUMP_WEEKLY_LIMIT,
+        'limit': 0,
+        'listing_count': 0,
         'next_bump_at': None,
     }
     if not status['is_premium']:
         return status
 
+    listing_count = get_user_active_listing_count(user)
+    limit = get_user_monthly_bump_limit(user, listing_count)
+    status['listing_count'] = listing_count
+    status['limit'] = limit
+    if limit <= 0:
+        return status
+
     now = timezone.now()
-    week_ago = now - timedelta(days=7)
-    week_logs = list(
-        EquipmentBumpLog.objects.filter(user=user, bumped_at__gt=week_ago).order_by('bumped_at')
-    )
-    used = len(week_logs)
+    month_start = _month_start(now)
+    used = EquipmentBumpLog.objects.filter(
+        user=user,
+        bumped_at__gte=month_start,
+    ).count()
     status['used'] = used
-    status['remaining'] = max(0, BUMP_WEEKLY_LIMIT - used)
-    if used < BUMP_WEEKLY_LIMIT:
+    status['remaining'] = max(0, limit - used)
+    if used < limit:
         status['can_bump'] = True
-    elif week_logs:
-        status['next_bump_at'] = week_logs[0].bumped_at + timedelta(days=7)
+    else:
+        status['next_bump_at'] = _next_month_start(now)
     return status

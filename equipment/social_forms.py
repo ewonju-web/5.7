@@ -2,10 +2,11 @@ from allauth.socialaccount.forms import SignupForm
 from django import forms
 from django.contrib.auth.models import User
 
+from .forms import TermsAgreementFieldsMixin
 from .models import Profile
 
 
-class RequiredSocialSignupForm(SignupForm):
+class RequiredSocialSignupForm(TermsAgreementFieldsMixin, SignupForm):
     name = forms.CharField(
         label="이름",
         max_length=50,
@@ -60,5 +61,6 @@ class RequiredSocialSignupForm(SignupForm):
 
         profile, _ = Profile.objects.get_or_create(user=user)
         profile.phone = (self.cleaned_data.get("phone") or "").strip()
-        profile.save(update_fields=["phone"])
+        self._apply_marketing_consent(profile)
+        profile.save(update_fields=["phone", "marketing_consent", "marketing_consent_at"])
         return user

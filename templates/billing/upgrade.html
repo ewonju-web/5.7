@@ -1,5 +1,6 @@
 {% extends "base.html" %}
 {% load humanize %}
+{% block footer_free_slogan %}<span class="gn-free-slogan-text">굴삭기나라의 모든 이용은 무료입니다.</span><span class="gn-free-slogan-note">단, 광고성 프리미엄 서비스 제외</span>{% endblock %}
 {% block content %}
 <div class="container py-4 py-md-5" style="max-width: 920px;">
   <div class="text-center mb-4">
@@ -26,7 +27,7 @@
       <ol class="mb-0 text-muted" style="line-height: 1.8;">
         <li>매물 검색 상단 우선 노출</li>
         <li>메인 화면 프리미엄 영역 노출</li>
-        <li>최근 7일 기준 최대 {{ bump_weekly_limit }}회 끌어올리기</li>
+        <li>끌어올리기 — 등록 매물 수 × 4회/월 (매물 1개당 주 1회 × 4주, 예: 매물 50개 → 월 200회)</li>
         <li>매물 등록 월 {{ premium_listing_limit }}건 (무료: 월 {{ free_listing_limit }}건)</li>
         <li>각 기종별 전문가 명함 노출</li>
         <li>상세페이지에서 이 회원이 판매하는 다른 매물 보기</li>
@@ -40,7 +41,7 @@
       <h5 class="fw-bold mb-3">운영 안내</h5>
       <ul class="mb-0 text-muted" style="line-height: 1.85;">
         <li>유료회원 {{ premium_bid_switch_count }}명을 초과하면 <strong class="text-dark">입찰 방식</strong>으로 광고 노출 순위를 운영할 예정입니다.</li>
-        <li>고객과의 분쟁·민원, 허위·과장 매물, 서비스 품질 문제 등 <strong class="text-dark">운영상 마찰</strong>이 확인되면 광고 노출을 <strong class="text-dark">일시 정지</strong>할 수 있습니다.</li>
+        <li>고객과의 분쟁·민원, 허위·과장 매물, 서비스 품질 문제 등 <strong class="text-dark">운영상 마찰</strong>이 확인되면 광고 등 노출을 <strong class="text-dark">일시 정지</strong>할 수 있습니다.</li>
         {% comment %}
         <li>회원 평점·후기 등 <strong class="text-dark">신뢰도 지표</strong>가 지속적으로 낮은 경우에도 일시 정지 또는 이용 제한을 적용할 수 있습니다.</li>
         {% endcomment %}

@@ -1,0 +1,107 @@
+{% extends "base.html" %}
+
+{% block extra_css %}
+<style>
+  .gn-legal-page { max-width: 920px; margin: 0 auto; padding: 2rem 1rem 3rem; }
+  .gn-legal-page h1 {
+    font-size: clamp(1.45rem, 3vw, 2rem);
+    font-weight: 800;
+    color: #111827;
+    margin-bottom: 0.35rem;
+  }
+  .gn-legal-updated { color: #6b7280; font-size: 0.88rem; margin-bottom: 1.75rem; }
+  .gn-legal-content { color: #374151; line-height: 1.85; font-size: 0.95rem; }
+  .gn-legal-content h2 {
+    font-size: 1.05rem;
+    font-weight: 800;
+    color: #111827;
+    margin: 1.75rem 0 0.65rem;
+  }
+  .gn-legal-content h3 {
+    font-size: 0.98rem;
+    font-weight: 700;
+    color: #1f2937;
+    margin: 1rem 0 0.45rem;
+  }
+  .gn-legal-content ol, .gn-legal-content ul { padding-left: 1.2rem; }
+  .gn-legal-content li + li { margin-top: 0.35rem; }
+  .gn-legal-content p { margin-bottom: 0.75rem; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="gn-legal-page">
+  <h1>개인정보처리방침</h1>
+  <p class="gn-legal-updated">시행일: 2026년 06월 01일</p>
+  <div class="gn-legal-content">
+    <p>굴삭기나라(이하 "회사")는 개인정보보호법에 따라 이용자의 개인정보 보호 및 권익을 보호하고 개인정보와 관련한 이용자의 고충을 원활하게 처리할 수 있도록 다음과 같은 처리방침을 두고 있습니다.</p>
+
+    <h2>제1조 (수집하는 개인정보 항목)</h2>
+    <h3>회원가입 시</h3>
+    <ul>
+      <li>필수: 이름(닉네임), 이메일 주소, 휴대폰 번호, 비밀번호</li>
+      <li>선택: 지역 정보</li>
+    </ul>
+    <h3>소셜 로그인 시 (네이버·카카오)</h3>
+    <ul>
+      <li>소셜 서비스에서 제공하는 닉네임, 프로필 사진, 이메일</li>
+    </ul>
+    <h3>서비스 이용 시 자동 수집</h3>
+    <ul>
+      <li>IP 주소, 쿠키, 접속 로그, 서비스 이용 기록</li>
+    </ul>
+
+    <h2>제2조 (개인정보 수집 및 이용 목적)</h2>
+    <ul>
+      <li>회원 관리: 회원제 서비스 이용, 본인 확인, 불량 회원 제재</li>
+      <li>서비스 제공: 매물 등록·조회, 구인구직, 할부 상담 등</li>
+      <li>마케팅·광고: 신규 서비스 안내, 이벤트 정보 제공 (동의한 경우에 한함)</li>
+    </ul>
+
+    <h2>제3조 (개인정보 보유 및 이용 기간)</h2>
+    <ul>
+      <li>회원 탈퇴 시까지 보유·이용</li>
+      <li>단, 관련 법령에 따라 일정 기간 보존이 필요한 경우 해당 기간 동안 보존</li>
+      <li>전자상거래 관련 기록: 5년</li>
+      <li>소비자 불만·분쟁 기록: 3년</li>
+    </ul>
+
+    <h2>제4조 (개인정보의 제3자 제공)</h2>
+    <p>회사는 이용자의 개인정보를 원칙적으로 외부에 제공하지 않습니다. 단, 다음의 경우는 예외입니다.</p>
+    <ol>
+      <li>이용자가 사전에 동의한 경우</li>
+      <li>할부·금융 서비스 신청 시 심사를 위해 제휴 캐피탈사에 필요한 개인정보(성명, 연락처, 희망 장비 정보 등)를 제공할 수 있습니다. 이 경우 사전에 이용자의 동의를 받습니다.</li>
+      <li>법령의 규정에 의거하거나 수사 목적으로 관련 기관의 요구가 있는 경우</li>
+    </ol>
+
+    <h2>제5조 (개인정보 처리 위탁)</h2>
+    <ul>
+      <li>문자 발송: 솔라피(주) — 회원 인증 문자 발송 목적</li>
+      <li>소셜 로그인: 네이버㈜, 카카오㈜, 구글(Google LLC) — 소셜 로그인 인증 목적</li>
+    </ul>
+
+    <h2>제6조 (이용자의 권리)</h2>
+    <p>이용자는 언제든지 다음의 권리를 행사할 수 있습니다.</p>
+    <ul>
+      <li>개인정보 열람 요구</li>
+      <li>오류 정정 요구</li>
+      <li>삭제 요구</li>
+      <li>처리 정지 요구</li>
+    </ul>
+    <p>위 권리 행사는 Tel: 010-2469-3800 또는 E-mail: ewonju@naver.com으로 연락 주시면 됩니다.</p>
+
+    <h2>제7조 (쿠키 사용)</h2>
+    <p>회사는 이용자에게 개인화된 서비스를 제공하기 위해 쿠키를 사용합니다. 이용자는 브라우저 설정을 통해 쿠키 저장을 거부할 수 있으나, 일부 서비스 이용이 제한될 수 있습니다.</p>
+
+    <h2>제8조 (개인정보 보호책임자)</h2>
+    <ul>
+      <li>성명(대표): 이원주</li>
+      <li>Tel: 010-2469-3800</li>
+      <li>E-mail: ewonju@naver.com</li>
+    </ul>
+
+    <h2>제9조 (개인정보처리방침 변경)</h2>
+    <p class="mb-0">이 개인정보처리방침은 2026년 06월 01일부터 적용됩니다. 변경이 있을 경우 사이트 공지사항을 통해 안내드립니다.</p>
+  </div>
+</div>
+{% endblock %}

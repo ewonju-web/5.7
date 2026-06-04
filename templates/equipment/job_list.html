@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 {% load static i18n_extras %}
 {% block extra_css %}
-<link rel="stylesheet" href="{% static 'css/jobs.css' %}?v=20260528e">
+<link rel="stylesheet" href="{% static 'css/jobs.css' %}?v=20260602a">
 <style>
   .job-table-v2 .job-row,
   .job-table-v2 .job-row > td {
@@ -160,6 +160,22 @@
                 </table>
             </div>
         </div>
+
+        {% if show_older %}
+        <div class="text-center mt-3 job-list-more-wrap">
+            <p class="small text-muted mb-2">최근 약 3개월 공고와 이전 공고를 모두 표시 중입니다.</p>
+            <a href="{% url 'job_list' %}{{ job_list_recent_only_url }}" class="btn btn-outline-secondary px-4 py-2 job-btn-more-list">
+                <i class="bi bi-chevron-up me-1" aria-hidden="true"></i>최근 3개월만 보기
+            </a>
+        </div>
+        {% elif older_count > 0 %}
+        <div class="text-center mt-3 job-list-more-wrap">
+            <p class="small text-muted mb-2">최근 약 3개월 공고만 표시 중입니다. (이전 공고 {{ older_count }}건)</p>
+            <a href="{% url 'job_list' %}{{ job_list_load_older_url }}" class="btn btn-outline-secondary px-4 py-2 job-btn-more-list">
+                <i class="bi bi-chevron-down me-1" aria-hidden="true"></i>더보기 (이전 공고 {{ older_count }}건)
+            </a>
+        </div>
+        {% endif %}
     </div>
 </div>
 <script>

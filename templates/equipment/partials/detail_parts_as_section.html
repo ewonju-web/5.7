@@ -1,0 +1,29 @@
+{% load i18n_extras %}
+{# 전국 부품점 A/S — 분류 카드 + 지도 (map_canvas_id: 페이지당 고유 DOM id) #}
+{% with parts_as_back=request.get_full_path|urlencode %}
+<div class="card gn-card-sharp border shadow-sm overflow-hidden gn-detail-parts-as-card gn-rail-section-card">
+  <div class="card-header gn-rail-section-head py-2 px-2 d-flex align-items-center justify-content-between gn-detail-parts-as-head">
+    <span class="gn-rail-card-title"><i class="bi bi-geo-alt-fill text-primary me-1"></i>{{ LANG|tr:"parts_as_card_title" }}</span>
+    <a href="{% url 'parts_as' %}?back={{ parts_as_back }}" target="_blank" rel="noopener noreferrer" class="text-decoration-none text-primary gn-rail-link">{{ LANG|tr:"parts_as_view_all" }}</a>
+  </div>
+  <div class="card-body gn-rail-card-body gn-rail-ad-list p-2">
+    {% if kakao_map_js_key %}
+    <div class="gn-detail-parts-as-kind-card mb-2" aria-label="업체 분류">
+      <div class="gn-detail-parts-as-kind-grid">
+        <a href="{% url 'parts_as' %}?back={{ parts_as_back }}" target="_blank" rel="noopener noreferrer" class="gn-detail-kind-pill is-active">{{ LANG|tr:"parts_as_filter_all" }} (<span class="gn-parts-as-count-all">…</span>)</a>
+        <a href="{% url 'parts_as' %}?type=as&amp;back={{ parts_as_back }}" target="_blank" rel="noopener noreferrer" class="gn-detail-kind-pill">{{ LANG|tr:"parts_as_filter_as" }} (<span class="gn-parts-as-count-as">…</span>)</a>
+        <a href="{% url 'parts_as' %}?type=parts&amp;back={{ parts_as_back }}" target="_blank" rel="noopener noreferrer" class="gn-detail-kind-pill">{{ LANG|tr:"parts_as_filter_parts" }} (<span class="gn-parts-as-count-parts">…</span>)</a>
+        <a href="{% url 'parts_as' %}?type=rental&amp;back={{ parts_as_back }}" target="_blank" rel="noopener noreferrer" class="gn-detail-kind-pill">{{ LANG|tr:"parts_as_filter_rental" }} (<span class="gn-parts-as-count-rental">…</span>)</a>
+      </div>
+    </div>
+    <a href="{% url 'parts_as' %}?back={{ parts_as_back }}" target="_blank" rel="noopener noreferrer" class="gn-detail-parts-as-map-wrap d-block text-decoration-none">
+      <div id="{{ map_canvas_id }}" class="gn-detail-parts-as-map" role="img" aria-label="{{ LANG|tr:'parts_as_map_aria' }}"></div>
+    </a>
+    {% else %}
+    <a href="{% url 'parts_as' %}?back={{ parts_as_back }}" target="_blank" rel="noopener noreferrer" class="gn-detail-parts-as-map-fallback d-flex align-items-center justify-content-center text-decoration-none">
+      <span><i class="bi bi-map me-1"></i>{{ LANG|tr:"parts_as_map_fallback" }}</span>
+    </a>
+    {% endif %}
+  </div>
+</div>
+{% endwith %}

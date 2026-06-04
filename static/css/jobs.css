@@ -132,6 +132,26 @@ h1.job-title,
   font-weight: 700;
   color: #B91C1C;
 }
+.gn-job-detail-page .gn-job-dd-contact {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35rem 0.55rem;
+}
+.gn-job-detail-page .gn-job-contact-kakao {
+  font-size: 0.78rem;
+  line-height: 1.2;
+  padding: 0.28rem 0.62rem;
+  border-radius: 999px;
+  white-space: nowrap;
+  vertical-align: middle;
+}
+@media (max-width: 575.98px) {
+  .gn-job-detail-page .gn-job-contact-kakao {
+    font-size: 0.74rem;
+    padding: 0.24rem 0.52rem;
+  }
+}
 
 /* 기본정보 그리드 (label / value) */
 .gn-job-detail-page .gn-job-spec {
@@ -1354,4 +1374,10 @@ h1.job-title,
     color: #cc0000;
     text-decoration: underline;
   }
+}
+
+.job-list-more-wrap .job-btn-more-list {
+  border-radius: 10px;
+  font-weight: 700;
+  min-width: 12rem;
 }

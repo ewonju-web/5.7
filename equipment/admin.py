@@ -565,7 +565,7 @@ class ProfileAdmin(admin.ModelAdmin):
         'phone',                   # 연락처(원본 전화)
         'name_display',           # 이름
         'monthly_listing_status_display',
-        'weekly_bump_status_display',
+        'monthly_bump_status_display',
         'created_display',        # 가입일
     ]
     list_filter = (MemberTypeFilter, 'phone_verified', 'user_type', PremiumStatusFilter, 'is_approved')
@@ -586,7 +586,7 @@ class ProfileAdmin(admin.ModelAdmin):
         'reported_display',
         'created_display',
         'monthly_listing_status_display',
-        'weekly_bump_status_display',
+        'monthly_bump_status_display',
     )
     date_hierarchy = 'user__date_joined'
 
@@ -783,21 +783,18 @@ class ProfileAdmin(admin.ModelAdmin):
             return '-'
     monthly_listing_status_display.short_description = '당월 등록'
 
-    def weekly_bump_status_display(self, obj):
+    def monthly_bump_status_display(self, obj):
         try:
-            from datetime import timedelta
-            from equipment.premium_utils import BUMP_WEEKLY_LIMIT
+            from equipment.premium_utils import get_user_bump_status
             if not obj.user_id:
                 return '-'
-            since = timezone.now() - timedelta(days=7)
-            count = EquipmentBumpLog.objects.filter(
-                user_id=obj.user_id,
-                bumped_at__gt=since,
-            ).count()
-            return f'{count}/{BUMP_WEEKLY_LIMIT}회'
+            status = get_user_bump_status(obj.user)
+            if not status['is_premium']:
+                return '무료'
+            return f"{status['used']}/{status['limit']}회 (매물 {status['listing_count']}개)"
         except Exception:
             return '-'
-    weekly_bump_status_display.short_description = '최근7일 끌어올리기'
+    monthly_bump_status_display.short_description = '당월 끌어올리기'
 
 
 @admin.register(EquipmentFavorite)

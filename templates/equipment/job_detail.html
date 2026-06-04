@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 {% load static i18n_extras %}
 {% block extra_css %}
-<link rel="stylesheet" href="{% static 'css/jobs.css' %}?v=6">
+<link rel="stylesheet" href="{% static 'css/jobs.css' %}?v=20260602b">
 {% endblock %}
 {% block content %}
 <div class="container py-5 pb-5 pb-md-4 gn-job-detail-page">
@@ -18,6 +18,16 @@
             </p>
         </header>
 
+        <p class="gn-job-free-note small text-center text-muted mb-3" role="note">
+            <i class="bi bi-gift text-warning"></i> 굴삭기나라 모든 이용은 무료입니다.
+        </p>
+        {% if not user.is_authenticated %}
+        <div class="alert alert-light border small mb-3 gn-job-guest-notice" role="status">
+            <i class="bi bi-lock me-1"></i>연락처와 작성자 이름은 <strong>로그인 회원</strong>에게만 전체 표시됩니다.
+            <a href="{% url 'login' %}?next={{ request.path }}" class="ms-1">로그인</a>
+        </div>
+        {% endif %}
+
         <!-- 단순화: 사람구함 / 일자리구함 블록 -->
         <div class="card border-0 gn-job-light-card gn-job-simple-block">
             <div class="card-body">
@@ -29,15 +39,15 @@
                     <div class="gn-job-simple-row"><span class="gn-job-dt">급여</span><span class="gn-job-dd gn-job-pay">{% if job.pay %}{{ job.pay }}{% else %}협의후 결정{% endif %}</span></div>
                     <div class="gn-job-simple-row"><span class="gn-job-dt">모집인원</span><span class="gn-job-dd">{% if job.recruit_count %}{{ job.recruit_count }}명{% else %}—{% endif %}</span></div>
                     <div class="gn-job-simple-row"><span class="gn-job-dt">마감</span><span class="gn-job-dd">{% if job.deadline_type == 'DATE' and job.deadline %}{{ job.deadline|date:"Y-m-d" }}{% else %}채용시까지{% endif %}</span></div>
-                    <div class="gn-job-simple-row"><span class="gn-job-dt">담당자</span><span class="gn-job-dd">{{ job.writer_display|default:"—" }}</span></div>
-                    <div class="gn-job-simple-row"><span class="gn-job-dt">연락처</span><span class="gn-job-dd">{% if job.contact %}<a href="tel:{{ job.contact }}" class="text-decoration-none">{{ job.contact|format_phone }}</a>{% else %}—{% endif %}</span></div>
+                    <div class="gn-job-simple-row"><span class="gn-job-dt">담당자</span><span class="gn-job-dd">{% if can_view_job_contact %}{{ job.writer_display|default:"—" }}{% elif job.writer_display %}<span class="text-muted">로그인 후 확인</span>{% else %}—{% endif %}</span></div>
+                    <div class="gn-job-simple-row"><span class="gn-job-dt">연락처</span><span class="gn-job-dd gn-job-dd-contact">{% if job.contact %}{% if can_view_job_contact %}<a href="tel:{{ job.contact }}" class="text-decoration-none">{{ job.contact|format_phone }}</a>{% else %}<span class="text-muted">{{ job.contact|mask_phone }}</span>{% endif %}{% else %}—{% endif %}{% include "equipment/partials/job_contact_kakao_btn.html" %}</span></div>
                     {% if job.company_address %}<div class="gn-job-simple-row"><span class="gn-job-dt">주소</span><span class="gn-job-dd">{{ job.company_address }}</span></div>{% endif %}
                 </div>
                 {% else %}
                 <div class="gn-job-simple-list">
                     <div class="gn-job-simple-row"><span class="gn-job-dt">지역</span><span class="gn-job-dd">{% if job.region_sido or job.region_sigungu %}{{ job.region_sido|default:'' }} {{ job.region_sigungu|default:'' }}{% if job.location %} {{ job.location }}{% endif %}{% else %}{{ job.location|default:"—" }}{% endif %}</span></div>
-                    <div class="gn-job-simple-row"><span class="gn-job-dt">작성자</span><span class="gn-job-dd">{{ job.writer_display|default:"—" }}</span></div>
-                    <div class="gn-job-simple-row"><span class="gn-job-dt">연락처</span><span class="gn-job-dd">{% if job.contact %}<a href="tel:{{ job.contact }}" class="text-decoration-none">{{ job.contact|format_phone }}</a>{% else %}—{% endif %}</span></div>
+                    <div class="gn-job-simple-row"><span class="gn-job-dt">작성자</span><span class="gn-job-dd">{% if can_view_job_contact %}{{ job.writer_display|default:"—" }}{% elif job.writer_display %}<span class="text-muted">로그인 후 확인</span>{% else %}—{% endif %}</span></div>
+                    <div class="gn-job-simple-row"><span class="gn-job-dt">연락처</span><span class="gn-job-dd gn-job-dd-contact">{% if job.contact %}{% if can_view_job_contact %}<a href="tel:{{ job.contact }}" class="text-decoration-none">{{ job.contact|format_phone }}</a>{% else %}<span class="text-muted">{{ job.contact|mask_phone }}</span>{% endif %}{% else %}—{% endif %}{% include "equipment/partials/job_contact_kakao_btn.html" %}</span></div>
                     <div class="gn-job-simple-row"><span class="gn-job-dt">등록일</span><span class="gn-job-dd">{{ job.created_at|date:"Y-m-d" }}</span></div>
                 </div>
                 {% endif %}
