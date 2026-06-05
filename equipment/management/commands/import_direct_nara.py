@@ -132,7 +132,6 @@ class Command(BaseCommand):
             self.stdout.write("(dry-run: 저장하지 않음)")
 
         member_map = {}  # legacy_member_id (mb_num) -> User
-        phone_to_user = {}  # normalized_phone -> User
 
         if not listings_only:
             # ----- 회원 이관 -----
@@ -181,8 +180,6 @@ class Command(BaseCommand):
                         existing.user.first_name = name[:30]
                         existing.user.save(update_fields=["first_name"])
                     member_map[mb_num] = existing.user
-                    if phone:
-                        phone_to_user[phone] = existing.user
                     continue
 
                 if dry_run:
@@ -198,8 +195,6 @@ class Command(BaseCommand):
                         existing_prof.user.first_name = name[:30]
                         existing_prof.user.save(update_fields=["first_name"])
                     member_map[mb_num] = existing_prof.user
-                    if phone:
-                        phone_to_user[phone] = existing_prof.user
                     continue
                 if User.objects.filter(username=username).exists():
                     user = User.objects.get(username=username)
@@ -226,8 +221,6 @@ class Command(BaseCommand):
                             if prof:
                                 user = prof.user
                     member_map[mb_num] = user
-                    if phone:
-                        phone_to_user[phone] = user
                     continue
                 user = None
                 try:
@@ -269,19 +262,10 @@ class Command(BaseCommand):
                     else:
                         raise
                 member_map[mb_num] = user
-                if phone:
-                    phone_to_user[phone] = user
 
             self.stdout.write("회원 이관 완료: %d명" % len(member_map))
 
-        # listings_only면 기존 Profile에서 전화번호→User 매핑 구성
-        if listings_only and not phone_to_user:
-            for p in Profile.objects.select_related("user").exclude(phone__isnull=True).exclude(phone=""):
-                ph = normalize_phone(p.phone)
-                if ph:
-                    phone_to_user[ph] = p.user
-
-        # ----- 매물 이관 (전화번호로 작성자 매칭) -----
+        # ----- 매물 이관 (미연결 + unclaimed_phone_norm, 신규가입 후 내 매물 찾기로 연결) -----
         rows = run_sql(
             "direct_nara",
             "SELECT uid, cate1, model, buyprice, sdate, uname, utel, city, county, content, nara_ing FROM tb_pro ORDER BY uid"
@@ -292,7 +276,8 @@ class Command(BaseCommand):
 
         created = 0
         skipped = 0
-        no_author = 0
+        unclaimed = 0
+        no_phone = 0
 
         for row in rows:
             uid, cate1, model, buyprice, sdate, uname, utel, city, county, content, nara_ing = (
@@ -304,19 +289,11 @@ class Command(BaseCommand):
                 skipped += 1
                 continue
 
-            author = None
-            if utel:
-                ph = normalize_phone(utel)
-                author = phone_to_user.get(ph)
-                if not author:
-                    for p in Profile.objects.filter(legacy_member_id__isnull=False).select_related("user"):
-                        if normalize_phone(getattr(p, "phone", "") or "") == ph:
-                            phone_to_user[ph] = p.user
-                            author = p.user
-                            break
-
-            if not author:
-                no_author += 1
+            unclaimed_phone_norm = normalize_phone(utel) if utel else ""
+            if unclaimed_phone_norm:
+                unclaimed += 1
+            else:
+                no_phone += 1
 
             if dry_run:
                 created += 1
@@ -331,7 +308,8 @@ class Command(BaseCommand):
             try:
                 eq = Equipment.objects.create(
                     legacy_listing_id=uid,
-                    author=author,
+                    author=None,
+                    unclaimed_phone_norm=unclaimed_phone_norm,
                     equipment_type=eq_type,
                     model_name=(model or "")[:100],
                     listing_price=abs(int(buyprice)) if buyprice else 0,
@@ -350,4 +328,7 @@ class Command(BaseCommand):
             except IntegrityError:
                 skipped += 1
 
-        self.stdout.write("매물 이관: 생성 %d, 스킵(기존) %d, 작성자 없음 %d" % (created, skipped, no_author))
+        self.stdout.write(
+            "매물 이관: 생성 %d, 스킵(기존) %d, 미연결(전화있음) %d, 연락처없음 %d"
+            % (created, skipped, unclaimed, no_phone)
+        )
