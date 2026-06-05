@@ -901,6 +901,10 @@ def my_page(request):
     is_legacy_user = request.user.username.startswith('legacy_')
     bump_status = get_user_bump_status(request.user)
     attach_equipment_bump_ui_state(my_equipments, bump_status)
+    claimable_listing_count = 0
+    phone_norm = normalize_phone_digits(profile.phone)
+    if phone_norm:
+        claimable_listing_count = claimable_listings_queryset(phone_norm).count()
     return render(request, 'registration/my_page.html', {
         'profile': profile,
         'my_equipments': my_equipments,
