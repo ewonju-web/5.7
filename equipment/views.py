@@ -1,4 +1,4 @@
-from equipment.forms import UserSignupForm
+﻿from equipment.forms import UserSignupForm
 from django.contrib.auth.models import User
 from django.http import Http404, JsonResponse
 from django.shortcuts import render, redirect, get_object_or_404
@@ -18,6 +18,7 @@ from urllib.parse import parse_qs, quote, urlencode, urlparse
 import json
 
 from django.contrib.contenttypes.models import ContentType
+from django.core.cache import cache
 from django.core.exceptions import ValidationError
 from .models import (
     Equipment, JobPost, ExamPost, ExamComment, Part, EquipmentImage, PartImage, PartsShop,
@@ -44,6 +45,7 @@ from .premium_utils import (
     PREMIUM_BID_SWITCH_MEMBER_COUNT,
     BUMP_WEEKLY_LIMIT,
     get_user_bump_status,
+    attach_equipment_bump_ui_state,
     get_premium_user_ids,
     get_premium_equipment_rotation,
     get_premium_expert_cards,
@@ -68,12 +70,13 @@ from .index_listing import (
     parse_index_params,
     build_index_equipment_queryset,
     INDEX_INITIAL_COUNT,
+    INDEX_FILTER_MAX,
     VALID_CATEGORIES,
 )
 
 
 def _image_hash_from_upload(uploaded_file):
-    """업로드 파일 내용으로 MD5 해시 (동일 사진 재업로드 감지)."""
+    """?낅줈???뚯씪 ?댁슜?쇰줈 MD5 ?댁떆 (?숈씪 ?ъ쭊 ?ъ뾽濡쒕뱶 媛먯?)."""
     import hashlib
     try:
         uploaded_file.seek(0)
@@ -83,7 +86,7 @@ def _image_hash_from_upload(uploaded_file):
 
 
 def _image_hash_from_equipment(equipment):
-    """매물 대표 사진(첫 번째) 해시 (삭제 시 로그용)."""
+    """留ㅻЪ ????ъ쭊(泥?踰덉㎏) ?댁떆 (??젣 ??濡쒓렇??."""
     import hashlib
     first = equipment.images.first()
     if not first or not first.image:
@@ -96,7 +99,7 @@ def _image_hash_from_equipment(equipment):
 
 
 def _get_profile_phone_verified(user):
-    """휴대폰 본인인증 여부. Profile 없으면 생성 후 False."""
+    """?대???蹂몄씤?몄쬆 ?щ?. Profile ?놁쑝硫??앹꽦 ??False."""
     if not user or not user.is_authenticated:
         return False
     try:
@@ -107,7 +110,7 @@ def _get_profile_phone_verified(user):
 
 
 def _social_auth_login_url(provider, next_url=''):
-    """소셜 로그인 URL. process=login 및 로그인 후 복귀 경로(next) 유지."""
+    """?뚯뀥 濡쒓렇??URL. process=login 諛?濡쒓렇????蹂듦? 寃쎈줈(next) ?좎?."""
     params = {'process': 'login'}
     if next_url:
         params['next'] = next_url
@@ -115,7 +118,7 @@ def _social_auth_login_url(provider, next_url=''):
 
 
 def _login_next_url(request, explicit_next=''):
-    """로그인 후 복귀 경로 — next 파라미터 우선, 없으면 로그인 직전 페이지(매물보기 강제 이동 방지)."""
+    """濡쒓렇????蹂듦? 寃쎈줈 ??next ?뚮씪誘명꽣 ?곗꽑, ?놁쑝硫?濡쒓렇??吏곸쟾 ?섏씠吏(留ㅻЪ蹂닿린 媛뺤젣 ?대룞 諛⑹?)."""
     next_url = (explicit_next or '').strip()
     if next_url and url_has_allowed_host_and_scheme(next_url, allowed_hosts={request.get_host()}):
         return next_url
@@ -139,7 +142,7 @@ def _redirect_after_login(request, next_url='', default='index'):
 
 
 def _require_phone_verified_strict(request):
-    """로그인 + 휴대폰 본인인증 필수(스태프 제외). 업체 자진등록·현장 자재 등 공개 등록용."""
+    """濡쒓렇??+ ?대???蹂몄씤?몄쬆 ?꾩닔(?ㅽ깭???쒖쇅). ?낆껜 ?먯쭊?깅줉쨌?꾩옣 ?먯옱 ??怨듦컻 ?깅줉??"""
     if not request.user.is_authenticated:
         return redirect(reverse('login') + '?next=' + quote(request.get_full_path(), safe=''))
     if request.user.is_staff or request.user.is_superuser:
@@ -150,7 +153,7 @@ def _require_phone_verified_strict(request):
 
 
 def _user_has_social_account(user):
-    """소셜(카카오/네이버 등) 로그인으로 가입·연동된 계정인지 여부. 아이디/비밀번호만 쓰는 회원은 False."""
+    """?뚯뀥(移댁뭅???ㅼ씠踰??? 濡쒓렇?몄쑝濡?媛?끒룹뿰?숇맂 怨꾩젙?몄? ?щ?. ?꾩씠??鍮꾨?踰덊샇留??곕뒗 ?뚯썝? False."""
     if not user or not user.is_authenticated:
         return False
     try:
@@ -162,14 +165,13 @@ def _user_has_social_account(user):
 
 def _require_phone_verified(request, next_url=None):
     """
-    매물 등록·유료 결제 등 전 휴대폰 인증 필수.
-    단, 아이디/비밀번호로 가입한 회원(소셜 연동 없음)은 본인인증 생략.
-    인증 필요하고 안 됐으면 redirect 응답 반환, 통과 시 None.
+    留ㅻЪ ?깅줉쨌?좊즺 寃곗젣 ?????대????몄쬆 ?꾩닔.
+    ?? ?꾩씠??鍮꾨?踰덊샇濡?媛?낇븳 ?뚯썝(?뚯뀥 ?곕룞 ?놁쓬)? 蹂몄씤?몄쬆 ?앸왂.
+    ?몄쬆 ?꾩슂?섍퀬 ???먯쑝硫?redirect ?묐떟 諛섑솚, ?듦낵 ??None.
     """
     if not request.user.is_authenticated:
         return redirect('login')
-    # 아이디·비밀번호로만 가입한 회원은 본인인증 불필요
-    if not _user_has_social_account(request.user):
+    # ?꾩씠?붋룸퉬諛踰덊샇濡쒕쭔 媛?낇븳 ?뚯썝? 蹂몄씤?몄쬆 遺덊븘??    if not _user_has_social_account(request.user):
         return None
     if _get_profile_phone_verified(request.user):
         return None
@@ -180,7 +182,7 @@ def _require_phone_verified(request, next_url=None):
 
 
 def _build_location_text(region_sido: str, region_sigungu: str) -> str:
-    """매물 위치 문자열: 시/도·시/군/구만 사용 (상세 주소 입력 없음)."""
+    """留ㅻЪ ?꾩튂 臾몄옄?? ???꽷룹떆/援?援щ쭔 ?ъ슜 (?곸꽭 二쇱냼 ?낅젰 ?놁쓬)."""
     sido = (region_sido or '').strip()
     sigungu = (region_sigungu or '').strip()
     if sido and sigungu:
@@ -190,9 +192,8 @@ def _build_location_text(region_sido: str, region_sigungu: str) -> str:
 
 def _post_with_coalesced_weight_class(post):
     """
-    equipment_form.html 에 name=weight_class 가 중복(숨은 필드 + simple/dump)일 때
-    QueryDict.get 가 마지막 값만 쓰면 빈 문자열이 앞쪽 코드를 덮어쓴다.
-    굴삭기·지게차: EXC_/FORK_/DUMP_ 코드가 있으면 그것을 단일 weight_class 로 쓴다.
+    equipment_form.html ??name=weight_class 媛 以묐났(?⑥? ?꾨뱶 + simple/dump)????    QueryDict.get 媛 留덉?留?媛믩쭔 ?곕㈃ 鍮?臾몄옄?댁씠 ?욎そ 肄붾뱶瑜???뼱?대떎.
+    援댁궘湲걔룹?寃뚯감: EXC_/FORK_/DUMP_ 肄붾뱶媛 ?덉쑝硫?洹멸쾬???⑥씪 weight_class 濡??대떎.
     """
     if post is None:
         return post
@@ -222,15 +223,15 @@ def _post_with_coalesced_weight_class(post):
 
 
 def _is_excavator_tire_5_6_filter(sub_type: str, weight_class: str) -> bool:
-    """굴삭기 상세검색에서 '타이어식 5~6 ton' 선택 여부."""
+    """援댁궘湲??곸꽭寃?됱뿉??'??댁뼱??5~6 ton' ?좏깮 ?щ?."""
     return sub_type == 'EXC_TIRE' and weight_class == 'EXC_TIRE_LE_6'
 
 
 def _legacy_excavator_tire_5_6_q() -> Q:
     """
-    레거시 데이터 호환:
-    - 예전 이관 데이터는 sub_type/weight_class 코드가 비어있거나 잘못된 경우가 있어
-      모델명 패턴(EW60/HW60/DX55W/06W 등)도 함께 검색한다.
+    ?덇굅???곗씠???명솚:
+    - ?덉쟾 ?닿? ?곗씠?곕뒗 sub_type/weight_class 肄붾뱶媛 鍮꾩뼱?덇굅???섎せ??寃쎌슦媛 ?덉뼱
+      紐⑤뜽紐??⑦꽩(EW60/HW60/DX55W/06W ?????④퍡 寃?됲븳??
     """
     return Q(
         model_name__iregex=(
@@ -242,13 +243,13 @@ def _legacy_excavator_tire_5_6_q() -> Q:
 
 def _exclude_mislabeled_mini_crawler_in_tire_heavy_search(sub_type: str, weight_class: str):
     """
-    타이어식 06W/08W 검색인데 DB에 체인 미니(DX55 등)가 타이어+대톤수로 오표기된 매물이 섞이는 경우 제외.
-    모델명에 W(윤/타이어 변형)가 있으면 제외하지 않는다.
-    해당 조건이 아니면 None.
+    ??댁뼱??06W/08W 寃?됱씤??DB??泥댁씤 誘몃땲(DX55 ??媛 ??댁뼱+??ㅼ닔濡??ㅽ몴湲곕맂 留ㅻЪ???욎씠??寃쎌슦 ?쒖쇅.
+    紐⑤뜽紐낆뿉 W(????댁뼱 蹂??媛 ?덉쑝硫??쒖쇅?섏? ?딅뒗??
+    ?대떦 議곌굔???꾨땲硫?None.
     """
     if sub_type != "EXC_TIRE" or weight_class not in ("EXC_TIRE_LE_17", "EXC_TIRE_LE_21"):
         return None
-    # DX50~DX59, EC55, HX55 등 소형 체인 명칭 — 모델에 W가 들어가면(예: DX55W) 타이어 변형으로 본다.
+    # DX50~DX59, EC55, HX55 ???뚰삎 泥댁씤 紐낆묶 ??紐⑤뜽??W媛 ?ㅼ뼱媛硫??? DX55W) ??댁뼱 蹂?뺤쑝濡?蹂몃떎.
     return (
         Q(model_name__iregex=r"(?i)\bDX\s*5[0-9]\b(?!.*W)")
         | Q(model_name__iregex=r"(?i)\bEC\s*55\b(?!.*W)")
@@ -258,8 +259,8 @@ def _exclude_mislabeled_mini_crawler_in_tire_heavy_search(sub_type: str, weight_
 
 def legacy_redirect_equipment_uid(request, uid):
     """
-    구형 매물 URL → /equipment/<pk>/ (301).
-    /viewsale/굴삭기{uid}, /attachment/{uid} 등. uid는 이관 시 legacy_listing_id 우선, 없으면 pk로 조회.
+    援ы삎 留ㅻЪ URL ??/equipment/<pk>/ (301).
+    /viewsale/援댁궘湲?uid}, /attachment/{uid} ?? uid???닿? ??legacy_listing_id ?곗꽑, ?놁쑝硫?pk濡?議고쉶.
     """
     try:
         uid_int = int(uid)
@@ -274,7 +275,7 @@ def legacy_redirect_equipment_uid(request, uid):
 
 
 def legacy_redirect_job_uid(request, uid):
-    """구형 /job/{uid}/ → /jobs/<pk>/ (301). uid는 legacy_guin_uid 우선, 없으면 pk."""
+    """援ы삎 /job/{uid}/ ??/jobs/<pk>/ (301). uid??legacy_guin_uid ?곗꽑, ?놁쑝硫?pk."""
     try:
         uid_int = int(uid)
     except (TypeError, ValueError):
@@ -288,7 +289,7 @@ def legacy_redirect_job_uid(request, uid):
 
 
 def legacy_redirect_community_to_board(request, uid):
-    """구형 /community/{uid}/ → /board/{uid}/ (301)."""
+    """援ы삎 /community/{uid}/ ??/board/{uid}/ (301)."""
     try:
         uid_int = int(uid)
     except (TypeError, ValueError):
@@ -298,16 +299,15 @@ def legacy_redirect_community_to_board(request, uid):
 
 def board_post_detail(request, pk):
     """
-    신규 커뮤니티 상세 URL (/board/<pk>/).
-    게시판 모델 연동 전까지는 404 (구 URL 301 대상만 유효).
+    ?좉퇋 而ㅻ??덊떚 ?곸꽭 URL (/board/<pk>/).
+    寃뚯떆??紐⑤뜽 ?곕룞 ?꾧퉴吏??404 (援?URL 301 ??곷쭔 ?좏슚).
     """
     raise Http404()
 
 
 def _redirect_repaired_index_query(request):
     """
-    잘못된 GET name=/?category=... (pathname+search가 name 값으로 들어온 경우)를
-    내장 쿼리스트링을 풀어 정상 목록 URL로 302 리다이렉트한다.
+    ?섎せ??GET name=/?category=... (pathname+search媛 name 媛믪쑝濡??ㅼ뼱??寃쎌슦)瑜?    ?댁옣 荑쇰━?ㅽ듃留곸쓣 ????뺤긽 紐⑸줉 URL濡?302 由щ떎?대젆?명븳??
     """
     raw_name = (request.GET.get('name') or '').strip()
     if not raw_name.startswith('/'):
@@ -334,7 +334,7 @@ def _redirect_repaired_index_query(request):
 
 
 def _index_list_card_context(request, params, equipment_chunk, premium_author_ids, favorited_ids):
-    """목록 카드 partial 렌더용 공통 컨텍스트."""
+    """紐⑸줉 移대뱶 partial ?뚮뜑??怨듯넻 而⑦뀓?ㅽ듃."""
     query = params['query']
     hide_advanced_filters = params['hide_advanced_filters']
     filter_category = params['filter_category']
@@ -352,22 +352,22 @@ def _index_list_card_context(request, params, equipment_chunk, premium_author_id
         )
     )
     if params['premium_only'] and not query and not has_detail_filters:
-        total_count_label = "유료회원"
+        total_count_label = "?좊즺?뚯썝"
     elif query or has_detail_filters:
-        total_count_label = "검색결과"
+        total_count_label = "寃?됯껐怨?
     elif filter_category in VALID_CATEGORIES:
         category_label_map = {
-            "excavator": "굴삭기",
-            "forklift": "지게차",
-            "dump": "덤프트럭",
-            "loader": "스키로더/로더",
-            "crane": "크레인",
-            "attachment": "어태치먼트",
-            "other": "기타 중장비",
+            "excavator": "援댁궘湲?,
+            "forklift": "吏寃뚯감",
+            "dump": "?ㅽ봽?몃윮",
+            "loader": "?ㅽ궎濡쒕뜑/濡쒕뜑",
+            "crane": "?щ젅??,
+            "attachment": "?댄깭移섎㉫??,
+            "other": "湲고? 以묒옣鍮?,
         }
-        total_count_label = category_label_map.get(filter_category, "전체")
+        total_count_label = category_label_map.get(filter_category, "?꾩껜")
     else:
-        total_count_label = "전체"
+        total_count_label = "?꾩껜"
     return {
         'equipment_list': equipment_chunk,
         'premium_author_ids': premium_author_ids,
@@ -378,7 +378,7 @@ def _index_list_card_context(request, params, equipment_chunk, premium_author_id
 
 
 def index_load_more(request):
-    """더보기: offset부터 per_page개 카드 HTML(JSON) 반환."""
+    """?붾낫湲? offset遺??per_page媛?移대뱶 HTML(JSON) 諛섑솚."""
     params = parse_index_params(request)
     if params['hide_advanced_filters']:
         return JsonResponse({'error': 'not_available'}, status=400)
@@ -420,7 +420,7 @@ def index_load_more(request):
     })
 
 
-# [1] 메인 페이지 (키워드 + 정렬만)
+# [1] 硫붿씤 ?섏씠吏 (?ㅼ썙??+ ?뺣젹留?
 def index(request):
     repaired = _redirect_repaired_index_query(request)
     if repaired is not None:
@@ -446,7 +446,7 @@ def index(request):
     qs = build_index_equipment_queryset(request, params)
     total_count = qs.count()
     if hide_advanced_filters:
-        equipment_list = list(qs)
+        equipment_list = list(qs[:INDEX_FILTER_MAX])
     else:
         equipment_list = list(qs[:INDEX_INITIAL_COUNT])
 
@@ -507,7 +507,7 @@ def index(request):
 
 
 def premium_experts_test_view(request):
-    """TEST 버튼 전용: 샘플 30개(사진 포함) 미리보기 화면."""
+    """TEST 踰꾪듉 ?꾩슜: ?섑뵆 30媛??ъ쭊 ?ы븿) 誘몃━蹂닿린 ?붾㈃."""
     seeds = list(
         Equipment.objects.visible()
         .filter(equipment_type='excavator')
@@ -523,10 +523,10 @@ def premium_experts_test_view(request):
             first_image = base.images.first()
             sample_items.append({
                 'id': i + 1,
-                'title': f"[TEST {i + 1:02d}] {base.model_name or '굴삭기 샘플 매물'}",
-                'manufacturer': base.manufacturer or '테스트제조사',
+                'title': f"[TEST {i + 1:02d}] {base.model_name or '援댁궘湲??섑뵆 留ㅻЪ'}",
+                'manufacturer': base.manufacturer or '?뚯뒪?몄젣議곗궗',
                 'year': base.year_manufactured or '-',
-                'location': base.current_location or base.region_sido or '테스트지역',
+                'location': base.current_location or base.region_sido or '?뚯뒪?몄???,
                 'price': base.listing_price,
                 'image_url': first_image.image.url if first_image else '',
                 'detail_url': reverse('equipment_detail', args=[base.pk]),
@@ -535,10 +535,10 @@ def premium_experts_test_view(request):
         for i in range(30):
             sample_items.append({
                 'id': i + 1,
-                'title': f"[TEST {i + 1:02d}] 굴삭기 샘플 매물",
-                'manufacturer': '테스트제조사',
+                'title': f"[TEST {i + 1:02d}] 援댁궘湲??섑뵆 留ㅻЪ",
+                'manufacturer': '?뚯뒪?몄젣議곗궗',
                 'year': '-',
-                'location': '테스트지역',
+                'location': '?뚯뒪?몄???,
                 'price': None,
                 'image_url': '',
                 'detail_url': reverse('index'),
@@ -549,15 +549,14 @@ def premium_experts_test_view(request):
     })
 
 
-# [2] 로그인 관련
-def user_login(request):
+# [2] 濡쒓렇??愿??def user_login(request):
     if request.user.is_authenticated:
         return _redirect_after_login(request, request.GET.get('next', ''))
     if request.method == 'POST':
         username = (request.POST.get('username') or '').strip()
         password = request.POST.get('password') or ''
         if not username or not password:
-            messages.error(request, '아이디와 비밀번호를 입력하세요.')
+            messages.error(request, '?꾩씠?붿? 鍮꾨?踰덊샇瑜??낅젰?섏꽭??')
             next_url = request.POST.get('next') or request.GET.get('next', '')
             return render(request, 'registration/login.html', {
                 'next_url': next_url,
@@ -565,25 +564,25 @@ def user_login(request):
                 'naver_login_url': _social_auth_login_url('naver', next_url),
             })
         user = authenticate(request, username=username, password=password)
-        # 보완 로그인은 활성 계정에만 제한한다.
-        # (탈퇴 계정은 자동 복구하지 않고 신규가입 흐름으로 유도)
+        # 蹂댁셿 濡쒓렇?몄? ?쒖꽦 怨꾩젙?먮쭔 ?쒗븳?쒕떎.
+        # (?덊눜 怨꾩젙? ?먮룞 蹂듦뎄?섏? ?딄퀬 ?좉퇋媛???먮쫫?쇰줈 ?좊룄)
         if user is None:
-            # 일부 환경에서 authenticate 실패가 나는 경우를 보완하되,
-            # is_active=True 사용자만 허용한다.
+            # ?쇰? ?섍꼍?먯꽌 authenticate ?ㅽ뙣媛 ?섎뒗 寃쎌슦瑜?蹂댁셿?섎릺,
+            # is_active=True ?ъ슜?먮쭔 ?덉슜?쒕떎.
             candidate = User.objects.filter(username=username, is_active=True).first()
             if candidate and candidate.check_password(password):
                 candidate.backend = 'django.contrib.auth.backends.ModelBackend'
                 user = candidate
         if user is not None:
-            # 운영 정책: 어드민 계정은 일반 서비스 로그인에서 사용하지 않음
-            # (관리자 계정은 /admin/ 에서만 로그인)
+            # ?댁쁺 ?뺤콉: ?대뱶誘?怨꾩젙? ?쇰컲 ?쒕퉬??濡쒓렇?몄뿉???ъ슜?섏? ?딆쓬
+            # (愿由ъ옄 怨꾩젙? /admin/ ?먯꽌留?濡쒓렇??
             if user.is_staff or user.is_superuser:
-                messages.error(request, '관리자 계정은 관리자 페이지에서만 로그인할 수 있습니다.')
+                messages.error(request, '愿由ъ옄 怨꾩젙? 愿由ъ옄 ?섏씠吏?먯꽌留?濡쒓렇?명븷 ???덉뒿?덈떎.')
                 return redirect('/admin/login/')
             login(request, user)
             next_url = request.POST.get('next') or request.GET.get('next', '')
             return _redirect_after_login(request, next_url)
-        messages.error(request, '아이디 또는 비밀번호가 올바르지 않습니다.')
+        messages.error(request, '?꾩씠???먮뒗 鍮꾨?踰덊샇媛 ?щ컮瑜댁? ?딆뒿?덈떎.')
     next_url = _login_next_url(
         request,
         request.GET.get('next') or request.POST.get('next', '') or '',
@@ -598,14 +597,14 @@ def user_login(request):
 
 
 def user_logout(request):
-    # 세션에 남은 플래시(소셜 로그인 성공 등)를 비우지 않으면 /login/ 등에서 뒤늦게 보일 수 있음
+    # ?몄뀡???⑥? ?뚮옒???뚯뀥 濡쒓렇???깃났 ??瑜?鍮꾩슦吏 ?딆쑝硫?/login/ ?깆뿉???ㅻ뒭寃?蹂댁씪 ???덉쓬
     list(messages.get_messages(request))
     logout(request)
     return redirect('index')
 
 
 def _signup_open_required(request):
-    """신규 가입 비활성 시 안내 페이지."""
+    """?좉퇋 媛??鍮꾪솢?????덈궡 ?섏씠吏."""
     from django.conf import settings
     if getattr(settings, 'SIGNUP_ENABLED', True):
         return None
@@ -613,17 +612,17 @@ def _signup_open_required(request):
 
 
 def signup_soon(request):
-    """신규 회원가입 준비 중 안내 (SIGNUP_ENABLED=False)."""
+    """?좉퇋 ?뚯썝媛??以鍮?以??덈궡 (SIGNUP_ENABLED=False)."""
     if request.user.is_authenticated:
         return redirect('my_page')
     return render(request, 'registration/signup_soon.html')
 
 
 def join_choice(request):
-    """회원가입 진입: 휴대폰 입력 → 기존 회원인지 확인 → 기존 전환 또는 신규 가입 안내."""
+    """?뚯썝媛??吏꾩엯: ?대????낅젰 ??湲곗〈 ?뚯썝?몄? ?뺤씤 ??湲곗〈 ?꾪솚 ?먮뒗 ?좉퇋 媛???덈궡."""
     if request.user.is_authenticated:
         return redirect('my_page')
-    # 회원가입 흐름에서는 이름 매칭 안 함 (legacy 전환 전용 세션 제거)
+    # ?뚯썝媛???먮쫫?먯꽌???대쫫 留ㅼ묶 ????(legacy ?꾪솚 ?꾩슜 ?몄뀡 ?쒓굅)
     if 'legacy_convert_name' in request.session:
         del request.session['legacy_convert_name']
         request.session.modified = True
@@ -637,14 +636,14 @@ def join_choice(request):
 
 
 def phone_send(request):
-    """인증번호 발송. POST phone → 6자리 발송, 재발송 30초 제한. JSON."""
+    """?몄쬆踰덊샇 諛쒖넚. POST phone ??6?먮━ 諛쒖넚, ?щ컻??30珥??쒗븳. JSON."""
     from django.http import JsonResponse
     if request.method != 'POST':
         return JsonResponse({'ok': False, 'error': 'Method not allowed'}, status=405)
     phone_raw = (request.POST.get('phone') or '').strip()
     phone_norm = _normalize_phone(phone_raw)
     if not phone_norm or len(phone_norm) < 10:
-        return JsonResponse({'ok': False, 'error': '휴대폰 번호를 정확히 입력해 주세요.'})
+        return JsonResponse({'ok': False, 'error': '?대???踰덊샇瑜??뺥솗???낅젰??二쇱꽭??'})
     from .phone_verify_service import send_code
     success, err = send_code(phone_norm)
     if not success:
@@ -653,7 +652,7 @@ def phone_send(request):
 
 
 def legacy_convert_send_code(request):
-    """기존 회원 전환: 이름+휴대폰 저장 후 인증번호 발송. POST name, phone. JSON."""
+    """湲곗〈 ?뚯썝 ?꾪솚: ?대쫫+?대?????????몄쬆踰덊샇 諛쒖넚. POST name, phone. JSON."""
     from django.http import JsonResponse
     if request.method != 'POST':
         return JsonResponse({'ok': False, 'error': 'Method not allowed'}, status=405)
@@ -661,7 +660,7 @@ def legacy_convert_send_code(request):
     phone_raw = (request.POST.get('phone') or '').strip()
     phone_norm = _normalize_phone(phone_raw)
     if not phone_norm or len(phone_norm) < 10:
-        return JsonResponse({'ok': False, 'error': '휴대폰 번호를 정확히 입력해 주세요.'})
+        return JsonResponse({'ok': False, 'error': '?대???踰덊샇瑜??뺥솗???낅젰??二쇱꽭??'})
     request.session['legacy_convert_name'] = name or ''
     request.session.modified = True
     from .phone_verify_service import send_code
@@ -672,7 +671,7 @@ def legacy_convert_send_code(request):
 
 
 def phone_verify(request):
-    """인증번호 검증. POST phone, code → 성공 시 session['verified_phone'] 설정. 5회 초과 시 실패. JSON."""
+    """?몄쬆踰덊샇 寃利? POST phone, code ???깃났 ??session['verified_phone'] ?ㅼ젙. 5??珥덇낵 ???ㅽ뙣. JSON."""
     from django.http import JsonResponse
     if request.method != 'POST':
         return JsonResponse({'ok': False, 'error': 'Method not allowed'}, status=405)
@@ -680,15 +679,14 @@ def phone_verify(request):
     code = (request.POST.get('code') or '').strip()
     phone_norm = _normalize_phone(phone_raw)
     if not phone_norm or len(phone_norm) < 10:
-        return JsonResponse({'ok': False, 'error': '휴대폰 번호를 입력해 주세요.'})
+        return JsonResponse({'ok': False, 'error': '?대???踰덊샇瑜??낅젰??二쇱꽭??'})
     if not code or len(code) != 6:
-        return JsonResponse({'ok': False, 'error': '인증번호 6자리를 입력해 주세요.'})
+        return JsonResponse({'ok': False, 'error': '?몄쬆踰덊샇 6?먮━瑜??낅젰??二쇱꽭??'})
     from .phone_verify_service import verify_code
     success, err = verify_code(phone_norm, code)
     if not success:
         return JsonResponse({'ok': False, 'error': err})
-    request.session['verified_phone'] = phone_norm  # 하이픈 제거 후 저장
-    request.session.modified = True
+    request.session['verified_phone'] = phone_norm  # ?섏씠???쒓굅 ?????    request.session.modified = True
     return JsonResponse({'ok': True})
 
 
@@ -714,7 +712,7 @@ def join_check(request):
 
 
 def _normalize_phone(s):
-    """숫자만 추출 (010-1234-5678 → 01012345678)."""
+    """?レ옄留?異붿텧 (010-1234-5678 ??01012345678)."""
     if not s:
         return ''
     import re
@@ -722,7 +720,7 @@ def _normalize_phone(s):
 
 
 def legacy_convert_intro(request):
-    """기존 회원 전환: 이름+휴대폰 → 인증번호 확인 → 기존 정보 조회 → 로그인 후 정식 전환."""
+    """湲곗〈 ?뚯썝 ?꾪솚: ?대쫫+?대??????몄쬆踰덊샇 ?뺤씤 ??湲곗〈 ?뺣낫 議고쉶 ??濡쒓렇?????뺤떇 ?꾪솚."""
     if request.user.is_authenticated and request.user.username.startswith('legacy_'):
         return redirect('legacy_convert')
     if request.user.is_authenticated:
@@ -733,7 +731,7 @@ def legacy_convert_intro(request):
 
 
 def signup_choices(request):
-    """신규 회원가입: 카카오/네이버/일반 선택 (필요 시점에만 휴대폰 인증·사업자·유료)."""
+    """?좉퇋 ?뚯썝媛?? 移댁뭅???ㅼ씠踰??쇰컲 ?좏깮 (?꾩슂 ?쒖젏?먮쭔 ?대????몄쬆쨌?ъ뾽?먃룹쑀猷?."""
     blocked = _signup_open_required(request)
     if blocked:
         return blocked
@@ -775,7 +773,7 @@ def signup(request):
 
 
 def signup_done(request):
-    """일반 회원가입 완료 안내 화면(로그인 페이지로 이동)."""
+    """?쇰컲 ?뚯썝媛???꾨즺 ?덈궡 ?붾㈃(濡쒓렇???섏씠吏濡??대룞)."""
     pending_listing_count = int(request.session.get('pending_listing_count') or 0)
     return render(
         request,
@@ -788,18 +786,18 @@ def check_username(request):
     from django.conf import settings
     from django.http import JsonResponse
     if not getattr(settings, 'SIGNUP_ENABLED', True):
-        return JsonResponse({"ok": False, "msg": "회원가입은 곧 오픈됩니다."})
+        return JsonResponse({"ok": False, "msg": "?뚯썝媛?낆? 怨??ㅽ뵂?⑸땲??"})
     username = (request.GET.get("username") or "").strip()
     if not username:
-        return JsonResponse({"ok": False, "msg": "아이디를 입력하세요."})
+        return JsonResponse({"ok": False, "msg": "?꾩씠?붾? ?낅젰?섏꽭??"})
     existing = User.objects.filter(username=username).first()
     if existing and existing.is_active:
-        return JsonResponse({"ok": False, "msg": "이미 사용 중인 아이디입니다."})
-    return JsonResponse({"ok": True, "msg": "사용 가능한 아이디입니다."})
+        return JsonResponse({"ok": False, "msg": "?대? ?ъ슜 以묒씤 ?꾩씠?붿엯?덈떎."})
+    return JsonResponse({"ok": True, "msg": "?ъ슜 媛?ν븳 ?꾩씠?붿엯?덈떎."})
 
 
 def find_username(request):
-    """이메일로 가입 시 사용한 아이디(들) 안내"""
+    """?대찓?쇰줈 媛?????ъ슜???꾩씠???? ?덈궡"""
     result = None
     if request.method == 'POST':
         email = (request.POST.get('email') or '').strip().lower()
@@ -807,7 +805,7 @@ def find_username(request):
             users = User.objects.filter(email__iexact=email).values_list('username', flat=True)
             result = list(users) if users else []
         else:
-            messages.error(request, '이메일을 입력하세요.')
+            messages.error(request, '?대찓?쇱쓣 ?낅젰?섏꽭??')
     return render(request, 'registration/find_username.html', {'result': result})
 
 
@@ -822,7 +820,7 @@ def my_page(request):
 
     if request.method == 'POST' and request.POST.get('action') in ('update_premium_card', 'update_bio'):
         if not profile.is_premium_active:
-            messages.warning(request, '명함 설정은 유료회원만 이용할 수 있습니다.')
+            messages.warning(request, '紐낇븿 ?ㅼ젙? ?좊즺?뚯썝留??댁슜?????덉뒿?덈떎.')
             return redirect('my_page')
         company_name = (request.POST.get('company_name') or '').strip()
         profile.company_name = company_name or None
@@ -840,10 +838,10 @@ def my_page(request):
         elif request.FILES.get('profile_photo'):
             profile.profile_photo = request.FILES['profile_photo']
         profile.save()
-        messages.success(request, '유료회원 명함 정보가 저장되었습니다.')
+        messages.success(request, '?좊즺?뚯썝 紐낇븿 ?뺣낫媛 ??λ릺?덉뒿?덈떎.')
         return redirect('my_page')
 
-    my_equipments = (
+    my_equipments = list(
         Equipment.objects
         .filter(author=request.user)
         .annotate(wish_count=Count('favorited_by', distinct=True))
@@ -857,7 +855,7 @@ def my_page(request):
         .order_by('-favorited_by__created_at')
     )
     fav_parts = Part.objects.filter(favorited_by__user=request.user).order_by('-favorited_by__created_at')
-    total_views = my_equipments.aggregate(total=Coalesce(Sum('view_count'), 0))['total'] or 0
+    total_views = sum((e.view_count or 0) for e in my_equipments)
     premium_region_inquiry_alerts = []
     if profile.is_premium_active:
         try:
@@ -880,7 +878,7 @@ def my_page(request):
                 if sido and sigungu:
                     region_label = f"{sido} {sigungu}"
                 else:
-                    region_label = sido or "지역 미입력"
+                    region_label = sido or "吏??誘몄엯??
                 premium_region_inquiry_alerts.append({
                     'region_label': region_label,
                     'unread_count': row.get('unread_count') or 0,
@@ -890,17 +888,14 @@ def my_page(request):
             premium_region_inquiry_alerts = []
 
     stats = {
-        'my_count': my_equipments.count(),
+        'my_count': len(my_equipments),
         'fav_count': fav_equipments.count() + fav_parts.count(),
         'total_views': total_views,
-        'grade_label': '유료회원' if profile.is_premium_active else '무료회원',
+        'grade_label': '?좊즺?뚯썝' if profile.is_premium_active else '臾대즺?뚯썝',
     }
     is_legacy_user = request.user.username.startswith('legacy_')
     bump_status = get_user_bump_status(request.user)
-    claimable_listing_count = 0
-    phone_norm = normalize_phone_digits(profile.phone)
-    if phone_norm:
-        claimable_listing_count = claimable_listings_queryset(phone_norm).count()
+    attach_equipment_bump_ui_state(my_equipments, bump_status)
     return render(request, 'registration/my_page.html', {
         'profile': profile,
         'my_equipments': my_equipments,
@@ -919,7 +914,7 @@ def my_page(request):
 
 
 def billing_upgrade(request):
-    """유료 회원 · 광고 안내 페이지."""
+    """?좊즺 ?뚯썝 쨌 愿묎퀬 ?덈궡 ?섏씠吏."""
     return render(request, 'billing/upgrade.html', {
         'kakao_inquiry_url': getattr(settings, 'KAKAO_INQUIRY_URL', 'https://open.kakao.com/'),
         'slot': (request.GET.get('slot') or '').strip(),
@@ -940,20 +935,21 @@ def privacy_policy(request):
 
 
 def company_intro(request):
-    """회사소개 페이지."""
+    """?뚯궗?뚭컻 ?섏씠吏."""
     return render(request, 'equipment/company_intro.html', {
-        'company_address': '충청북도 음성군 소이면 소이로 313',
+        'company_address': '異⑹껌遺곷룄 ?뚯꽦援??뚯씠硫??뚯씠濡?313',
         'company_lat': 36.9312186590944,
         'company_lng': 127.752392155881,
         'kakao_map_js_key': _get_kakao_map_js_key(),
+        'show_parts_as_section': True,
     })
 
 
 @login_required(login_url='/login/')
 def find_my_listings(request):
     """
-    기존 매물(작성자 없음 + unclaimed_phone_norm)을 프로필 전화번호로 찾아 계정에 연결.
-    소셜 가입자는 본인인증 완료 후 이용.
+    湲곗〈 留ㅻЪ(?묒꽦???놁쓬 + unclaimed_phone_norm)???꾨줈???꾪솕踰덊샇濡?李얠븘 怨꾩젙???곌껐.
+    ?뚯뀥 媛?낆옄??蹂몄씤?몄쬆 ?꾨즺 ???댁슜.
     """
     if _user_has_social_account(request.user):
         need = _require_phone_verified(request, reverse('find_my_listings'))
@@ -969,7 +965,7 @@ def find_my_listings(request):
     if not norm:
         messages.error(
             request,
-            '연락처가 등록되어 있어야 합니다. 마이페이지에서 전화번호를 입력한 뒤 휴대폰 본인인증을 완료해 주세요.',
+            '?곕씫泥섍? ?깅줉?섏뼱 ?덉뼱???⑸땲?? 留덉씠?섏씠吏?먯꽌 ?꾪솕踰덊샇瑜??낅젰?????대???蹂몄씤?몄쬆???꾨즺??二쇱꽭??',
         )
         return redirect('my_page')
 
@@ -986,7 +982,7 @@ def find_my_listings(request):
             except (TypeError, ValueError):
                 continue
         if not id_list:
-            messages.warning(request, '연결할 매물을 선택해 주세요.')
+            messages.warning(request, '?곌껐??留ㅻЪ???좏깮??二쇱꽭??')
             return redirect('find_my_listings')
 
         claimable_q = claimable_listings_q(norm)
@@ -1010,11 +1006,9 @@ def find_my_listings(request):
                 claimed += 1
 
         if claimed:
-            request.session.pop('pending_listing_count', None)
-            request.session.modified = True
-            messages.success(request, f'{claimed}건의 매물을 내 계정에 연결했습니다.')
+            messages.success(request, f'{claimed}嫄댁쓽 留ㅻЪ????怨꾩젙???곌껐?덉뒿?덈떎.')
         else:
-            messages.warning(request, '연결할 수 있는 매물이 없습니다. 이미 연결되었거나 조건이 맞지 않습니다.')
+            messages.warning(request, '?곌껐?????덈뒗 留ㅻЪ???놁뒿?덈떎. ?대? ?곌껐?섏뿀嫄곕굹 議곌굔??留욎? ?딆뒿?덈떎.')
         return redirect('my_page')
 
     return render(
@@ -1030,9 +1024,9 @@ def find_my_listings(request):
 @login_required(login_url='/login/')
 def verify_phone_page(request):
     """
-    휴대폰 본인인증 페이지. 매물 등록·유료 결제 전 필수.
-    실제 인증 API(네이버/카카오/나이스 등) 연동 전까지는 안내 페이지.
-    DEBUG 시 ?test=1 로 테스트 인증 가능.
+    ?대???蹂몄씤?몄쬆 ?섏씠吏. 留ㅻЪ ?깅줉쨌?좊즺 寃곗젣 ???꾩닔.
+    ?ㅼ젣 ?몄쬆 API(?ㅼ씠踰?移댁뭅???섏씠???? ?곕룞 ?꾧퉴吏???덈궡 ?섏씠吏.
+    DEBUG ???test=1 濡??뚯뒪???몄쬆 媛??
     """
     if _get_profile_phone_verified(request.user):
         next_url = request.GET.get('next', '').strip()
@@ -1042,7 +1036,7 @@ def verify_phone_page(request):
 
     if request.method == 'POST':
         phone = (request.POST.get('phone') or '').strip()
-        # DEBUG 시 테스트 인증 (실서비스에서는 제거 또는 비활성화)
+        # DEBUG ???뚯뒪???몄쬆 (?ㅼ꽌鍮꾩뒪?먯꽌???쒓굅 ?먮뒗 鍮꾪솢?깊솕)
         next_url = (request.POST.get('next') or request.GET.get('next') or '').strip()
         if getattr(settings, 'DEBUG', False) and request.GET.get('test'):
             try:
@@ -1051,17 +1045,17 @@ def verify_phone_page(request):
                 profile.phone_verified = True
                 profile.phone_verified_at = timezone.now()
                 profile.save()
-                messages.success(request, '휴대폰 인증이 완료되었습니다. (테스트 모드)')
+                messages.success(request, '?대????몄쬆???꾨즺?섏뿀?듬땲?? (?뚯뒪??紐⑤뱶)')
                 if next_url and url_has_allowed_host_and_scheme(next_url, request.get_host()):
                     return redirect(next_url)
                 return redirect('my_page')
             except Profile.DoesNotExist:
                 Profile.objects.create(user=request.user, phone=phone or '', phone_verified=True, phone_verified_at=timezone.now())
-                messages.success(request, '휴대폰 인증이 완료되었습니다. (테스트 모드)')
+                messages.success(request, '?대????몄쬆???꾨즺?섏뿀?듬땲?? (?뚯뒪??紐⑤뱶)')
                 if next_url and url_has_allowed_host_and_scheme(next_url, request.get_host()):
                     return redirect(next_url)
                 return redirect('my_page')
-        messages.info(request, '본인인증 API 연동 후 이용 가능합니다. 문의: 관리자.')
+        messages.info(request, '蹂몄씤?몄쬆 API ?곕룞 ???댁슜 媛?ν빀?덈떎. 臾몄쓽: 愿由ъ옄.')
     next_url = request.GET.get('next', '')
     try:
         profile = Profile.objects.get(user=request.user)
@@ -1078,19 +1072,18 @@ def verify_phone_page(request):
 @login_required(login_url='/login/')
 def legacy_convert(request):
     """
-    이관 회원(legacy_* 아이디) 정식 회원 전환: 새 아이디·이메일·비밀번호 설정.
-    회원가입 인증에서 온 경우 session['verified_phone'] → Profile.phone_verified 처리.
+    ?닿? ?뚯썝(legacy_* ?꾩씠?? ?뺤떇 ?뚯썝 ?꾪솚: ???꾩씠?붋룹씠硫붿씪쨌鍮꾨?踰덊샇 ?ㅼ젙.
+    ?뚯썝媛???몄쬆?먯꽌 ??寃쎌슦 session['verified_phone'] ??Profile.phone_verified 泥섎━.
     """
     user = request.user
     if not user.username.startswith('legacy_'):
-        messages.info(request, '이미 정식 회원이거나 전환 대상이 아닙니다.')
+        messages.info(request, '?대? ?뺤떇 ?뚯썝?닿굅???꾪솚 ??곸씠 ?꾨떃?덈떎.')
         return redirect('my_page')
     verified_phone = request.session.pop('verified_phone', None)
     if verified_phone:
         try:
             profile = Profile.objects.get(user=user)
-            profile.phone = verified_phone  # 하이픈 제거된 번호 저장
-            profile.phone_verified = True
+            profile.phone = verified_phone  # ?섏씠???쒓굅??踰덊샇 ???            profile.phone_verified = True
             profile.phone_verified_at = timezone.now()
             profile.save(update_fields=['phone', 'phone_verified', 'phone_verified_at'])
         except Profile.DoesNotExist:
@@ -1104,17 +1097,17 @@ def legacy_convert(request):
 
         errors = []
         if not new_username:
-            errors.append('새 로그인 아이디를 입력하세요.')
+            errors.append('??濡쒓렇???꾩씠?붾? ?낅젰?섏꽭??')
         elif new_username.startswith('legacy_'):
-            errors.append('새 아이디는 legacy_ 로 시작할 수 없습니다.')
+            errors.append('???꾩씠?붾뒗 legacy_ 濡??쒖옉?????놁뒿?덈떎.')
         elif User.objects.filter(username=new_username, is_active=True).exclude(pk=user.pk).exists():
-            errors.append('이미 사용 중인 아이디입니다.')
+            errors.append('?대? ?ъ슜 以묒씤 ?꾩씠?붿엯?덈떎.')
         if not email:
-            errors.append('이메일을 입력하세요.')
+            errors.append('?대찓?쇱쓣 ?낅젰?섏꽭??')
         if len(password1) < 8:
-            errors.append('비밀번호는 8자 이상이어야 합니다.')
+            errors.append('鍮꾨?踰덊샇??8???댁긽?댁뼱???⑸땲??')
         elif password1 != password2:
-            errors.append('비밀번호가 일치하지 않습니다.')
+            errors.append('鍮꾨?踰덊샇媛 ?쇱튂?섏? ?딆뒿?덈떎.')
 
         if errors:
             for msg in errors:
@@ -1128,10 +1121,10 @@ def legacy_convert(request):
         user.email = email
         user.set_password(password1)
         user.save()
-        # 비밀번호 변경 후 세션 유지 (Django는 비밀번호 바뀌면 세션 무효화할 수 있음)
+        # 鍮꾨?踰덊샇 蹂寃????몄뀡 ?좎? (Django??鍮꾨?踰덊샇 諛붾뚮㈃ ?몄뀡 臾댄슚?뷀븷 ???덉쓬)
         from django.contrib.auth import update_session_auth_hash
         update_session_auth_hash(request, user)
-        messages.success(request, '정식 회원 전환이 완료되었습니다. 새 아이디로 로그인해 이용해 주세요.')
+        messages.success(request, '?뺤떇 ?뚯썝 ?꾪솚???꾨즺?섏뿀?듬땲?? ???꾩씠?붾줈 濡쒓렇?명빐 ?댁슜??二쇱꽭??')
         return redirect('my_page')
 
     return render(request, 'registration/legacy_convert.html', {})
@@ -1140,11 +1133,11 @@ def legacy_convert(request):
 @login_required(login_url='/login/')
 def account_delete(request):
     """
-    회원 탈퇴: 계정 비활성화 + 매물 보관 정책 적용.
-    - GET: 확인 페이지
+    ?뚯썝 ?덊눜: 怨꾩젙 鍮꾪솢?깊솕 + 留ㅻЪ 蹂닿? ?뺤콉 ?곸슜.
+    - GET: ?뺤씤 ?섏씠吏
     - POST:
-      - 기본: 매물 6개월 보관 후 자동 삭제 예약
-      - 옵션 선택 시: 매물 즉시 삭제
+      - 湲곕낯: 留ㅻЪ 6媛쒖썡 蹂닿? ???먮룞 ??젣 ?덉빟
+      - ?듭뀡 ?좏깮 ?? 留ㅻЪ 利됱떆 ??젣
     """
     user = request.user
 
@@ -1155,20 +1148,20 @@ def account_delete(request):
     now_ts = timezone.now()
     purge_at = now_ts + timedelta(days=180)
 
-    # 매물: 기본은 6개월 보관, 선택 시 즉시 삭제
+    # 留ㅻЪ: 湲곕낯? 6媛쒖썡 蹂닿?, ?좏깮 ??利됱떆 ??젣
     if delete_listings_now:
         Equipment.objects.filter(author=user).delete()
     else:
-        # author를 유지해야 목록/시세 참고 데이터로 계속 노출됩니다.
+        # author瑜??좎??댁빞 紐⑸줉/?쒖꽭 李멸퀬 ?곗씠?곕줈 怨꾩냽 ?몄텧?⑸땲??
         Equipment.objects.filter(author=user).update(is_sold=True)
 
-    # 기타 작성 콘텐츠는 즉시 삭제
+    # 湲고? ?묒꽦 肄섑뀗痢좊뒗 利됱떆 ??젣
     Part.objects.filter(author=user).delete()
     JobPost.objects.filter(author=user).delete()
     SoilPost.objects.filter(author=user).delete()
 
-    # 소셜 계정 연결 해제:
-    # 탈퇴 후 재가입은 "신규가입" 정책이므로 기존 소셜 연결을 끊어 inactive 루프로 빠지지 않게 한다.
+    # ?뚯뀥 怨꾩젙 ?곌껐 ?댁젣:
+    # ?덊눜 ???ш??낆? "?좉퇋媛?? ?뺤콉?대?濡?湲곗〈 ?뚯뀥 ?곌껐???딆뼱 inactive 猷⑦봽濡?鍮좎?吏 ?딄쾶 ?쒕떎.
     try:
         from allauth.socialaccount.models import SocialAccount
         SocialAccount.objects.filter(user=user).delete()
@@ -1184,87 +1177,87 @@ def account_delete(request):
     profile, _ = Profile.objects.get_or_create(user=user)
     profile.withdrawn_at = now_ts
     profile.listing_purge_at = None if delete_listings_now else purge_at
-    # 정책: 탈퇴 후 재가입은 신규회원가입으로 처리
-    # -> legacy_member_id를 비워 기존회원 전환 탐지 대상에서 제외
+    # ?뺤콉: ?덊눜 ???ш??낆? ?좉퇋?뚯썝媛?낆쑝濡?泥섎━
+    # -> legacy_member_id瑜?鍮꾩썙 湲곗〈?뚯썝 ?꾪솚 ?먯? ??곸뿉???쒖쇅
     profile.legacy_member_id = None
     profile.save(update_fields=['withdrawn_at', 'listing_purge_at', 'legacy_member_id'])
 
-    # 로그인 차단용 비활성화 처리 (데이터 보관 목적)
+    # 濡쒓렇??李⑤떒??鍮꾪솢?깊솕 泥섎━ (?곗씠??蹂닿? 紐⑹쟻)
     user.is_active = False
     user.set_unusable_password()
     user.save(update_fields=['is_active', 'password'])
     logout(request)
 
     if delete_listings_now:
-        messages.success(request, f'"{username}" 계정 탈퇴 및 매물 즉시 삭제가 완료되었습니다.')
+        messages.success(request, f'"{username}" 怨꾩젙 ?덊눜 諛?留ㅻЪ 利됱떆 ??젣媛 ?꾨즺?섏뿀?듬땲??')
     else:
         messages.success(
             request,
-            f'"{username}" 계정 탈퇴가 완료되었습니다. 등록 매물은 시세 참고용으로 6개월 보관 후 자동 삭제됩니다.',
+            f'"{username}" 怨꾩젙 ?덊눜媛 ?꾨즺?섏뿀?듬땲?? ?깅줉 留ㅻЪ? ?쒖꽭 李멸퀬?⑹쑝濡?6媛쒖썡 蹂닿? ???먮룞 ??젣?⑸땲??',
         )
     return redirect('index')
 
 
 def _job_list_equipment_q(equipment_key: str):
-    """구인구직 기종 선택 → 제목·내용·필요장비 필드 OR 검색."""
+    """援ъ씤援ъ쭅 湲곗쥌 ?좏깮 ???쒕ぉ쨌?댁슜쨌?꾩슂?λ퉬 ?꾨뱶 OR 寃??"""
     if not equipment_key:
         return None
     if equipment_key == 'excavator':
         return (
-            Q(equipment_type__icontains='굴삭')
-            | Q(title__icontains='굴삭')
-            | Q(content__icontains='굴삭')
+            Q(equipment_type__icontains='援댁궘')
+            | Q(title__icontains='援댁궘')
+            | Q(content__icontains='援댁궘')
         )
     if equipment_key == 'forklift':
         return (
-            Q(equipment_type__icontains='지게')
-            | Q(title__icontains='지게차')
-            | Q(content__icontains='지게차')
+            Q(equipment_type__icontains='吏寃?)
+            | Q(title__icontains='吏寃뚯감')
+            | Q(content__icontains='吏寃뚯감')
         )
     if equipment_key == 'crane':
         return (
-            Q(equipment_type__icontains='크레인')
-            | Q(title__icontains='크레인')
-            | Q(content__icontains='크레인')
+            Q(equipment_type__icontains='?щ젅??)
+            | Q(title__icontains='?щ젅??)
+            | Q(content__icontains='?щ젅??)
         )
     if equipment_key == 'site':
         return (
-            Q(equipment_type__icontains='건설')
-            | Q(equipment_type__icontains='현장')
-            | Q(title__icontains='건설현장')
-            | Q(content__icontains='건설현장')
-            | Q(title__icontains='건설')
-            | Q(content__icontains='건설')
+            Q(equipment_type__icontains='嫄댁꽕')
+            | Q(equipment_type__icontains='?꾩옣')
+            | Q(title__icontains='嫄댁꽕?꾩옣')
+            | Q(content__icontains='嫄댁꽕?꾩옣')
+            | Q(title__icontains='嫄댁꽕')
+            | Q(content__icontains='嫄댁꽕')
         )
     if equipment_key == 'etc':
         return (
-            Q(equipment_type__icontains='기타')
-            | Q(title__icontains='기타')
-            | Q(content__icontains='기타')
+            Q(equipment_type__icontains='湲고?')
+            | Q(title__icontains='湲고?')
+            | Q(content__icontains='湲고?')
         )
     return None
 
 
 JOB_EQUIPMENT_KEYS = frozenset({'excavator', 'forklift', 'crane', 'site', 'etc'})
 JOB_EQUIPMENT_LABEL_MAP = {
-    'excavator': '굴삭기',
-    'forklift': '지게차',
-    'crane': '크레인기사',
-    'site': '건설현장',
-    'etc': '기타',
+    'excavator': '援댁궘湲?,
+    'forklift': '吏寃뚯감',
+    'crane': '?щ젅?멸린??,
+    'site': '嫄댁꽕?꾩옣',
+    'etc': '湲고?',
 }
 JOB_FORM_EQUIPMENT_CHOICES = [
-    ('', '선택 안 함'),
-    ('excavator', '굴삭기'),
-    ('forklift', '지게차'),
-    ('crane', '크레인기사'),
-    ('site', '건설현장'),
-    ('etc', '기타'),
+    ('', '?좏깮 ????),
+    ('excavator', '援댁궘湲?),
+    ('forklift', '吏寃뚯감'),
+    ('crane', '?щ젅?멸린??),
+    ('site', '嫄댁꽕?꾩옣'),
+    ('etc', '湲고?'),
 ]
 
 
 def _merge_job_equipment_type(category_key: str, detail: str) -> str:
-    """글쓰기 기종 선택 + 상세 입력 → equipment_type 한 필드에 저장."""
+    """湲?곌린 湲곗쥌 ?좏깮 + ?곸꽭 ?낅젰 ??equipment_type ???꾨뱶?????"""
     detail = (detail or '').strip()
     cat = (category_key or '').strip()
     if cat and cat not in JOB_EQUIPMENT_LABEL_MAP:
@@ -1278,7 +1271,7 @@ def _merge_job_equipment_type(category_key: str, detail: str) -> str:
 
 
 def _split_job_equipment_type(equipment_type: str) -> tuple:
-    """수정 폼: equipment_type → (선택값, 상세 텍스트)."""
+    """?섏젙 ?? equipment_type ??(?좏깮媛? ?곸꽭 ?띿뒪??."""
     et = (equipment_type or '').strip()
     if not et:
         return '', ''
@@ -1289,18 +1282,17 @@ def _split_job_equipment_type(equipment_type: str) -> tuple:
     return '', et
 
 
-# [3] 구인구직 관련
-def job_list(request):
+# [3] 援ъ씤援ъ쭅 愿??def job_list(request):
     from .region_choices import SIDO_CHOICES, SIGUNGU_MAP
     import json
 
     JOB_EQUIPMENT_CHOICES = [
-        ('', '전체'),
-        ('excavator', '굴삭기'),
-        ('forklift', '지게차'),
-        ('crane', '크레인기사'),
-        ('site', '건설현장'),
-        ('etc', '기타'),
+        ('', '?꾩껜'),
+        ('excavator', '援댁궘湲?),
+        ('forklift', '吏寃뚯감'),
+        ('crane', '?щ젅?멸린??),
+        ('site', '嫄댁꽕?꾩옣'),
+        ('etc', '湲고?'),
     ]
 
     qs = JobPost.objects.all().order_by('-created_at')
@@ -1321,10 +1313,10 @@ def job_list(request):
     if eq_q is not None:
         qs = qs.filter(eq_q)
 
-    # 급여 컬럼 표시 여부(한 건이라도 급여 입력이 있으면 표시)
+    # 湲됱뿬 而щ읆 ?쒖떆 ?щ?(??嫄댁씠?쇰룄 湲됱뿬 ?낅젰???덉쑝硫??쒖떆)
     show_pay_column = qs.exclude(pay__isnull=True).exclude(pay='').exists()
 
-    # 목록용 표시 데이터 정리: 지역 중복 제거 + 한 줄 표기
+    # 紐⑸줉???쒖떆 ?곗씠???뺣━: 吏??以묐났 ?쒓굅 + ??以??쒓린
     jobs = list(qs)
     for job in jobs:
         sido = (job.region_sido or '').strip()
@@ -1332,7 +1324,7 @@ def job_list(request):
         location = (job.location or '').strip()
 
         if sido and sigungu:
-            region_line = f"{sido} · {sigungu}"
+            region_line = f"{sido} 쨌 {sigungu}"
         elif sido:
             region_line = sido
         elif sigungu:
@@ -1341,9 +1333,9 @@ def job_list(request):
             region_line = location
 
         if location and region_line and location not in (sido, sigungu, f"{sido} {sigungu}".strip()):
-            region_line = f"{region_line} · {location}" if (sido or sigungu) else location
+            region_line = f"{region_line} 쨌 {location}" if (sido or sigungu) else location
 
-        job.region_line = region_line or '—'
+        job.region_line = region_line or '??
 
     from django.utils import timezone as dj_tz
 
@@ -1372,17 +1364,9 @@ def job_list(request):
 
 
 def job_detail(request, pk):
-    """구인구직 상세. 문의는 1:1 채팅으로만 가능(공개 댓글 없음)."""
+    """援ъ씤援ъ쭅 ?곸꽭. 臾몄쓽??1:1 梨꾪똿?쇰줈留?媛??怨듦컻 ?볤? ?놁쓬)."""
     job = get_object_or_404(JobPost, pk=pk)
-    can_view_contact = request.user.is_authenticated
-    return render(
-        request,
-        'equipment/job_detail.html',
-        {
-            'job': job,
-            'can_view_job_contact': can_view_contact,
-        },
-    )
+    return render(request, 'equipment/job_detail.html', {'job': job})
 
 
 @login_required(login_url='/login/')
@@ -1391,11 +1375,11 @@ def job_create(request):
     import json
     redirect_resp = _require_phone_verified(request)
     if redirect_resp:
-        messages.info(request, '구인·구직 글 등록을 위해 휴대폰 본인인증이 필요합니다.')
+        messages.info(request, '援ъ씤쨌援ъ쭅 湲 ?깅줉???꾪빐 ?대???蹂몄씤?몄쬆???꾩슂?⑸땲??')
         return redirect_resp
     if request.method == "POST":
         title = (request.POST.get("title") or "").strip()
-        writer = (request.POST.get("writer") or "익명").strip()
+        writer = (request.POST.get("writer") or "?듬챸").strip()
         contact = (request.POST.get("contact") or "").strip()
         mode = request.POST.get("job_mode", "hire")
         content_main = (request.POST.get("content") or "").strip()
@@ -1414,11 +1398,11 @@ def job_create(request):
 
         if mode == "seek":
             location = (request.POST.get("seek_location") or "").strip()
-            label = "구직"
+            label = "援ъ쭅"
             machine = (request.POST.get("seek_machine") or "").strip()
         else:
             location = (request.POST.get("location") or "").strip()
-            label = "구인"
+            label = "援ъ씤"
             machine = (request.POST.get("machine") or "").strip()
 
         eq_cat = (request.POST.get("equipment_category") or "").strip()
@@ -1442,7 +1426,7 @@ def job_create(request):
         company_address = (request.POST.get("company_address") or "").strip()
 
         if not region_sido or not region_sigungu:
-            messages.error(request, "시/도와 시/군/구를 모두 선택해 주세요.")
+            messages.error(request, "???꾩? ??援?援щ? 紐⑤몢 ?좏깮??二쇱꽭??")
             return render(
                 request,
                 "equipment/job_form.html",
@@ -1457,7 +1441,7 @@ def job_create(request):
                 },
             )
         if not title:
-            title = f"[{label}] 제목없음"
+            title = f"[{label}] ?쒕ぉ?놁쓬"
 
         JobPost.objects.create(
             title=title,
@@ -1518,7 +1502,7 @@ def job_edit(request, pk):
     }
     if request.method == "POST":
         title = (request.POST.get("title") or "").strip()
-        writer = (request.POST.get("writer") or "익명").strip()
+        writer = (request.POST.get("writer") or "?듬챸").strip()
         contact = (request.POST.get("contact") or "").strip()
         mode = request.POST.get("job_mode", "hire")
         content_main = (request.POST.get("content") or "").strip()
@@ -1536,11 +1520,11 @@ def job_edit(request, pk):
                 pass
         if mode == "seek":
             location = (request.POST.get("seek_location") or "").strip()
-            label = "구직"
+            label = "援ъ쭅"
             machine = (request.POST.get("seek_machine") or "").strip()
         else:
             location = (request.POST.get("location") or "").strip()
-            label = "구인"
+            label = "援ъ씤"
             machine = (request.POST.get("machine") or "").strip()
 
         eq_cat = (request.POST.get("equipment_category") or "").strip()
@@ -1549,7 +1533,7 @@ def job_edit(request, pk):
         machine = _merge_job_equipment_type(eq_cat, machine)
 
         if not region_sido or not region_sigungu:
-            messages.error(request, "시/도와 시/군/구를 모두 선택해 주세요.")
+            messages.error(request, "???꾩? ??援?援щ? 紐⑤몢 ?좏깮??二쇱꽭??")
             ctx["equipment_category_selected"] = eq_cat
             ctx["equipment_machine_detail"] = (
                 (request.POST.get("machine") or request.POST.get("seek_machine") or "").strip()
@@ -1572,7 +1556,7 @@ def job_edit(request, pk):
         company_address = (request.POST.get("company_address") or "").strip()
 
         if not title:
-            title = f"[{label}] 제목없음"
+            title = f"[{label}] ?쒕ぉ?놁쓬"
         job.title = title
         job.content = content_main
         job.location = location
@@ -1607,7 +1591,7 @@ def job_delete(request, pk):
     if request.method != "POST":
         return render(request, 'equipment/job_delete_confirm.html', {'job': job, 'is_author': True})
     job.delete()
-    messages.success(request, "글이 삭제되었습니다.")
+    messages.success(request, "湲????젣?섏뿀?듬땲??")
     return redirect('job_list')
 
 
@@ -1626,7 +1610,7 @@ def _exam_list_queryset(request):
     category = (request.GET.get('category') or '').strip()
     equipment = (request.GET.get('equipment') or '').strip()
 
-    # 기출문제: 기종은 항상 전체(모든 기종의 기출 표시)
+    # 湲곗텧臾몄젣: 湲곗쥌? ??긽 ?꾩껜(紐⑤뱺 湲곗쥌??湲곗텧 ?쒖떆)
     if category == 'question':
         equipment = ''
 
@@ -1644,14 +1628,14 @@ def _exam_list_queryset(request):
 def _exam_list_context_base(filter_equipment=''):
     return {
         'filter_equipment': filter_equipment,
-        'exam_equipment_tabs': [('', '전체')] + list(ExamPost.EQUIPMENT_CHOICES),
-        'exam_category_tabs': [('', '전체')] + list(ExamPost.CATEGORY_CHOICES),
+        'exam_equipment_tabs': [('', '?꾩껜')] + list(ExamPost.EQUIPMENT_CHOICES),
+        'exam_category_tabs': [('', '?꾩껜')] + list(ExamPost.CATEGORY_CHOICES),
         'jobs_section': 'exam',
     }
 
 
 def exam_video_list(request):
-    """시험동영상 — 유튜브 API 자동 수집 (정비유튜브 /info/ 와 동일 방식)."""
+    """?쒗뿕?숈쁺?????좏뒠釉?API ?먮룞 ?섏쭛 (?뺣퉬?좏뒠釉?/info/ ? ?숈씪 諛⑹떇)."""
     equipment = (request.GET.get('equipment') or '').strip()
     if equipment not in _EXAM_EQUIPMENT_KEYS:
         equipment = ''
@@ -1707,7 +1691,10 @@ def exam_list(request):
 
 
 def exam_detail(request, pk):
-    post = get_object_or_404(ExamPost.objects.select_related('author'), pk=pk)
+    post = get_object_or_404(
+        ExamPost.objects.select_related('author').prefetch_related('attachments'),
+        pk=pk,
+    )
 
     if request.method == 'POST':
         if not request.user.is_authenticated:
@@ -1715,9 +1702,9 @@ def exam_detail(request, pk):
         content = (request.POST.get('content') or '').strip()
         if content:
             ExamComment.objects.create(post=post, author=request.user, content=content)
-            messages.success(request, '댓글이 등록되었습니다.')
+            messages.success(request, '?볤????깅줉?섏뿀?듬땲??')
         else:
-            messages.error(request, '댓글 내용을 입력해 주세요.')
+            messages.error(request, '?볤? ?댁슜???낅젰??二쇱꽭??')
         return redirect('exam_detail', pk=post.pk)
 
     ExamPost.objects.filter(pk=pk).update(views=F('views') + 1)
@@ -1726,9 +1713,11 @@ def exam_detail(request, pk):
     youtube_id = ''
     if post.category == 'video' and post.youtube_url:
         youtube_id = extract_youtube_id(post.youtube_url)
+    attachments = list(post.attachments.all())
     return render(request, 'equipment/exam_detail.html', {
         'post': post,
         'comments': comments,
+        'attachments': attachments,
         'youtube_id': youtube_id,
         'jobs_section': 'exam',
     })
@@ -1738,7 +1727,7 @@ def exam_detail(request, pk):
 def exam_create(request):
     redirect_resp = _require_phone_verified(request)
     if redirect_resp:
-        messages.info(request, '글 등록을 위해 휴대폰 본인인증이 필요합니다.')
+        messages.info(request, '湲 ?깅줉???꾪빐 ?대???蹂몄씤?몄쬆???꾩슂?⑸땲??')
         return redirect_resp
 
     if request.method == 'POST':
@@ -1750,16 +1739,16 @@ def exam_create(request):
         upload = request.FILES.get('file')
 
         if not title:
-            messages.error(request, '제목을 입력해 주세요.')
+            messages.error(request, '?쒕ぉ???낅젰??二쇱꽭??')
         elif category not in _EXAM_CATEGORY_KEYS:
-            messages.error(request, '유형을 선택해 주세요.')
+            messages.error(request, '?좏삎???좏깮??二쇱꽭??')
         elif equipment not in _EXAM_EQUIPMENT_KEYS:
-            messages.error(request, '기종을 선택해 주세요.')
+            messages.error(request, '湲곗쥌???좏깮??二쇱꽭??')
         elif category == 'video':
             if not youtube_url:
-                messages.error(request, '시험동영상 유형은 유튜브 URL을 입력해 주세요.')
+                messages.error(request, '?쒗뿕?숈쁺???좏삎? ?좏뒠釉?URL???낅젰??二쇱꽭??')
             elif not extract_youtube_id(youtube_url):
-                messages.error(request, '올바른 유튜브 URL을 입력해 주세요.')
+                messages.error(request, '?щ컮瑜??좏뒠釉?URL???낅젰??二쇱꽭??')
             else:
                 ExamPost.objects.create(
                     author=request.user,
@@ -1770,10 +1759,10 @@ def exam_create(request):
                     youtube_url=youtube_url,
                     file=upload,
                 )
-                messages.success(request, '글이 등록되었습니다.')
+                messages.success(request, '湲???깅줉?섏뿀?듬땲??')
                 return redirect('exam_list')
         elif not content:
-            messages.error(request, '내용을 입력해 주세요.')
+            messages.error(request, '?댁슜???낅젰??二쇱꽭??')
         else:
             ExamPost.objects.create(
                 author=request.user,
@@ -1783,7 +1772,7 @@ def exam_create(request):
                 equipment=equipment,
                 file=upload,
             )
-            messages.success(request, '글이 등록되었습니다.')
+            messages.success(request, '湲???깅줉?섏뿀?듬땲??')
             return redirect('exam_list')
 
     return render(request, 'equipment/exam_form.html', {
@@ -1801,7 +1790,7 @@ def exam_edit(request, pk):
 
     redirect_resp = _require_phone_verified(request)
     if redirect_resp:
-        messages.info(request, '글 수정을 위해 휴대폰 본인인증이 필요합니다.')
+        messages.info(request, '湲 ?섏젙???꾪빐 ?대???蹂몄씤?몄쬆???꾩슂?⑸땲??')
         return redirect_resp
 
     if request.method == 'POST':
@@ -1813,16 +1802,16 @@ def exam_edit(request, pk):
         upload = request.FILES.get('file')
 
         if not title:
-            messages.error(request, '제목을 입력해 주세요.')
+            messages.error(request, '?쒕ぉ???낅젰??二쇱꽭??')
         elif category not in _EXAM_CATEGORY_KEYS:
-            messages.error(request, '유형을 선택해 주세요.')
+            messages.error(request, '?좏삎???좏깮??二쇱꽭??')
         elif equipment not in _EXAM_EQUIPMENT_KEYS:
-            messages.error(request, '기종을 선택해 주세요.')
+            messages.error(request, '湲곗쥌???좏깮??二쇱꽭??')
         elif category == 'video':
             if not youtube_url:
-                messages.error(request, '시험동영상 유형은 유튜브 URL을 입력해 주세요.')
+                messages.error(request, '?쒗뿕?숈쁺???좏삎? ?좏뒠釉?URL???낅젰??二쇱꽭??')
             elif not extract_youtube_id(youtube_url):
-                messages.error(request, '올바른 유튜브 URL을 입력해 주세요.')
+                messages.error(request, '?щ컮瑜??좏뒠釉?URL???낅젰??二쇱꽭??')
             else:
                 post.title = title
                 post.content = content
@@ -1832,10 +1821,10 @@ def exam_edit(request, pk):
                 if upload:
                     post.file = upload
                 post.save()
-                messages.success(request, '글이 수정되었습니다.')
+                messages.success(request, '湲???섏젙?섏뿀?듬땲??')
                 return redirect('exam_detail', pk=post.pk)
         elif not content:
-            messages.error(request, '내용을 입력해 주세요.')
+            messages.error(request, '?댁슜???낅젰??二쇱꽭??')
         else:
             post.title = title
             post.content = content
@@ -1845,7 +1834,7 @@ def exam_edit(request, pk):
             if upload:
                 post.file = upload
             post.save()
-            messages.success(request, '글이 수정되었습니다.')
+            messages.success(request, '湲???섏젙?섏뿀?듬땲??')
             return redirect('exam_detail', pk=post.pk)
 
     return render(request, 'equipment/exam_form.html', {
@@ -1864,15 +1853,14 @@ def exam_delete(request, pk):
         raise Http404()
     if request.method == 'POST':
         post.delete()
-        messages.success(request, '글이 삭제되었습니다.')
+        messages.success(request, '湲????젣?섏뿀?듬땲??')
         return redirect('exam_list')
-    messages.warning(request, '삭제는 확인 후 진행해 주세요.')
+    messages.warning(request, '??젣???뺤씤 ??吏꾪뻾??二쇱꽭??')
     return redirect('exam_detail', pk=pk)
 
 
-# [3-1] 굴삭기 유튜브·정보
-def excavator_info(request):
-    """유튜브 콘텐츠: 기종 + 목적 동시 필터 (YouTube Data API + 일 1회 캐시)."""
+# [3-1] 援댁궘湲??좏뒠釉뙿룹젙蹂?def excavator_info(request):
+    """?좏뒠釉?肄섑뀗痢? 湲곗쥌 + 紐⑹쟻 ?숈떆 ?꾪꽣 (YouTube Data API + ??1??罹먯떆)."""
     import json
     from urllib.parse import urlencode
     from urllib.request import urlopen, Request
@@ -1882,36 +1870,36 @@ def excavator_info(request):
     selected_purpose = (request.GET.get("purpose", "excavator_maintenance") or "excavator_maintenance").strip().lower()
 
     equipment_tabs = [
-        ("all", "전체"),
-        ("excavator", "굴삭기"),
-        ("forklift", "지게차"),
-        ("dump", "덤프트럭"),
-        ("loader", "스키로더"),
-        ("crane", "크레인"),
-        ("attachment", "어태치먼트"),
+        ("all", "?꾩껜"),
+        ("excavator", "援댁궘湲?),
+        ("forklift", "吏寃뚯감"),
+        ("dump", "?ㅽ봽?몃윮"),
+        ("loader", "?ㅽ궎濡쒕뜑"),
+        ("crane", "?щ젅??),
+        ("attachment", "?댄깭移섎㉫??),
     ]
     equipment_label_map = {
-        "all": "전체",
-        "excavator": "굴삭기",
-        "forklift": "지게차",
-        "dump": "덤프트럭",
-        "loader": "스키로더",
-        "crane": "크레인",
-        "attachment": "어태치먼트",
+        "all": "?꾩껜",
+        "excavator": "援댁궘湲?,
+        "forklift": "吏寃뚯감",
+        "dump": "?ㅽ봽?몃윮",
+        "loader": "?ㅽ궎濡쒕뜑",
+        "crane": "?щ젅??,
+        "attachment": "?댄깭移섎㉫??,
     }
     purpose_tabs = [
-        ("excavator_maintenance", "굴삭기 정비"),
-        ("excavator_repair", "굴삭기 수리"),
-        ("forklift_maintenance", "지게차 정비"),
-        ("dump_maintenance", "덤프트럭 정비"),
-        ("excavator_inspection", "굴삭기 점검"),
+        ("excavator_maintenance", "援댁궘湲??뺣퉬"),
+        ("excavator_repair", "援댁궘湲??섎━"),
+        ("forklift_maintenance", "吏寃뚯감 ?뺣퉬"),
+        ("dump_maintenance", "?ㅽ봽?몃윮 ?뺣퉬"),
+        ("excavator_inspection", "援댁궘湲??먭?"),
     ]
     purpose_keyword_map = {
-        "excavator_maintenance": "굴삭기 정비",
-        "excavator_repair": "굴삭기 수리",
-        "forklift_maintenance": "지게차 정비",
-        "dump_maintenance": "덤프트럭 정비",
-        "excavator_inspection": "굴삭기 점검",
+        "excavator_maintenance": "援댁궘湲??뺣퉬",
+        "excavator_repair": "援댁궘湲??섎━",
+        "forklift_maintenance": "吏寃뚯감 ?뺣퉬",
+        "dump_maintenance": "?ㅽ봽?몃윮 ?뺣퉬",
+        "excavator_inspection": "援댁궘湲??먭?",
     }
 
     valid_equipment = {k for k, _ in equipment_tabs}
@@ -1974,7 +1962,7 @@ def excavator_info(request):
                 "channel_title": (snippet.get("channelTitle") or "").strip(),
                 "thumbnail_url": thumb,
                 "youtube_url": f"https://www.youtube.com/watch?v={video_id}",
-                "equipment_label": equipment_label_map.get(selected_equipment_type, "전체"),
+                "equipment_label": equipment_label_map.get(selected_equipment_type, "?꾩껜"),
                 "purpose_label": purpose_keyword_map.get(selected_purpose, ""),
             })
         cache.set(cache_key, items, timeout=86400)
@@ -1989,7 +1977,7 @@ def excavator_info(request):
         for item in contents[:24]:
             fallback.append({
                 "title": item.title,
-                "channel_title": "굴삭기나라",
+                "channel_title": "援댁궘湲곕굹??,
                 "thumbnail_url": "",
                 "youtube_url": item.youtube_url,
                 "equipment_label": item.get_equipment_type_display(),
@@ -2007,20 +1995,20 @@ def excavator_info(request):
 
 
 def finance(request):
-    """금융/할부 계산기 + 상담 신청."""
+    """湲덉쑖/?좊? 怨꾩궛湲?+ ?곷떞 ?좎껌."""
     from .claim_utils import normalize_phone_digits
     from .models import FinanceConsultation
     from .phone_verify_service import send_sms
 
     months_options = [12, 24, 36, 48, 60, 72]
     equipment_options = [
-        "굴삭기",
-        "지게차",
-        "덤프트럭",
-        "스키로더/로더",
-        "크레인",
-        "어태치먼트",
-        "기타 중장비",
+        "援댁궘湲?,
+        "吏寃뚯감",
+        "?ㅽ봽?몃윮",
+        "?ㅽ궎濡쒕뜑/濡쒕뜑",
+        "?щ젅??,
+        "?댄깭移섎㉫??,
+        "湲고? 以묒옣鍮?,
     ]
     listing_id_raw = (request.GET.get("listing_id") or request.POST.get("listing_id") or "").strip()
     source_listing = None
@@ -2062,25 +2050,25 @@ def finance(request):
 
             errors = []
             if not applicant_name:
-                errors.append("신청자 이름을 입력해 주세요.")
+                errors.append("?좎껌???대쫫???낅젰??二쇱꽭??")
             if not contact:
-                errors.append("연락처를 입력해 주세요.")
+                errors.append("?곕씫泥섎? ?낅젰??二쇱꽭??")
             if not desired_equipment:
-                errors.append("희망 장비를 선택하거나 직접 입력해 주세요.")
+                errors.append("?щ쭩 ?λ퉬瑜??좏깮?섍굅??吏곸젒 ?낅젰??二쇱꽭??")
             try:
                 budget_manwon = int(budget_raw)
                 if budget_manwon <= 0:
                     raise ValueError
             except Exception:
                 budget_manwon = 0
-                errors.append("구입 예산(만원)을 올바르게 입력해 주세요.")
+                errors.append("援ъ엯 ?덉궛(留뚯썝)???щ컮瑜닿쾶 ?낅젰??二쇱꽭??")
             try:
                 desired_months = int(desired_months_raw)
                 if desired_months not in months_options:
                     raise ValueError
             except Exception:
                 desired_months = 0
-                errors.append("희망 할부기간을 선택해 주세요.")
+                errors.append("?щ쭩 ?좊?湲곌컙???좏깮??二쇱꽭??")
 
             if errors:
                 for err in errors:
@@ -2098,24 +2086,24 @@ def finance(request):
                 contact_digits = normalize_phone_digits(contact)
                 if source_listing:
                     admin_msg = (
-                        "[굴삭기나라] 매물 할부상담 신청\n"
-                        f"매물명: {source_listing.model_name or source_listing.get_equipment_type_display()}\n"
-                        f"이름: {applicant_name}\n"
-                        f"연락처: {contact}\n"
-                        f"희망 할부기간: {desired_months}개월"
+                        "[援댁궘湲곕굹?? 留ㅻЪ ?좊??곷떞 ?좎껌\n"
+                        f"留ㅻЪ紐? {source_listing.model_name or source_listing.get_equipment_type_display()}\n"
+                        f"?대쫫: {applicant_name}\n"
+                        f"?곕씫泥? {contact}\n"
+                        f"?щ쭩 ?좊?湲곌컙: {desired_months}媛쒖썡"
                     )
                 else:
                     admin_msg = (
-                        "[굴삭기나라] 할부상담 신청\n"
-                        f"이름: {applicant_name}\n"
-                        f"연락처: {contact}\n"
-                        f"희망장비: {desired_equipment}\n"
-                        f"예산: {budget_manwon:,}원\n"
-                        f"할부기간: {desired_months}개월"
+                        "[援댁궘湲곕굹?? ?좊??곷떞 ?좎껌\n"
+                        f"?대쫫: {applicant_name}\n"
+                        f"?곕씫泥? {contact}\n"
+                        f"?щ쭩?λ퉬: {desired_equipment}\n"
+                        f"?덉궛: {budget_manwon:,}??n"
+                        f"?좊?湲곌컙: {desired_months}媛쒖썡"
                     )
                 if admin_phone:
                     send_sms(admin_phone, admin_msg)
-                messages.success(request, "할부 상담 신청이 접수되었습니다.")
+                messages.success(request, "?좊? ?곷떞 ?좎껌???묒닔?섏뿀?듬땲??")
                 if source_listing:
                     return redirect(f"{reverse('finance')}?listing_id={source_listing.pk}")
                 return redirect("finance")
@@ -2129,38 +2117,55 @@ def finance(request):
     })
 
 
-def _get_kakao_map_js_key():
-    key = (getattr(settings, "KAKAO_MAP_JS_KEY", "") or "").strip()
-    if key:
-        return key
-    try:
-        from allauth.socialaccount.models import SocialApp
-        return (
-            SocialApp.objects.filter(provider="kakao")
-            .values_list("client_id", flat=True)
-            .first()
-            or ""
-        ).strip()
-    except Exception:
-        return ""
+KAKAO_MAP_JS_KEY_CACHE = "kakao_map_js_key_v1"
+KAKAO_MAP_JS_KEY_CACHE_TTL = 3600
 
+
+def _get_kakao_map_js_key():
+    cached = cache.get(KAKAO_MAP_JS_KEY_CACHE)
+    if cached is not None:
+        return cached
+    key = (getattr(settings, "KAKAO_MAP_JS_KEY", "") or "").strip()
+    if not key:
+        try:
+            from allauth.socialaccount.models import SocialApp
+            key = (
+                SocialApp.objects.filter(provider="kakao")
+                .values_list("client_id", flat=True)
+                .first()
+                or ""
+            ).strip()
+        except Exception:
+            key = ""
+    cache.set(KAKAO_MAP_JS_KEY_CACHE, key, KAKAO_MAP_JS_KEY_CACHE_TTL)
+    return key
+
+
+
+
+def _parts_as_back_url(request):
+    """parts_as ??李쎌뿉???뚯븘媛??댁쟾 ?섏씠吏 (?back=)."""
+    back = (request.GET.get("back") or "").strip()
+    if back and url_has_allowed_host_and_scheme(back, allowed_hosts={request.get_host()}):
+        return back
+    return ""
 
 def parts_as(request):
-    """부품/AS 센터 지도 + 목록 검색 페이지."""
+    """遺??AS ?쇳꽣 吏??+ 紐⑸줉 寃???섏씠吏."""
     region = (request.GET.get('region', '') or '').strip()
     equipment_type = (request.GET.get('equipment_type', 'all') or 'all').strip().lower()
     shop_kind = (request.GET.get('shop_kind') or request.GET.get('type') or 'all').strip().lower()
     focus_shop_id = request.GET.get('shop', '').strip()
 
     equipment_type_choices = [
-        ("all", "전체"),
-        ("excavator", "굴삭기"),
-        ("forklift", "지게차"),
-        ("dump", "덤프트럭"),
-        ("loader", "스키로더·로더"),
-        ("crane", "크레인"),
-        ("attachment", "어태치먼트"),
-        ("other", "기타"),
+        ("all", "?꾩껜"),
+        ("excavator", "援댁궘湲?),
+        ("forklift", "吏寃뚯감"),
+        ("dump", "?ㅽ봽?몃윮"),
+        ("loader", "?ㅽ궎濡쒕뜑쨌濡쒕뜑"),
+        ("crane", "?щ젅??),
+        ("attachment", "?댄깭移섎㉫??),
+        ("other", "湲고?"),
     ]
     equipment_label_by_key = {k: v for k, v in equipment_type_choices}
 
@@ -2182,27 +2187,28 @@ def parts_as(request):
         'excavator_repair_types': PartsShop.REPAIR_TYPE_CHOICES,
         'kakao_map_js_key': kakao_map_js_key,
         'show_driver_register_button': request.user.is_authenticated,
+        'parts_as_back_url': _parts_as_back_url(request),
     })
 
 
 @login_required(login_url='/login/')
 def parts_as_register(request):
-    """업체 자진 등록(로그인 + 휴대폰 본인인증 필수)."""
+    """?낆껜 ?먯쭊 ?깅줉(濡쒓렇??+ ?대???蹂몄씤?몄쬆 ?꾩닔)."""
     redirect_resp = _require_phone_verified_strict(request)
     if redirect_resp:
         return redirect_resp
 
     equipment_type_options = [
-        ("excavator", "굴삭기"),
-        ("dump", "덤프트럭"),
-        ("forklift", "지게차"),
-        ("crane", "크레인"),
-        ("skidloader", "스키로더·로더"),
-        ("other", "기타"),
+        ("excavator", "援댁궘湲?),
+        ("dump", "?ㅽ봽?몃윮"),
+        ("forklift", "吏寃뚯감"),
+        ("crane", "?щ젅??),
+        ("skidloader", "?ㅽ궎濡쒕뜑쨌濡쒕뜑"),
+        ("other", "湲고?"),
     ]
     shop_kind_options = [
-        ("parts", "부품점"),
-        ("as", "AS센터"),
+        ("parts", "遺?덉젏"),
+        ("as", "AS?쇳꽣"),
     ]
 
     if request.method == "POST":
@@ -2215,7 +2221,7 @@ def parts_as_register(request):
         selected_equipment_types = [x for x in request.POST.getlist("equipment_types") if x]
 
         if not name or not region or not contact:
-            messages.error(request, "업체명, 지역, 연락처는 필수입니다.")
+            messages.error(request, "?낆껜紐? 吏?? ?곕씫泥섎뒗 ?꾩닔?낅땲??")
         elif validation_error := validate_partsshop_form(
             name=name,
             region=region,
@@ -2229,7 +2235,7 @@ def parts_as_register(request):
                 shop_kind = "parts"
             if not selected_equipment_types:
                 selected_equipment_types = ["excavator"]
-            # 중복 제거 + 입력 순서 유지
+            # 以묐났 ?쒓굅 + ?낅젰 ?쒖꽌 ?좎?
             selected_equipment_types = list(dict.fromkeys(selected_equipment_types))
 
             PartsShop.objects.create(
@@ -2241,7 +2247,7 @@ def parts_as_register(request):
                 address=address,
                 note=note,
             )
-            messages.success(request, "업체 등록이 완료되었습니다.")
+            messages.success(request, "?낆껜 ?깅줉???꾨즺?섏뿀?듬땲??")
             return redirect("parts_as")
 
     return render(request, "equipment/parts_as_register.html", {
@@ -2275,20 +2281,20 @@ def _kakao_geocode(address):
 
 
 def driver_list(request):
-    """중기 호출 목록(기사 직접등록 + 카카오 자동수집)."""
+    """以묎린 ?몄텧 紐⑸줉(湲곗궗 吏곸젒?깅줉 + 移댁뭅???먮룞?섏쭛)."""
     region = (request.GET.get("region", "") or "").strip()
     equipment_type = (request.GET.get("equipment_type", "all") or "all").strip().lower()
     focus_driver_id = request.GET.get("driver", "").strip()
 
     equipment_type_choices = [
-        ("all", "전체"),
-        ("excavator", "굴삭기"),
-        ("forklift", "지게차"),
-        ("dump", "덤프트럭"),
-        ("loader", "스키로더·로더"),
-        ("crane", "크레인"),
-        ("attachment", "어태치먼트"),
-        ("other", "기타"),
+        ("all", "?꾩껜"),
+        ("excavator", "援댁궘湲?),
+        ("forklift", "吏寃뚯감"),
+        ("dump", "?ㅽ봽?몃윮"),
+        ("loader", "?ㅽ궎濡쒕뜑쨌濡쒕뜑"),
+        ("crane", "?щ젅??),
+        ("attachment", "?댄깭移섎㉫??),
+        ("other", "湲고?"),
     ]
     equipment_label_by_key = {k: v for k, v in equipment_type_choices}
     region_options = list(
@@ -2308,6 +2314,7 @@ def driver_list(request):
         "excavator_repair_types": PartsShop.REPAIR_TYPE_CHOICES,
         "kakao_map_js_key": _get_kakao_map_js_key(),
         "show_driver_register_button": request.user.is_authenticated,
+        "parts_as_back_url": _parts_as_back_url(request),
     })
 
 
@@ -2333,7 +2340,7 @@ def driver_register(request):
         is_available = (request.POST.get("is_available") or "Y") == "Y"
 
         if not name or not region or not contact:
-            messages.error(request, "이름, 활동 지역, 연락처는 필수입니다.")
+            messages.error(request, "?대쫫, ?쒕룞 吏?? ?곕씫泥섎뒗 ?꾩닔?낅땲??")
         else:
             coords = _kakao_geocode(address) if address else None
             day_rate_val = None
@@ -2354,7 +2361,7 @@ def driver_register(request):
                 description=description,
                 is_available=is_available,
             )
-            messages.success(request, "중기 기사 등록이 완료되었습니다.")
+            messages.success(request, "以묎린 湲곗궗 ?깅줉???꾨즺?섏뿀?듬땲??")
             return redirect(f"{reverse('parts_as')}?type=call&driver={profile.pk}")
 
     return render(request, "equipment/driver_form.html", {
@@ -2399,7 +2406,7 @@ def driver_edit(request, pk):
             driver.latitude = coords[0]
             driver.longitude = coords[1]
         driver.save()
-        messages.success(request, "기사 정보가 수정되었습니다.")
+        messages.success(request, "湲곗궗 ?뺣낫媛 ?섏젙?섏뿀?듬땲??")
         return redirect("driver_detail", pk=driver.pk)
 
     return render(request, "equipment/driver_form.html", {
@@ -2414,32 +2421,32 @@ def driver_delete(request, pk):
     driver = get_object_or_404(DriverProfile, pk=pk, author=request.user)
     if request.method == "POST":
         driver.delete()
-        messages.success(request, "기사 정보가 삭제되었습니다.")
+        messages.success(request, "湲곗궗 ?뺣낫媛 ??젣?섏뿀?듬땲??")
         return redirect(f"{reverse('parts_as')}?type=call")
     return redirect("driver_detail", pk=pk)
 
 
 def _equipment_aliases_by_key():
     return {
-        "excavator": {"excavator", "굴삭기", "포크레인"},
-        "dump": {"dump", "덤프", "덤프트럭"},
-        "forklift": {"forklift", "지게차"},
-        "crane": {"crane", "크레인"},
-        "loader": {"loader", "skidloader", "스키로더", "로더", "스키로더·로더"},
-        "attachment": {"attachment", "어태치먼트"},
-        "other": {"other", "기타"},
+        "excavator": {"excavator", "援댁궘湲?, "?ы겕?덉씤"},
+        "dump": {"dump", "?ㅽ봽", "?ㅽ봽?몃윮"},
+        "forklift": {"forklift", "吏寃뚯감"},
+        "crane": {"crane", "?щ젅??},
+        "loader": {"loader", "skidloader", "?ㅽ궎濡쒕뜑", "濡쒕뜑", "?ㅽ궎濡쒕뜑쨌濡쒕뜑"},
+        "attachment": {"attachment", "?댄깭移섎㉫??},
+        "other": {"other", "湲고?"},
     }
 
 
 def _equipment_label_by_key():
     return {
-        "excavator": "굴삭기",
-        "forklift": "지게차",
-        "dump": "덤프트럭",
-        "loader": "스키로더·로더",
-        "crane": "크레인",
-        "attachment": "어태치먼트",
-        "other": "기타",
+        "excavator": "援댁궘湲?,
+        "forklift": "吏寃뚯감",
+        "dump": "?ㅽ봽?몃윮",
+        "loader": "?ㅽ궎濡쒕뜑쨌濡쒕뜑",
+        "crane": "?щ젅??,
+        "attachment": "?댄깭移섎㉫??,
+        "other": "湲고?",
     }
 
 
@@ -2451,7 +2458,7 @@ def _match_equipment_type(equipment_type, equipment_tokens):
 
 
 def _normalize_type_filter(request):
-    """type(신규) 또는 center_type(기존) 파라미터를 통합."""
+    """type(?좉퇋) ?먮뒗 center_type(湲곗〈) ?뚮씪誘명꽣瑜??듯빀."""
     raw = (request.GET.get("type") or request.GET.get("center_type") or "all").strip().lower()
     mapping = {
         "as": "as_center",
@@ -2485,7 +2492,7 @@ def _kakao_place_to_center(item, *, uid_prefix, place_type, center_type_label, e
         "address": item.get("address") or "",
         "center_type": center_type_label,
         "center_type_key": place_type,
-        "equipment_label": eq_label if equipment_type != "all" else (eq_label or "건설기계"),
+        "equipment_label": eq_label if equipment_type != "all" else (eq_label or "嫄댁꽕湲곌퀎"),
         "manufacturers": [],
         "ton_ranges": [],
         "repair_types": [],
@@ -2501,7 +2508,7 @@ def _kakao_place_to_center(item, *, uid_prefix, place_type, center_type_label, e
 
 
 def service_centers_api(request):
-    """지도/목록 마커용 서비스센터 + 임대·지역중기·호출 데이터 API."""
+    """吏??紐⑸줉 留덉빱???쒕퉬?ㅼ꽱??+ ?꾨?쨌吏??쨷湲걔룻샇異??곗씠??API."""
     from rental.models import RentalCompany, RentalPost
 
     equipment_type = (request.GET.get("equipment_type") or "all").strip().lower()
@@ -2511,7 +2518,7 @@ def service_centers_api(request):
     region = (request.GET.get("region") or "").strip()
     type_filter = _normalize_type_filter(request)
     equipment_label_by_key = _equipment_label_by_key()
-    region_scope = region or "전국"
+    region_scope = region or "?꾧뎅"
 
     centers = []
 
@@ -2586,7 +2593,7 @@ def service_centers_api(request):
                 "lng": company.lng,
                 "phone": company.contact,
                 "address": company.address,
-                "center_type": "임대업체",
+                "center_type": "?꾨??낆껜",
                 "center_type_key": "rental_company",
                 "equipment_label": ", ".join(
                     equipment_label_by_key.get(k, k)
@@ -2627,7 +2634,7 @@ def service_centers_api(request):
                 "lng": post.lng,
                 "phone": post.contact,
                 "address": post.address,
-                "center_type": "(개인) 임대",
+                "center_type": "(媛쒖씤) ?꾨?",
                 "center_type_key": "rental_user",
                 "equipment_label": post.get_equipment_type_display(),
                 "manufacturers": [],
@@ -2649,7 +2656,7 @@ def service_centers_api(request):
                 item,
                 uid_prefix="rental_kakao",
                 place_type="rental_kakao",
-                center_type_label="임대(카카오)",
+                center_type_label="?꾨?(移댁뭅??",
                 equipment_label_by_key=equipment_label_by_key,
                 equipment_type=equipment_type,
                 region=region,
@@ -2662,14 +2669,14 @@ def service_centers_api(request):
                 item,
                 uid_prefix="regional_heavy",
                 place_type="regional_heavy",
-                center_type_label="지역중기",
+                center_type_label="吏??쨷湲?,
                 equipment_label_by_key=equipment_label_by_key,
                 equipment_type=equipment_type,
                 region=region,
             )
             if row and row.get("lat") is not None and row.get("lng") is not None:
                 if not row.get("operating_hours"):
-                    row["operating_hours"] = "건설기계"
+                    row["operating_hours"] = "嫄댁꽕湲곌퀎"
                 centers.append(row)
 
     if type_filter in ("all", "call"):
@@ -2678,7 +2685,7 @@ def service_centers_api(request):
                 item,
                 uid_prefix="call_kakao",
                 place_type="call_kakao",
-                center_type_label="중기호출",
+                center_type_label="以묎린?몄텧",
                 equipment_label_by_key=equipment_label_by_key,
                 equipment_type=equipment_type,
                 region=region,
@@ -2703,7 +2710,7 @@ def service_centers_api(request):
                 "lng": driver.longitude,
                 "phone": driver.contact,
                 "address": driver.address,
-                "center_type": "중기호출 기사",
+                "center_type": "以묎린?몄텧 湲곗궗",
                 "center_type_key": "call_driver",
                 "equipment_label": driver.get_equipment_type_display(),
                 "manufacturers": [],
@@ -2713,7 +2720,7 @@ def service_centers_api(request):
                 "region": driver.region,
                 "rating": 0,
                 "review_count": 0,
-                "rental_price": f"{driver.day_rate:,}원" if driver.day_rate else "협의",
+                "rental_price": f"{driver.day_rate:,}?? if driver.day_rate else "?묒쓽",
                 "rental_period": "",
                 "detail_url": reverse("driver_detail", kwargs={"pk": driver.pk}),
                 "is_personal": True,
@@ -2726,14 +2733,14 @@ def service_centers_api(request):
 
 
 def _resolve_equipment_detail_back_url(request, equipment):
-    """상세 화면에서 목록으로 돌아갈 URL (검색·필터·정렬 상태 유지)."""
+    """?곸꽭 ?붾㈃?먯꽌 紐⑸줉?쇰줈 ?뚯븘媛?URL (寃?됀룻븘?걔룹젙???곹깭 ?좎?)."""
     if (request.GET.get('from') or '').strip().lower() == 'mypage' and request.user.is_authenticated:
-        return reverse('my_page'), '뒤로가기'
+        return reverse('my_page'), '?ㅻ줈媛湲?
 
     allowed_hosts = {request.get_host()}
     next_url = (request.GET.get('next') or '').strip()
     if next_url and url_has_allowed_host_and_scheme(next_url, allowed_hosts=allowed_hosts):
-        return next_url, '목록으로 가기'
+        return next_url, '紐⑸줉?쇰줈 媛湲?
 
     referer = (request.META.get('HTTP_REFERER') or '').strip()
     if referer and url_has_allowed_host_and_scheme(referer, allowed_hosts=allowed_hosts):
@@ -2746,17 +2753,40 @@ def _resolve_equipment_detail_back_url(request, equipment):
             back = parsed.path or '/'
             if parsed.query:
                 back += '?' + parsed.query
-            return back, '목록으로 가기'
+            return back, '紐⑸줉?쇰줈 媛湲?
 
     detail_back_url = reverse('index')
     if equipment.equipment_type:
         detail_back_url += f'?category={equipment.equipment_type}'
-    return detail_back_url, '목록으로 가기'
+    return detail_back_url, '紐⑸줉?쇰줈 媛湲?
 
 
-# [4] 매물 관련
+# [4] 留ㅻЪ 愿??def attachment_ad_site_redirect(request, pk):
+    """?댄깭移섎㉫?맞룻??댁뼱 愿묎퀬 移대뱶 ???대떦 留ㅻЪ ?곸꽭."""
+    return redirect("equipment_detail", pk=pk)
+
+
+
+
+def _bump_equipment_view_count(request, equipment_pk):
+    """議고쉶??DB 媛깆떊 ???숈씪 諛⑸Ц??30遺꾩뿉 1??"""
+    if request.method != "GET":
+        return False
+    if not request.session.session_key:
+        request.session.save()
+    visitor = request.session.session_key or request.META.get("REMOTE_ADDR", "anon")
+    cache_key = f"eqview:{equipment_pk}:{visitor}"
+    if cache.get(cache_key):
+        return False
+    cache.set(cache_key, 1, 1800)
+    Equipment.objects.filter(pk=equipment_pk).update(view_count=F("view_count") + 1)
+    return True
+
 def equipment_detail(request, pk):
-    equipment = get_object_or_404(Equipment, pk=pk)
+    equipment = get_object_or_404(
+        Equipment.objects.select_related("author__profile").prefetch_related("images"),
+        pk=pk,
+    )
     if equipment.author_id is None and not (
         request.user.is_authenticated and request.user.is_staff
     ):
@@ -2773,7 +2803,7 @@ def equipment_detail(request, pk):
         if content:
             Comment.objects.create(
                 author=request.user if request.user.is_authenticated else None,
-                author_name=(request.POST.get('comment_author_name') or '').strip() or '익명',
+                author_name=(request.POST.get('comment_author_name') or '').strip() or '?듬챸',
                 content=content,
                 content_type=ct,
                 object_id=pk,
@@ -2793,10 +2823,10 @@ def equipment_detail(request, pk):
             redir += '?' + urlencode(redir_params)
         return redirect(redir)
 
-    if request.method == 'GET':
-        Equipment.objects.filter(pk=equipment.pk).update(view_count=F('view_count') + 1)
+    if _bump_equipment_view_count(request, equipment.pk):
         equipment.refresh_from_db(fields=['view_count'])
 
+    premium_ids = set(get_premium_user_ids())
     author_phone = None
     author_is_dealer = False
     author_is_premium = False
@@ -2810,24 +2840,24 @@ def equipment_detail(request, pk):
                 author_phone = getattr(profile, 'phone', None)
                 if author_phone is not None:
                     author_phone = str(author_phone).strip()
-                    # 전화번호는 숫자가 있어야 유효 (예: legacy_XXXX 같은 값 방지)
+                    # ?꾪솕踰덊샇???レ옄媛 ?덉뼱???좏슚 (?? legacy_XXXX 媛숈? 媛?諛⑹?)
                     if author_phone and not any(ch.isdigit() for ch in author_phone):
                         author_phone = None
                 author_is_dealer = getattr(profile, 'user_type', None) == 'DEALER'
                 author_is_premium = getattr(profile, 'is_premium_active', False) or (
-                    equipment.author_id in set(get_premium_user_ids())
+                    equipment.author_id in premium_ids
                 )
                 author_display = getattr(profile, 'company_name', None) or equipment.author.get_full_name() or equipment.author.username
                 author_company = (getattr(profile, "company_name", None) or "").strip()
                 author_youtube = (getattr(profile, "youtube_url", None) or "").strip()
             else:
                 author_display = equipment.author.get_full_name() or equipment.author.username
-                author_is_premium = equipment.author_id in set(get_premium_user_ids())
+                author_is_premium = equipment.author_id in premium_ids
         except Exception:
             author_display = equipment.author.username if equipment.author else None
 
-    # 작성자 연결이 없는 이관 매물 보정:
-    # 같은 핵심 정보(모델/가격/위치/등록일)의 최근 매물에서 연락처를 fallback으로 사용
+    # ?묒꽦???곌껐???녿뒗 ?닿? 留ㅻЪ 蹂댁젙:
+    # 媛숈? ?듭떖 ?뺣낫(紐⑤뜽/媛寃??꾩튂/?깅줉????理쒓렐 留ㅻЪ?먯꽌 ?곕씫泥섎? fallback?쇰줈 ?ъ슜
     if not author_phone:
         sibling_qs = (
             Equipment.objects.select_related('author__profile')
@@ -2861,29 +2891,24 @@ def equipment_detail(request, pk):
                 if not author_is_premium:
                     author_is_premium = (
                         getattr(sibling_profile, 'is_premium_active', False)
-                        or sibling.author_id in set(get_premium_user_ids())
+                        or sibling.author_id in premium_ids
                     )
                 break
 
-    # 실제 파일이 존재하는 사진만 상세 화면에 노출 (깨진 이미지 방지)
-    detail_images = []
-    for image in equipment.images.all():
-        try:
-            image_name = getattr(image.image, 'name', '') or ''
-            if image_name and image.image.storage.exists(image_name):
-                detail_images.append(image)
-        except Exception:
-            continue
+    # ?곸꽭 ?ъ쭊 (prefetch ?쒖슜, ?붿뒪??exists 泥댄겕 ?쒓굅濡??묐떟 ?띾룄 媛쒖꽑)
+    detail_images = [
+        image for image in equipment.images.all()
+        if (getattr(image.image, 'name', '') or '').strip()
+    ]
 
-    # 금융 예상 한도 / 월 납입액(60개월, 연 7% 가정)
+    # 湲덉쑖 ?덉긽 ?쒕룄 / ???⑹엯??60媛쒖썡, ??7% 媛??
     finance_limit = None
     finance_monthly_60 = None
     try:
         if equipment.listing_price and equipment.listing_price > 0:
             price = Decimal(equipment.listing_price)
-            principal = (price * Decimal('0.8')).quantize(Decimal('1.'), rounding=ROUND_HALF_UP)  # 매물가의 80% (만원 단위)
-            r = Decimal('0.07') / Decimal('12')  # 연 7% 가정
-            n = Decimal('60')
+            principal = (price * Decimal('0.8')).quantize(Decimal('1.'), rounding=ROUND_HALF_UP)  # 留ㅻЪ媛??80% (留뚯썝 ?⑥쐞)
+            r = Decimal('0.07') / Decimal('12')  # ??7% 媛??            n = Decimal('60')
             if r > 0:
                 factor = (r * (1 + r) ** n) / ((1 + r) ** n - 1)
                 monthly = (principal * factor).quantize(Decimal('1.'), rounding=ROUND_HALF_UP)
@@ -2895,7 +2920,7 @@ def equipment_detail(request, pk):
         finance_limit = None
         finance_monthly_60 = None
 
-    # 비슷한 기종·년식(±2년) 시세 통계 및 비슷한 매물 목록 (노출 중인 것만)
+    # 鍮꾩듂??湲곗쥌쨌?꾩떇(짹2?? ?쒖꽭 ?듦퀎 諛?鍮꾩듂??留ㅻЪ 紐⑸줉 (?몄텧 以묒씤 寃껊쭔)
     similar_qs = Equipment.objects.visible().exclude(pk=equipment.pk).filter(is_sold=False)
     year_val = equipment.year_manufactured or 0
     if equipment.manufacturer:
@@ -2911,11 +2936,11 @@ def equipment_detail(request, pk):
         price_max=Max('listing_price'),
         price_avg=Avg('listing_price'),
     )
-    similar_list = list(similar_qs.order_by('-created_at')[:6])
+    similar_list = list(similar_qs.prefetch_related('images').order_by('-created_at')[:6])
 
-    # 상세 좌측 레일(굴삭기 전용): 어태치먼트/타이어 전문가 카드
+    # ?곸꽭 醫뚯륫 ?덉씪(援댁궘湲??꾩슜): ?댄깭移섎㉫????댁뼱 愿묎퀬 (?뱀씤 ?낆껜留????꾩옱 鍮꾨끂異?
     left_specialist_cards = []
-    if (equipment.equipment_type or "") == "excavator":
+    if False and (equipment.equipment_type or "") == "excavator":
         left_specialist_cards = list(
             Equipment.objects.visible()
             .filter(is_sold=False)
@@ -2923,17 +2948,18 @@ def equipment_detail(request, pk):
                 Q(equipment_type="excavator", sub_type="EXC_ATTACHMENT")
                 | Q(equipment_type="excavator", sub_type="EXC_TIRE")
             )
+            .filter(author__profile__attachment_tire_ad_active=True)
             .exclude(pk=equipment.pk)
             .select_related("author__profile")
             .order_by("-created_at")[:5]
         )
 
-    # 상세 레일: 같은 기종 유료 전문가 명함 (사진·소개·전화)
+    # ?곸꽭 ?덉씪: 媛숈? 湲곗쥌 ?좊즺 ?꾨Ц媛 紐낇븿 (?ъ쭊쨌?뚭컻쨌?꾪솕)
     _ptype = equipment.equipment_type or None
     premium_sidebar_expert_title = PREMIUM_SIDEBAR_EXPERT_TITLE_BY_CATEGORY.get(_ptype or "", "")
     if not premium_sidebar_expert_title and _ptype:
         premium_sidebar_expert_title = (
-            f"{equipment.get_equipment_type_display()} 전문가들"
+            f"{equipment.get_equipment_type_display()} ?꾨Ц媛??
         )
     _expert_cards = []
     if _ptype and premium_sidebar_expert_title:
@@ -2951,23 +2977,28 @@ def equipment_detail(request, pk):
     premium_sidebar_list = []
     premium_sidebar_slots = []
 
-    # 이 판매자의 다른 매물 2개 미리보기 (유료회원·본문 제외)
+    # ???먮ℓ?먯쓽 ?ㅻⅨ 留ㅻЪ 2媛?誘몃━蹂닿린 (?좊즺?뚯썝쨌蹂몃Ц ?쒖쇅)
     author_other_listings = []
     if equipment.author_id:
         author_other_listings = list(
             Equipment.objects.visible()
             .filter(author_id=equipment.author_id, is_sold=False)
             .exclude(pk=equipment.pk)
+            .prefetch_related('images')
             .order_by('-created_at')[:2]
         )
 
-    # 우측 레일: 전국 부품점 A/S 센터(지도 이동 링크용)
-    shops_qs = PartsShop.objects.all().order_by('region', 'name')
+    # ?곗륫 ?덉씪: ?꾧뎅 遺?덉젏 A/S ?쇳꽣(吏???대룞 留곹겕??
     nearby_parts_shops = []
     if equipment.region_sido:
-        nearby_parts_shops = list(shops_qs.filter(region__icontains=equipment.region_sido)[:6])
+        nearby_parts_shops = list(
+            PartsShop.objects.filter(region__icontains=equipment.region_sido)
+            .order_by('region', 'name')[:6]
+        )
     if not nearby_parts_shops:
-        nearby_parts_shops = list(shops_qs[:6])
+        nearby_parts_shops = list(
+            PartsShop.objects.order_by('region', 'name')[:6]
+        )
 
     right_premium_slots = []
     has_right_ads = bool(
@@ -3005,6 +3036,7 @@ def equipment_detail(request, pk):
         'author_other_listings': author_other_listings,
         'nearby_parts_shops': nearby_parts_shops,
         'kakao_map_js_key': _get_kakao_map_js_key(),
+        'show_parts_as_section': True,
     })
 
 
@@ -3016,7 +3048,7 @@ def equipment_create(request):
         return redirect('login')
     redirect_resp = _require_phone_verified(request)
     if redirect_resp:
-        messages.info(request, '매물 등록을 위해 휴대폰 본인인증이 필요합니다.')
+        messages.info(request, '留ㅻЪ ?깅줉???꾪빐 ?대???蹂몄씤?몄쬆???꾩슂?⑸땲??')
         return redirect_resp
 
     from trust.services import SellerListingBlocked, is_seller_blocked
@@ -3024,24 +3056,24 @@ def equipment_create(request):
     if is_seller_blocked(request.user):
         messages.error(
             request,
-            '매너점수 이용 제한으로 매물을 등록할 수 없습니다. 고객센터에 문의해 주세요.',
+            '留ㅻ꼫?먯닔 ?댁슜 ?쒗븳?쇰줈 留ㅻЪ???깅줉?????놁뒿?덈떎. 怨좉컼?쇳꽣??臾몄쓽??二쇱꽭??',
         )
         return redirect('my_page')
 
     if request.method == 'POST':
         form = EquipmentForm(_post_with_coalesced_weight_class(request.POST))
         if form.is_valid():
-            # 회원 등급별 월 등록 제한
+            # ?뚯썝 ?깃툒蹂????깅줉 ?쒗븳
             current_count = get_monthly_listing_count(request.user)
             monthly_limit = get_listing_monthly_limit(request.user)
             if current_count >= monthly_limit:
                 if is_user_premium(request.user):
-                    limit_msg = f'유료 회원은 한 달에 매물을 {PREMIUM_LISTING_LIMIT}건까지만 등록할 수 있습니다.'
+                    limit_msg = f'?좊즺 ?뚯썝? ???ъ뿉 留ㅻЪ??{PREMIUM_LISTING_LIMIT}嫄닿퉴吏留??깅줉?????덉뒿?덈떎.'
                 else:
-                    limit_msg = f'무료 회원은 한 달에 매물을 {FREE_LISTING_LIMIT}건까지만 등록할 수 있습니다.'
+                    limit_msg = f'臾대즺 ?뚯썝? ???ъ뿉 留ㅻЪ??{FREE_LISTING_LIMIT}嫄닿퉴吏留??깅줉?????덉뒿?덈떎.'
                 messages.error(
                     request,
-                    limit_msg + ' 이번 달 한도를 모두 사용했습니다. 삭제 후 다시 올려도 당월 건수에 포함되며, 다음 달부터 새로 등록할 수 있습니다.'
+                    limit_msg + ' ?대쾲 ???쒕룄瑜?紐⑤몢 ?ъ슜?덉뒿?덈떎. ??젣 ???ㅼ떆 ?щ젮???뱀썡 嫄댁닔???ы븿?섎ŉ, ?ㅼ쓬 ?щ????덈줈 ?깅줉?????덉뒿?덈떎.'
                 )
                 return render(request, 'equipment/equipment_form.html', {
                     'form': form,
@@ -3055,12 +3087,12 @@ def equipment_create(request):
                     'monthly_listing_limit': monthly_limit,
                     'is_premium': is_user_premium(request.user),
                 })
-            # 허위 매물 방지: 사진 최소 1장 필수
+            # ?덉쐞 留ㅻЪ 諛⑹?: ?ъ쭊 理쒖냼 1???꾩닔
             image_files = request.FILES.getlist('images')
             if not image_files or len(image_files) < 1:
-                form.add_error(None, ValidationError('허위 매물 방지를 위해 사진을 최소 1장 이상 등록해주세요.'))
+                form.add_error(None, ValidationError('?덉쐞 留ㅻЪ 諛⑹?瑜??꾪빐 ?ъ쭊??理쒖냼 1???댁긽 ?깅줉?댁＜?몄슂.'))
             else:
-                # 도배 방지: 삭제 후 7일 이내 동일 매물(기종+연식+가격) 재등록 차단
+                # ?꾨같 諛⑹?: ??젣 ??7???대궡 ?숈씪 留ㅻЪ(湲곗쥌+?곗떇+媛寃? ?щ벑濡?李⑤떒
                 from datetime import timedelta
                 since = timezone.now() - timedelta(days=7)
                 equipment_type = (form.cleaned_data.get('equipment_type') or '').strip()
@@ -3075,7 +3107,7 @@ def equipment_create(request):
                 ).exists():
                     messages.error(
                         request,
-                        '도배 방지를 위해 삭제 후 7일 이내에는 동일 매물(같은 기종·연식·가격)을 다시 등록할 수 없습니다.'
+                        '?꾨같 諛⑹?瑜??꾪빐 ??젣 ??7???대궡?먮뒗 ?숈씪 留ㅻЪ(媛숈? 湲곗쥌쨌?곗떇쨌媛寃????ㅼ떆 ?깅줉?????놁뒿?덈떎.'
                     )
                     return render(request, 'equipment/equipment_form.html', {
                         'form': form,
@@ -3089,7 +3121,7 @@ def equipment_create(request):
                         'monthly_listing_limit': get_listing_monthly_limit(request.user),
                         'is_premium': is_user_premium(request.user),
                     })
-                # 해시 계산으로 읽은 첫 이미지 포인터 초기화 (저장 시 사용)
+                # ?댁떆 怨꾩궛?쇰줈 ?쎌? 泥??대?吏 ?ъ씤??珥덇린??(??????ъ슜)
                 image_files[0].seek(0)
                 try:
                     obj = form.save(commit=False)
@@ -3118,7 +3150,7 @@ def equipment_create(request):
                 except Exception:
                     import traceback
                     traceback.print_exc()
-                    form.add_error(None, ValidationError('등록 처리 중 오류가 발생했습니다. 사진 용량/형식을 확인한 뒤 다시 시도해 주세요.'))
+                    form.add_error(None, ValidationError('?깅줉 泥섎━ 以??ㅻ쪟媛 諛쒖깮?덉뒿?덈떎. ?ъ쭊 ?⑸웾/?뺤떇???뺤씤?????ㅼ떆 ?쒕룄??二쇱꽭??'))
     else:
         form = EquipmentForm(initial={'equipment_type': 'excavator'})
 
@@ -3148,7 +3180,7 @@ def equipment_edit(request, pk):
     if not request.user.is_authenticated:
         return redirect('login')
 
-    # 내 글만 수정 가능 (author가 None이면 일단 막음)
+    # ??湲留??섏젙 媛??(author媛 None?대㈃ ?쇰떒 留됱쓬)
     if obj.author_id != request.user.id:
         return redirect('equipment_detail', obj.pk)
 
@@ -3173,7 +3205,7 @@ def equipment_edit(request, pk):
                 form.add_error(
                     None,
                     ValidationError(
-                        '허위 매물 방지를 위해 사진을 최소 1장 이상 남기거나, 삭제한 만큼 새 사진을 추가해 주세요.'
+                        '?덉쐞 留ㅻЪ 諛⑹?瑜??꾪빐 ?ъ쭊??理쒖냼 1???댁긽 ?④린嫄곕굹, ??젣??留뚰겮 ???ъ쭊??異붽???二쇱꽭??'
                     ),
                 )
             else:
@@ -3194,7 +3226,7 @@ def equipment_edit(request, pk):
                 except Exception:
                     import traceback
                     traceback.print_exc()
-                    form.add_error(None, ValidationError('수정 저장 중 오류가 발생했습니다. 사진 용량/형식을 확인한 뒤 다시 시도해 주세요.'))
+                    form.add_error(None, ValidationError('?섏젙 ???以??ㅻ쪟媛 諛쒖깮?덉뒿?덈떎. ?ъ쭊 ?⑸웾/?뺤떇???뺤씤?????ㅼ떆 ?쒕룄??二쇱꽭??'))
     else:
         form = EquipmentEditForm(instance=obj)
 
@@ -3212,7 +3244,7 @@ def equipment_delete(request, pk):
     if not request.user.is_authenticated:
         return redirect('login')
     if equipment.author_id != request.user.id:
-        messages.error(request, '본인만 삭제할 수 있습니다.')
+        messages.error(request, '蹂몄씤留???젣?????덉뒿?덈떎.')
         return redirect('equipment_detail', pk=pk)
     if request.method != 'POST':
         next_url = request.GET.get('next', '')
@@ -3225,7 +3257,7 @@ def equipment_delete(request, pk):
         redirect_to = next_url
     else:
         redirect_to = reverse('my_page')
-    # 삭제 로그 기록(도배 방지: 7일 이내 동일 기종+연식+가격 재등록 제한)
+    # ??젣 濡쒓렇 湲곕줉(?꾨같 諛⑹?: 7???대궡 ?숈씪 湲곗쥌+?곗떇+媛寃??щ벑濡??쒗븳)
     try:
         img_hash = _image_hash_from_equipment(equipment)
         DeletedListingLog.objects.create(
@@ -3239,23 +3271,23 @@ def equipment_delete(request, pk):
     except Exception:
         pass
     equipment.delete()
-    messages.success(request, '매물이 삭제되었습니다.')
+    messages.success(request, '留ㅻЪ????젣?섏뿀?듬땲??')
     return redirect(redirect_to)
 
 
 def equipment_bump(request, pk):
-    """끌어올리기 — 유료회원만, 최근 7일 기준 최대 3회. 마이페이지에서 이용."""
+    """?뚯뼱?щ━湲????좊즺?뚯썝留? 理쒓렐 7??湲곗? 理쒕? 3?? 留덉씠?섏씠吏?먯꽌 ?댁슜."""
     equipment = get_object_or_404(Equipment, pk=pk)
     bump_back = reverse('my_page')
 
     if not request.user.is_authenticated:
-        messages.info(request, '로그인 후 이용해 주세요.')
+        messages.info(request, '濡쒓렇?????댁슜??二쇱꽭??')
         return redirect('login')
     if equipment.author_id != request.user.id:
-        messages.error(request, '본인 매물만 끌어올릴 수 있습니다.')
+        messages.error(request, '蹂몄씤 留ㅻЪ留??뚯뼱?щ┫ ???덉뒿?덈떎.')
         return redirect(bump_back)
     if not is_user_premium(request.user):
-        messages.error(request, '끌어올리기는 유료 회원만 이용할 수 있습니다.')
+        messages.error(request, '?뚯뼱?щ━湲곕뒗 ?좊즺 ?뚯썝留??댁슜?????덉뒿?덈떎.')
         return redirect(bump_back)
 
     status = get_user_bump_status(request.user)
@@ -3264,13 +3296,13 @@ def equipment_bump(request, pk):
         if next_at:
             messages.warning(
                 request,
-                f'끌어올리기는 최근 7일 기준 최대 {BUMP_WEEKLY_LIMIT}회만 가능합니다. '
-                f'다음 이용 가능: {next_at.strftime("%Y-%m-%d %H:%M")}',
+                f'?뚯뼱?щ━湲곕뒗 理쒓렐 7??湲곗? 理쒕? {BUMP_WEEKLY_LIMIT}?뚮쭔 媛?ν빀?덈떎. '
+                f'?ㅼ쓬 ?댁슜 媛?? {next_at.strftime("%Y-%m-%d %H:%M")}',
             )
         else:
             messages.warning(
                 request,
-                f'끌어올리기는 최근 7일 기준 최대 {BUMP_WEEKLY_LIMIT}회만 가능합니다.',
+                f'?뚯뼱?щ━湲곕뒗 理쒓렐 7??湲곗? 理쒕? {BUMP_WEEKLY_LIMIT}?뚮쭔 媛?ν빀?덈떎.',
             )
         return redirect(bump_back)
 
@@ -3280,7 +3312,7 @@ def equipment_bump(request, pk):
     equipment.last_bumped_at = now
     equipment.save(update_fields=['last_bumped_at'])
     EquipmentBumpLog.objects.create(user=request.user, equipment=equipment)
-    messages.success(request, '끌어올리기가 완료되었습니다. 최신순 목록 상단에 노출됩니다.')
+    messages.success(request, '?뚯뼱?щ━湲곌? ?꾨즺?섏뿀?듬땲?? 理쒖떊??紐⑸줉 ?곷떒???몄텧?⑸땲??')
     return redirect(bump_back)
 
 
@@ -3296,13 +3328,13 @@ def toggle_equipment_favorite(request, pk):
 
 
 def author_listings(request, user_id):
-    """이 회원이 올린 모든 매물 보기."""
+    """???뚯썝???щ┛ 紐⑤뱺 留ㅻЪ 蹂닿린."""
     author_user = get_object_or_404(User, pk=user_id)
     author_profile = getattr(author_user, 'profile', None)
     author_showcase_public = bool(
         author_profile and getattr(author_profile, 'is_premium_active', False)
     )
-    # "이 회원 매물 전체 보기"는 유료 회원만 공개
+    # "???뚯썝 留ㅻЪ ?꾩껜 蹂닿린"???좊즺 ?뚯썝留?怨듦컻
     if not author_showcase_public:
         raise Http404()
 
@@ -3327,9 +3359,10 @@ def author_listings(request, user_id):
         qs = base_qs.order_by('-created_at')
 
     listings = list(qs)
+    featured_listings = list(base_qs.order_by('-created_at')[:3])
     total_count = len(listings)
     sold_count = sum(1 for item in listings if item.is_sold)
-    avg_response_text = "빠름"
+    avg_response_text = "鍮좊쫫"
 
     from trust.services import build_seller_trust_template_context
 
@@ -3367,8 +3400,7 @@ def author_listings(request, user_id):
     })
 
 
-# [5] 부품 관련
-def part_list(request):
+# [5] 遺??愿??def part_list(request):
     part_list_qs = Part.objects.all()
     category = (request.GET.get('category') or '').strip().upper()
     if category and category in dict(Part.CATEGORY_CHOICES):
@@ -3397,7 +3429,7 @@ def part_detail(request, pk):
         if content:
             Comment.objects.create(
                 author=request.user if request.user.is_authenticated else None,
-                author_name=(request.POST.get('comment_author_name') or '').strip() or '익명',
+                author_name=(request.POST.get('comment_author_name') or '').strip() or '?듬챸',
                 content=content,
                 content_type=ct,
                 object_id=pk,
@@ -3426,7 +3458,7 @@ def toggle_part_favorite(request, pk):
 def part_create(request):
     redirect_resp = _require_phone_verified(request)
     if redirect_resp:
-        messages.info(request, '부품 매물 등록을 위해 휴대폰 본인인증이 필요합니다.')
+        messages.info(request, '遺??留ㅻЪ ?깅줉???꾪빐 ?대???蹂몄씤?몄쬆???꾩슂?⑸땲??')
         return redirect_resp
 
     form = PartForm(request.POST or None)
@@ -3449,8 +3481,7 @@ def part_edit(request, pk):
 
     part = get_object_or_404(Part, pk=pk)
 
-    # 내 글만 수정 가능
-    if part.author_id != request.user.id:
+    # ??湲留??섏젙 媛??    if part.author_id != request.user.id:
         return redirect("part_detail", part.pk)
 
     form = PartForm(request.POST or None, instance=part)
