@@ -1393,7 +1393,15 @@ def job_list(request):
 def job_detail(request, pk):
     """구인구직 상세. 문의는 1:1 채팅으로만 가능(공개 댓글 없음)."""
     job = get_object_or_404(JobPost, pk=pk)
-    return render(request, 'equipment/job_detail.html', {'job': job})
+    can_view_contact = request.user.is_authenticated
+    return render(
+        request,
+        'equipment/job_detail.html',
+        {
+            'job': job,
+            'can_view_job_contact': can_view_contact,
+        },
+    )
 
 
 @login_required(login_url='/login/')
@@ -3389,7 +3397,6 @@ def author_listings(request, user_id):
         qs = base_qs.order_by('-created_at')
 
     listings = list(qs)
-    featured_listings = list(base_qs.order_by('-created_at')[:3])
     total_count = len(listings)
     sold_count = sum(1 for item in listings if item.is_sold)
     avg_response_text = "빠름"
