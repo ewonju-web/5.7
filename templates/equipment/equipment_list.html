@@ -967,7 +967,7 @@
 {% if user.is_authenticated %}
 <a href="{% url 'equipment_create' %}" class="gn-fab" title="글쓰기"><i class="bi bi-plus-lg"></i></a>
 {% else %}
-<a href="{% url 'login' %}?next={% url 'equipment_create' %}" class="gn-fab" title="글쓰기"><i class="bi bi-plus-lg"></i></a>
+<a href="{% url 'login' %}?next={% url 'equipment_create' %}" class="gn-fab gn-fab-guest" title="글쓰기"><i class="bi bi-plus-lg"></i></a>
 {% endif %}
 
 <style>

@@ -267,6 +267,9 @@
                 flex-wrap: wrap;
                 align-items: flex-start;
             }
+            .gn-free-slogan i {
+                display: none;
+            }
             .gn-free-slogan-note {
                 flex-basis: 100%;
                 text-align: center;
@@ -439,6 +442,7 @@
         }
         @media (max-width: 767.98px) {
             .gn-fab { display: flex; }
+            .gn-fab.gn-fab-guest { display: none !important; }
         }
         .gn-category-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; white-space: nowrap; padding: 0.55rem 0.25rem; }
         .gn-category-scroll::-webkit-scrollbar { height: 0; }
