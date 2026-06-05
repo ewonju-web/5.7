@@ -1,6 +1,7 @@
 from allauth.socialaccount.forms import SignupForm
 from django import forms
 from django.contrib.auth.models import User
+from django.utils import timezone
 
 from .forms import TermsAgreementFieldsMixin
 from .models import Profile
@@ -60,7 +61,21 @@ class RequiredSocialSignupForm(TermsAgreementFieldsMixin, SignupForm):
         user.save(update_fields=["is_active", "username", "first_name", "email"])
 
         profile, _ = Profile.objects.get_or_create(user=user)
-        profile.phone = (self.cleaned_data.get("phone") or "").strip()
+        verified_phone = request.session.pop("verified_phone", None)
+        if verified_phone:
+            profile.phone = verified_phone
+            profile.phone_verified = True
+            profile.phone_verified_at = timezone.now()
+        else:
+            profile.phone = (self.cleaned_data.get("phone") or "").strip()
         self._apply_marketing_consent(profile)
-        profile.save(update_fields=["phone", "marketing_consent", "marketing_consent_at"])
+        profile.save(
+            update_fields=[
+                "phone",
+                "phone_verified",
+                "phone_verified_at",
+                "marketing_consent",
+                "marketing_consent_at",
+            ]
+        )
         return user

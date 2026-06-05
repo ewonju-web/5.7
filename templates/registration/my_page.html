@@ -4,6 +4,17 @@
 
 {% block content %}
 <div class="container py-4 gn-mypage">
+    {% if claimable_listing_count %}
+    <div class="alert alert-warning border-0 shadow-sm rounded-3 mb-3" role="status">
+        <div class="d-flex flex-wrap align-items-center justify-content-between gap-2">
+            <span class="small mb-0">
+                <i class="bi bi-link-45deg me-1"></i>
+                이 전화번호로 등록된 매물 <strong>{{ claimable_listing_count }}건</strong>을 내 계정에 연결할 수 있습니다.
+            </span>
+            <a href="{% url 'find_my_listings' %}" class="btn btn-sm fw-bold text-dark" style="background: var(--gn-accent); border-radius: 8px;">내 매물 찾기</a>
+        </div>
+    </div>
+    {% endif %}
     <div class="gn-profile-card mb-3">
         <div class="gn-profile-left">
             {% if profile.is_premium_active and profile.profile_photo %}

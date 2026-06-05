@@ -66,27 +66,26 @@
         </div>
     </div>
 
-    <!-- 4단계: 기존 회원 조회 결과 (있음) -->
+    <!-- 4단계: 기존 매물 조회 결과 (있음) -->
     <div id="legacy-step-found" class="card border-0 shadow-sm rounded-3 border-success d-none">
         <div class="card-body p-4">
-            <p class="fw-bold text-success mb-2">3. 기존 정보 조회 완료</p>
-            <p class="small text-muted mb-3">아래 로그인 아이디와 임시 비밀번호로 로그인한 뒤, <strong>4. 새 아이디·이메일·비밀번호</strong>를 설정해 주세요.</p>
-            <div class="bg-light rounded p-3 mb-3 small">
-                <div class="mb-2"><strong>로그인 아이디</strong> <span id="legacy-username-display" class="font-monospace"></span></div>
-                <div><strong>임시 비밀번호</strong> <span id="legacy-temp-password-display" class="font-monospace"></span></div>
-            </div>
+            <p class="fw-bold text-success mb-2">3. 매물 조회 완료</p>
+            <p class="small mb-3">
+                이 번호로 등록된 매물 <strong><span id="legacy-listing-count">0</span>건</strong>이 있습니다.
+                가입 후 <strong>마이페이지 → 내 매물 찾기</strong>에서 연결해 드릴게요.
+            </p>
             <div class="d-grid gap-2">
-                <a id="legacy-login-btn" href="{{ login_url }}" class="btn fw-bold py-2 text-dark" style="background: var(--gn-accent); border-radius: 10px;">로그인하고 새 아이디/비밀번호 설정하기</a>
+                <a href="{% url 'join_choice' %}" class="btn fw-bold py-2 text-dark" style="background: var(--gn-accent); border-radius: 10px;">회원가입하고 매물 연결하기</a>
                 <button type="button" id="legacy-another" class="btn btn-outline-secondary" style="border-radius: 10px;">다른 번호로 조회</button>
             </div>
         </div>
     </div>
 
-    <!-- 4단계: 기존 회원 없음 -->
+    <!-- 4단계: 연결 가능 매물 없음 -->
     <div id="legacy-step-not-found" class="card border-0 shadow-sm rounded-3 d-none">
         <div class="card-body p-4 text-center">
-            <p class="fw-bold mb-2">기존 회원 정보를 찾지 못했어요.</p>
-            <p class="small text-muted mb-3">입력한 이름·휴대폰으로 등록된 이관 회원이 없습니다. 신규 회원가입을 이용해 주세요.</p>
+            <p class="fw-bold mb-2">연결 가능한 매물이 없어요.</p>
+            <p class="small text-muted mb-3">입력한 휴대폰으로 등록된 매물이 없습니다. 신규 회원가입을 이용해 주세요.</p>
             <a href="{% url 'join_choice' %}" class="btn fw-bold py-2 text-dark mb-2" style="background: var(--gn-accent); border-radius: 10px;">회원가입하기</a>
             <button type="button" id="legacy-retry" class="btn btn-outline-secondary w-100" style="border-radius: 10px;">다시 조회</button>
         </div>
@@ -107,7 +106,6 @@
     var stepNotFound = document.getElementById('legacy-step-not-found');
     var sendErr = document.getElementById('legacy-send-err');
     var verifyErr = document.getElementById('legacy-verify-err');
-    var loginUrl = '{{ login_url|escapejs }}';
     var resendBtn = document.getElementById('legacy-resend-btn');
     var legacyPhoneInput = document.getElementById('id_legacy_phone');
     var resendAt = 0;
@@ -193,10 +191,8 @@
                         .then(function(r) { return r.json(); })
                         .then(function(d) {
                             setTimeout(function() {
-                                if (d.ok && d.found) {
-                                    document.getElementById('legacy-username-display').textContent = d.legacy_username;
-                                    document.getElementById('legacy-temp-password-display').textContent = d.temp_password;
-                                    document.getElementById('legacy-login-btn').href = loginUrl;
+                                if (d.ok && d.found && d.listing_count > 0) {
+                                    document.getElementById('legacy-listing-count').textContent = d.listing_count;
                                     showStep('found');
                                 } else { showStep('not-found'); }
                             }, 500);
