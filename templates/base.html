@@ -588,6 +588,10 @@
         .gn-service-nav-grid .gn-service-item-title {
             line-height: 1.25;
         }
+        .gn-service-item > div:last-child {
+            min-width: 0;
+            flex: 1;
+        }
         .gn-service-item.gn-service-item-accent {
             border-color: rgba(232, 163, 23, .55);
             background: #fffdf5;
@@ -626,6 +630,7 @@
             color: var(--gn-text);
         }
         .gn-service-item-icon {
+            flex-shrink: 0;
             width: 32px;
             height: 32px;
             border-radius: 10px;
@@ -633,8 +638,11 @@
             align-items: center;
             justify-content: center;
             color: #0f172a;
-            font-size: 1.2rem;
+            font-size: 1.1rem;
             background: linear-gradient(135deg, var(--gn-accent) 0%, #ffcc40 100%);
+        }
+        .gn-service-item-icon.gn-service-item-icon--nav-main {
+            font-size: 0.95rem;
         }
         .gn-service-item-title {
             font-weight: 600;
@@ -801,16 +809,24 @@
                 margin: 0.55rem 1rem 0.3rem;
             }
             .gn-service-item {
-                padding: 0.7rem 0.85rem;
-                gap: 0.68rem;
+                padding: 0.62rem 0.58rem;
+                gap: 0.45rem;
             }
             .gn-service-item-icon {
-                width: 38px;
-                height: 38px;
-                font-size: 1.32rem;
+                width: 30px;
+                height: 30px;
+                border-radius: 8px;
+                font-size: 1rem;
+            }
+            .gn-service-item-icon.gn-service-item-icon--nav-main {
+                font-size: 0.88rem;
+            }
+            .gn-service-nav-grid .gn-service-item-title {
+                font-size: 0.98rem;
+                white-space: nowrap;
             }
             .gn-service-item-title {
-                font-size: 1.06rem;
+                font-size: 0.98rem;
             }
             .gn-service-register-btn {
                 font-size: 1.06rem;
@@ -980,15 +996,15 @@
             {% url 'equipment_create' as gn_equipment_create_url %}
             <div class="gn-service-grid gn-service-nav-grid">
                 <a href="{% url 'index' %}?category=" class="gn-service-item gn-service-offcanvas-link">
-                    <div class="gn-service-item-icon"><i class="bi bi-grid"></i></div>
+                    <div class="gn-service-item-icon gn-service-item-icon--nav-main"><i class="bi bi-grid"></i></div>
                     <div><div class="gn-service-item-title">{{ LANG|tr:"nav_market_view" }}</div></div>
                 </a>
                 <a href="{% if user.is_authenticated %}{{ gn_equipment_create_url }}{% else %}{% url 'login' %}?next={{ gn_equipment_create_url|urlencode }}{% endif %}" class="gn-service-item gn-service-item-accent gn-service-offcanvas-link">
-                    <div class="gn-service-item-icon"><i class="bi bi-plus-lg"></i></div>
+                    <div class="gn-service-item-icon gn-service-item-icon--nav-main"><i class="bi bi-plus-lg"></i></div>
                     <div><div class="gn-service-item-title">{{ LANG|tr:"nav_register" }}</div></div>
                 </a>
                 <a href="{% url 'job_list' %}" class="gn-service-item gn-service-offcanvas-link">
-                    <div class="gn-service-item-icon"><i class="bi bi-briefcase"></i></div>
+                    <div class="gn-service-item-icon gn-service-item-icon--nav-main"><i class="bi bi-briefcase"></i></div>
                     <div><div class="gn-service-item-title">{{ LANG|tr:"nav_jobs" }}</div></div>
                 </a>
                 <a href="{% url 'finance' %}" class="gn-service-item gn-service-offcanvas-link">
