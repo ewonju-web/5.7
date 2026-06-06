@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 {% load static i18n_extras %}
 {% block extra_css %}
-<link rel="stylesheet" href="{% static 'css/jobs.css' %}?v=20260602a">
+<link rel="stylesheet" href="{% static 'css/jobs.css' %}?v=20260607b">
 <style>
   .job-table-v2 .job-row,
   .job-table-v2 .job-row > td {
@@ -87,7 +87,7 @@
                     </thead>
                     <tbody>
                         {% for job in job_list %}
-                        <tr class="job-row {% if job.is_urgent_highlight %}job-row-urgent{% endif %}" data-href="{% url 'job_detail' job.pk %}">
+                        <tr class="job-row {% if job.is_urgent_highlight %}job-row-urgent{% endif %}" data-href="{% url 'job_detail' job.pk %}?next={{ job_list_back_url|urlencode }}">
                             <td class="text-center job-td-mobile-order-2 d-none d-md-table-cell" data-label="구분">
                                 {% if job.job_type == 'HIRING' %}
                                 <span class="job-cat-badge job-cat-badge-hiring">사람구함</span>
@@ -101,7 +101,7 @@
                             </td>
                             {% endif %}
                             <td class="job-td-mobile-order-1 job-td-mobile-title" data-label="제목">
-                                <a href="{% url 'job_detail' job.pk %}" class="btn btn-sm job-btn-view job-mobile-view-btn d-md-none" onclick="event.stopPropagation();">보기</a>
+                                <a href="{% url 'job_detail' job.pk %}?next={{ job_list_back_url|urlencode }}" class="btn btn-sm job-btn-view job-mobile-view-btn d-md-none" onclick="event.stopPropagation();">보기</a>
                                 <div class="d-flex align-items-start flex-wrap gap-2">
                                     <div class="flex-grow-1">
                                         <div class="job-mobile-badge-line d-md-none">
@@ -140,7 +140,7 @@
                             </td>
                             <td class="text-center text-muted small d-none d-lg-table-cell">{{ job.created_at|date:"Y-m-d" }}</td>
                             <td class="text-end align-middle job-td-actions job-td-mobile-order-4 d-none d-md-table-cell" onclick="event.stopPropagation();">
-                                <a href="{% url 'job_detail' job.pk %}" class="btn btn-sm job-btn-view" onclick="event.stopPropagation();">보기</a>
+                                <a href="{% url 'job_detail' job.pk %}?next={{ job_list_back_url|urlencode }}" class="btn btn-sm job-btn-view" onclick="event.stopPropagation();">보기</a>
                                 {% if user.is_authenticated and job.author_id == user.id %}
                                 <a href="{% url 'job_edit' job.pk %}" class="btn btn-sm rounded-pill gn-btn-edit">
                                     <i class="bi bi-pencil me-1"></i>수정
@@ -207,11 +207,38 @@
         });
     }
 
+    var scrollStorageKey = 'gnJobListScroll:' + window.location.pathname + window.location.search;
+    function restoreJobListScroll() {
+        var saved = sessionStorage.getItem(scrollStorageKey);
+        if (saved === null) return;
+        var y = parseInt(saved, 10);
+        if (isNaN(y) || y < 0) {
+            sessionStorage.removeItem(scrollStorageKey);
+            return;
+        }
+        sessionStorage.removeItem(scrollStorageKey);
+        function applyScroll() { window.scrollTo(0, y); }
+        requestAnimationFrame(applyScroll);
+        setTimeout(applyScroll, 50);
+        setTimeout(applyScroll, 180);
+    }
+    function saveJobListScroll() {
+        sessionStorage.setItem(scrollStorageKey, String(window.scrollY || 0));
+    }
+    restoreJobListScroll();
+    window.addEventListener('pageshow', function(e) {
+        if (e.persisted) restoreJobListScroll();
+    });
+
     document.querySelectorAll('.job-row').forEach(function(row) {
         row.addEventListener('click', function(e) {
             if (e.target.closest('a, button')) return;
+            saveJobListScroll();
             window.location.href = row.dataset.href;
         });
+    });
+    document.querySelectorAll('.job-row a[href*="/jobs/"]').forEach(function(link) {
+        link.addEventListener('click', saveJobListScroll);
     });
 })();
 </script>

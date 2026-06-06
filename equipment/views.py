@@ -1373,13 +1373,40 @@ def job_list(request):
         'sigungu_map_json': json.dumps(SIGUNGU_MAP, ensure_ascii=False),
         'job_stats': job_stats,
         'show_pay_column': show_pay_column,
+        'job_list_back_url': request.get_full_path(),
     })
+
+
+def _resolve_job_detail_back_url(request, job=None):
+    """구인구직 상세에서 목록으로 돌아갈 URL (필터·탭 상태 유지)."""
+    allowed_hosts = {request.get_host()}
+    next_url = (request.GET.get('next') or '').strip()
+    if next_url and url_has_allowed_host_and_scheme(next_url, allowed_hosts=allowed_hosts):
+        return next_url
+
+    referer = (request.META.get('HTTP_REFERER') or '').strip()
+    if referer and url_has_allowed_host_and_scheme(referer, allowed_hosts=allowed_hosts):
+        parsed = urlparse(referer)
+        jobs_path = reverse('job_list').rstrip('/') or '/jobs'
+        path = (parsed.path or '').rstrip('/')
+        if path == jobs_path or path.endswith('/jobs'):
+            back = parsed.path or reverse('job_list')
+            if parsed.query:
+                back += '?' + parsed.query
+            return back
+
+    if job and getattr(job, 'job_type', None) in ('HIRING', 'SEEKING'):
+        return reverse('job_list') + '?' + urlencode({'type': job.job_type})
+    return reverse('job_list')
 
 
 def job_detail(request, pk):
     """구인구직 상세. 문의는 1:1 채팅으로만 가능(공개 댓글 없음)."""
     job = get_object_or_404(JobPost, pk=pk)
-    return render(request, 'equipment/job_detail.html', {'job': job})
+    return render(request, 'equipment/job_detail.html', {
+        'job': job,
+        'job_list_back_url': _resolve_job_detail_back_url(request, job),
+    })
 
 
 @login_required(login_url='/login/')

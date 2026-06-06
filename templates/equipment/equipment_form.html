@@ -161,7 +161,7 @@
                             <label class="form-label fw-bold">가격(만원) <span class="text-danger">(필수)</span></label>
                             {{ form.listing_price }}
                         </div>
-                        <div class="col-md-4 d-none" id="exc-sub-type-wrapper">
+                        <div class="col-12 col-md-4 d-none" id="exc-sub-type-wrapper">
                             <label class="form-label fw-bold">종류</label>
                             <select id="exc-sub-type-select" class="form-select">
                                 <option value="">선택</option>
@@ -170,7 +170,7 @@
                                 <option value="EXC_ATTACHMENT">어테치먼트</option>
                             </select>
                         </div>
-                        <div class="col-md-4 d-none" id="exc-weight-class-wrapper">
+                        <div class="col-12 col-md-4 d-none" id="exc-weight-class-wrapper">
                             <label class="form-label fw-bold">장비중량</label>
                             <select id="exc-weight-class-select" class="form-select">
                                 <option value="">선택</option>
@@ -198,21 +198,21 @@
                     </div>
                     <div id="gn-row-year-month-hours" class="row g-3 col-12">
                         <div id="year-field-anchor" class="d-none" aria-hidden="true"></div>
-                        <div class="col-md-4" id="year-field-wrapper">
+                        <div class="col-12 col-md-4" id="year-field-wrapper">
                             <label class="form-label">제작년도</label>
                             {{ form.year_manufactured }}
                         </div>
-                        <div class="col-md-4" id="exc-month-wrapper">
+                        <div class="col-12 col-md-4" id="exc-month-wrapper">
                             <label class="form-label">제작월</label>
                             <input type="hidden" name="month_manufactured" id="id_month_manufactured" value="{{ form.month_manufactured.value|default:'' }}">
                             <input type="text" id="id_month_manufactured_ui" class="form-control" inputmode="numeric" pattern="[0-9]*" maxlength="2" placeholder="1~12 (선택)" autocomplete="off" value="{{ form.month_manufactured.value|default:'' }}">
                         </div>
-                        <div class="col-md-4" id="exc-op-hours-wrapper">
+                        <div class="col-12 col-md-4" id="exc-op-hours-wrapper">
                             <label class="form-label">가동시간(hr)</label>
                             <input type="hidden" name="operating_hours" id="id_operating_hours" value="{{ form.operating_hours.value|default:'' }}">
                             <input type="text" id="id_operating_hours_ui" class="form-control" inputmode="numeric" pattern="[0-9]*" maxlength="8" placeholder="가동시간 (선택)" autocomplete="off" value="{{ form.operating_hours.value|default:'' }}">
                         </div>
-                        <div class="col-md-4 d-none" id="simple-month-wrapper">
+                        <div class="col-12 col-md-4 d-none" id="simple-month-wrapper">
                             <label class="form-label">제작월</label>
                             <input type="text" name="month_manufactured_ui_simple" id="id_month_manufactured_simple" class="form-control" inputmode="numeric" pattern="[0-9]*" maxlength="2" placeholder="1~12" autocomplete="off" value="{{ form.month_manufactured.value|default:'' }}">
                         </div>
@@ -468,6 +468,7 @@
     width: 100%;
     max-width: 100%;
     min-width: 0;
+    box-sizing: border-box;
   }
   .gn-equipment-type-btns .gn-equipment-type-btn {
     margin-right: 0;
@@ -629,6 +630,47 @@
     border-radius: 12px;
     padding: 4px;
     background: #f0fdf4;
+    box-sizing: border-box;
+  }
+  @media (max-width: 767.98px) {
+    /* 모바일: 폼 전체를 상단 안내글·제목과 같은 좌우 폭으로 */
+    .gn-equipment-form-page .card-body > #equipment-form > .row.g-3,
+    .gn-equipment-form-page .card-body > #equipment-form > .d-flex.gap-2.mt-4,
+    .gn-equipment-form-page .card-body > #equipment-form > .alert {
+      width: calc(100% + 3rem);
+      max-width: calc(100% + 3rem);
+      margin-left: -1.5rem;
+      margin-right: -1.5rem;
+      box-sizing: border-box;
+    }
+    .gn-equipment-form-page .gn-equipment-type-btns {
+      width: 100%;
+      max-width: 100%;
+      margin-left: 0;
+      margin-right: 0;
+    }
+    .gn-equipment-form-page #equipment-form #gn-row-price-type-weight,
+    .gn-equipment-form-page #equipment-form #gn-row-year-month-hours {
+      width: 100%;
+      max-width: 100%;
+      margin-left: 0;
+      margin-right: 0;
+      flex: 0 0 100%;
+    }
+    .gn-equipment-form-page #equipment-form #gn-row-price-type-weight > [class*="col-"],
+    .gn-equipment-form-page #equipment-form #gn-row-year-month-hours > [class*="col-"] {
+      flex: 0 0 100%;
+      max-width: 100%;
+      width: 100%;
+    }
+    .gn-equipment-form-page #equipment-form #gn-row-price-type-weight .form-control,
+    .gn-equipment-form-page #equipment-form #gn-row-price-type-weight .form-select,
+    .gn-equipment-form-page #equipment-form #gn-row-year-month-hours .form-control,
+    .gn-equipment-form-page #equipment-form #gn-row-year-month-hours .form-select {
+      width: 100%;
+      max-width: 100%;
+      box-sizing: border-box;
+    }
   }
 </style>
 {% endblock %}
@@ -786,7 +828,7 @@
   function placeFieldInRow(row, el, colClass) {
     if (!row || !el) return;
     el.classList.remove('col-12', 'col-md-6', 'col-6', 'col-md-4');
-    (colClass || 'col-md-4').split(' ').forEach(function(c) {
+    (colClass || 'col-12 col-md-4').split(' ').forEach(function(c) {
       if (c) el.classList.add(c);
     });
     row.appendChild(el);
@@ -801,25 +843,25 @@
 
     placeFieldInRow(rowPriceTypeWeight, priceFieldWrapper, 'col-12 col-md-4');
     if (isExcavator) {
-      placeFieldInRow(rowPriceTypeWeight, excSubTypeWrapper, 'col-md-4');
-      placeFieldInRow(rowPriceTypeWeight, excWeightWrapper, 'col-md-4');
+      placeFieldInRow(rowPriceTypeWeight, excSubTypeWrapper, 'col-12 col-md-4');
+      placeFieldInRow(rowPriceTypeWeight, excWeightWrapper, 'col-12 col-md-4');
     } else if (isForklift) {
-      placeFieldInRow(rowPriceTypeWeight, fkSubTypeWrapper, 'col-md-4');
-      placeFieldInRow(rowPriceTypeWeight, fkWeightWrapper, 'col-md-4');
+      placeFieldInRow(rowPriceTypeWeight, fkSubTypeWrapper, 'col-12 col-md-4');
+      placeFieldInRow(rowPriceTypeWeight, fkWeightWrapper, 'col-12 col-md-4');
     } else if (isOtherType) {
-      if (isDump && dumpWeightWrapper) placeFieldInRow(rowPriceTypeWeight, dumpWeightWrapper, 'col-md-4');
-      else if (otherWeightWrapper) placeFieldInRow(rowPriceTypeWeight, otherWeightWrapper, 'col-md-4');
+      if (isDump && dumpWeightWrapper) placeFieldInRow(rowPriceTypeWeight, dumpWeightWrapper, 'col-12 col-md-4');
+      else if (otherWeightWrapper) placeFieldInRow(rowPriceTypeWeight, otherWeightWrapper, 'col-12 col-md-4');
     }
 
-    placeFieldInRow(rowYearMonthHours, yearFieldWrapper, 'col-md-4');
+    placeFieldInRow(rowYearMonthHours, yearFieldWrapper, 'col-12 col-md-4');
     if (isExcavator) {
-      placeFieldInRow(rowYearMonthHours, excMonthWrapper, 'col-md-4');
-      placeFieldInRow(rowYearMonthHours, excOpHoursWrapper, 'col-md-4');
+      placeFieldInRow(rowYearMonthHours, excMonthWrapper, 'col-12 col-md-4');
+      placeFieldInRow(rowYearMonthHours, excOpHoursWrapper, 'col-12 col-md-4');
     } else if (isForklift) {
-      placeFieldInRow(rowYearMonthHours, excMonthWrapper, 'col-md-4');
-      if (fkOpHoursWrap) placeFieldInRow(rowYearMonthHours, fkOpHoursWrap, 'col-md-4');
+      placeFieldInRow(rowYearMonthHours, excMonthWrapper, 'col-12 col-md-4');
+      if (fkOpHoursWrap) placeFieldInRow(rowYearMonthHours, fkOpHoursWrap, 'col-12 col-md-4');
     } else if (isOtherType && simpleMonthWrapper) {
-      placeFieldInRow(rowYearMonthHours, simpleMonthWrapper, 'col-md-4');
+      placeFieldInRow(rowYearMonthHours, simpleMonthWrapper, 'col-12 col-md-4');
     }
   }
 
