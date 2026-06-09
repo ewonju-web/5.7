@@ -768,6 +768,14 @@
             font-size: 0.98rem;
             min-width: 0;
         }
+        #gnServiceMenu a.gn-account-inline-name {
+            text-decoration: none;
+            cursor: pointer;
+        }
+        #gnServiceMenu a.gn-account-inline-name:hover,
+        #gnServiceMenu a.gn-account-inline-name:focus {
+            color: var(--gn-accent);
+        }
         #gnServiceMenu .gn-account-inline-name span {
             overflow: hidden;
             text-overflow: ellipsis;
@@ -1039,10 +1047,10 @@
                 </div>
                 {% if user.is_authenticated %}
                 <div class="gn-account-inline-row">
-                    <div class="gn-account-inline-name">
+                    <a href="{% url 'my_page' %}" class="gn-account-inline-name gn-service-offcanvas-link">
                         <i class="bi bi-person-circle" aria-hidden="true"></i>
                         <span>{{ user.username }}{{ LANG|tr:"username_suffix" }}</span>
-                    </div>
+                    </a>
                     <a href="{% url 'logout' %}" class="gn-account-inline-logout">{{ LANG|tr:"nav_logout" }}</a>
                 </div>
                 {% endif %}
