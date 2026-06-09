@@ -1,0 +1,48 @@
+<!-- 첫 방문자 환영 팝업 -->
+<style>
+#gn-welcome-overlay{display:none;position:fixed;inset:0;z-index:99999;background:rgba(0,0,0,.6);align-items:center;justify-content:center;padding:20px;box-sizing:border-box}
+#gn-welcome-overlay.is-open{display:flex}
+#gn-welcome-overlay *{box-sizing:border-box}
+.gn-welcome-card{background:#181E2E;border-radius:16px;border:.5px solid rgba(255,255,255,.1);width:100%;max-width:500px;overflow:hidden;font-family:'Apple SD Gothic Neo','Malgun Gothic',sans-serif}
+.gn-welcome-header{background:#F5A623;padding:18px 24px;font-size:18px;font-weight:700;color:#181E2E}
+.gn-welcome-body{padding:32px 28px;text-align:center}
+.gn-welcome-icon{width:64px;height:64px;background:rgba(245,166,35,.12);border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 20px;font-size:28px}
+.gn-welcome-body h2{font-size:22px;font-weight:600;color:#fff;line-height:1.5;margin:0 0 14px}
+.gn-welcome-divider{border:none;border-top:.5px solid rgba(255,255,255,.08);margin:0 0 24px}
+.gn-welcome-list{list-style:none;margin:0 0 28px;padding:0;text-align:left}
+.gn-welcome-list li{display:flex;align-items:flex-start;gap:10px;font-size:13px;color:rgba(255,255,255,.65);padding:7px 0;border-bottom:.5px solid rgba(255,255,255,.05)}
+.gn-welcome-list li:last-child{border-bottom:none}
+.gn-welcome-list .dot{width:6px;height:6px;background:#F5A623;border-radius:50%;margin-top:6px;flex-shrink:0}
+.gn-welcome-btn{display:block;width:100%;background:#F5A623;color:#181E2E;font-size:15px;font-weight:600;padding:14px;border-radius:10px;border:none;cursor:pointer;text-align:center;text-decoration:none}
+.gn-welcome-btn:hover{opacity:.88;color:#181E2E;text-decoration:none}
+.gn-welcome-footer{background:rgba(255,255,255,.03);border-top:.5px solid rgba(255,255,255,.06);padding:12px 28px;display:flex;align-items:center;justify-content:space-between}
+.gn-welcome-today{display:flex;align-items:center;gap:8px;cursor:pointer}
+.gn-welcome-today input{width:15px;height:15px;accent-color:#F5A623;cursor:pointer}
+.gn-welcome-today label{font-size:12px;color:rgba(255,255,255,.4);cursor:pointer;margin:0}
+.gn-welcome-close{font-size:12px;color:rgba(255,255,255,.3);background:none;border:none;cursor:pointer;padding:4px 8px}
+.gn-welcome-close:hover{color:rgba(255,255,255,.6)}
+@media screen and (max-width:480px){.gn-welcome-body{padding:24px 18px}.gn-welcome-body h2{font-size:18px}.gn-welcome-footer{padding:12px 18px}}
+</style>
+<div id="gn-welcome-overlay" role="dialog" aria-modal="true" aria-labelledby="gn-welcome-title">
+  <div class="gn-welcome-card">
+    <div class="gn-welcome-header">굴삭기나라 환영합니다!</div>
+    <div class="gn-welcome-body">
+      <div class="gn-welcome-icon">&#128075;</div>
+      <h2 id="gn-welcome-title">새로운 굴삭기나라에<br>오신 것을 환영합니다!</h2>
+      <hr class="gn-welcome-divider">
+      <ul class="gn-welcome-list">
+        <li><span class="dot"></span><span>현재 시범 운영 중으로 일부 기능이 개선 중입니다.</span></li>
+        <li><span class="dot"></span><span>불편사항은 카카오톡 또는 전화로 알려주시면 빠르게 개선하겠습니다.</span></li>
+        <li><span class="dot"></span><span>Tel. 010-2469-3800</span></li>
+      </ul>
+      <a class="gn-welcome-btn" href="/account/join/">회원가입하기</a>
+    </div>
+    <div class="gn-welcome-footer">
+      <div class="gn-welcome-today"><input type="checkbox" id="gnWelcomeTodayClose"><label for="gnWelcomeTodayClose">오늘 하루 보지 않기</label></div>
+      <button type="button" class="gn-welcome-close" id="gnWelcomeCloseBtn">닫기 &#10005;</button>
+    </div>
+  </div>
+</div>
+<script>
+(function(){var a='gn_welcome_seen',b='gn_welcome_today';function c(n){var t=('; '+document.cookie).split('; '+n+'=');return 2===t.length?t.pop().split(';').shift():''}function d(n,v,e){document.cookie=n+'='+v+'; expires='+e.toUTCString()+'; path=/; SameSite=Lax'}function e(){var t=new Date;t.setFullYear(t.getFullYear()+10),d(a,'1',t)}function f(){var t=new Date,n=new Date(t.getFullYear(),t.getMonth(),t.getDate(),23,59,59);d(b,'1',n)}function g(){var h=document.getElementById('gn-welcome-overlay'),i=document.getElementById('gnWelcomeTodayClose');i&&i.checked?f():e(),h&&h.classList.remove('is-open')}function h(){if('1'===c(a)||'1'===c(b))return;var i=document.getElementById('gn-welcome-overlay'),j=document.getElementById('gnWelcomeCloseBtn');i&&(i.classList.add('is-open'),j&&j.addEventListener('click',g),i.addEventListener('click',function(k){k.target===i&&g()}))}'loading'===document.readyState?document.addEventListener('DOMContentLoaded',h):h()})();
+</script>

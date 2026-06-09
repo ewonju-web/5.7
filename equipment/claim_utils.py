@@ -12,6 +12,40 @@ def normalize_phone_digits(phone: str | None) -> str:
     return re.sub(r"\D", "", str(phone).strip())
 
 
+def active_member_for_phone(phone_norm: str):
+    """활성 정식 회원(legacy_ 제외) 중 프로필 전화번호가 일치하는 계정."""
+    if not phone_norm:
+        return None
+    from equipment.models import Profile
+
+    profiles = (
+        Profile.objects.filter(user__is_active=True)
+        .exclude(user__username__startswith="legacy_")
+        .select_related("user")
+        .only("phone", "user_id", "withdrawn_at", "user__username", "user__is_active")
+    )
+    for profile in profiles:
+        if normalize_phone_digits(profile.phone) == phone_norm:
+            return profile
+    return None
+
+
+def legacy_member_for_phone(phone_norm: str):
+    """이관(legacy_) 계정 중 전화번호가 일치하는 프로필."""
+    if not phone_norm:
+        return None
+    from equipment.models import Profile
+
+    legacy_ids = legacy_author_ids_for_phone(phone_norm)
+    if not legacy_ids:
+        return None
+    return (
+        Profile.objects.filter(user_id__in=legacy_ids)
+        .select_related("user")
+        .first()
+    )
+
+
 def legacy_author_ids_for_phone(phone_norm: str) -> list[int]:
     """이관(legacy_) 계정 중 프로필 전화번호가 일치하는 작성자 ID."""
     if not phone_norm:

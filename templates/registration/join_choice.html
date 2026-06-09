@@ -45,7 +45,27 @@
         </div>
     </div>
 
-    <!-- 4) 기존 매물 있음 → 신규 가입 안내 -->
+    <!-- 4) 이미 가입된 정식 회원 -->
+    <div id="join-step-member" class="card border-0 shadow-sm rounded-3 d-none">
+        <div class="card-body p-4 text-center">
+            <p class="fw-bold mb-2" style="color: var(--gn-text); font-size: 1.05rem;">이미 가입된 회원입니다.</p>
+            <p class="text-muted small mb-4">이 번호로 가입된 계정이 있어요.<br>로그인 후 이용해 주세요.</p>
+            <a href="{% url 'login' %}" class="btn w-100 fw-bold py-2 text-dark" style="background: var(--gn-accent); border-radius: 10px;">로그인하기</a>
+            <button type="button" id="join-member-back" class="btn btn-link w-100 mt-3 text-muted small">다른 번호로 확인</button>
+        </div>
+    </div>
+
+    <!-- 5) 기존 이관 회원 -->
+    <div id="join-step-legacy" class="card border-0 shadow-sm rounded-3 d-none">
+        <div class="card-body p-4 text-center">
+            <p class="fw-bold mb-2" style="color: var(--gn-text); font-size: 1.05rem;">기존 굴삭기나라 회원입니다.</p>
+            <p class="text-muted small mb-4">예전 사이트에서 이관된 계정이 확인되었어요.<br>기존 회원 전환을 진행해 주세요.</p>
+            <a href="{% url 'legacy_convert_intro' %}" class="btn w-100 fw-bold py-2 text-dark" style="background: var(--gn-accent); border-radius: 10px;">기존 회원 전환</a>
+            <button type="button" id="join-legacy-back" class="btn btn-link w-100 mt-3 text-muted small">다른 번호로 확인</button>
+        </div>
+    </div>
+
+    <!-- 6) 기존 매물 있음 → 신규 가입 안내 -->
     <div id="join-step-existing" class="card border-0 shadow-sm rounded-3 d-none">
         <div class="card-body p-4">
             <p class="fw-bold mb-2" style="color: var(--gn-text); font-size: 1.05rem;">
@@ -67,7 +87,7 @@
         </div>
     </div>
 
-    <!-- 5) 신규 회원 결과 -->
+    <!-- 7) 신규 회원 결과 -->
     <div id="join-step-new" class="card border-0 shadow-sm rounded-3 d-none">
         <div class="card-body p-4">
             <p class="fw-bold mb-1" style="color: var(--gn-text); font-size: 1.05rem;">처음 방문하셨네요.</p>
@@ -96,6 +116,8 @@
     var stepPhone = document.getElementById('join-step-phone');
     var stepCode = document.getElementById('join-step-code');
     var stepLoading = document.getElementById('join-step-loading');
+    var stepMember = document.getElementById('join-step-member');
+    var stepLegacy = document.getElementById('join-step-legacy');
     var stepExisting = document.getElementById('join-step-existing');
     var stepNew = document.getElementById('join-step-new');
     var sendErr = document.getElementById('join-send-err');
@@ -107,11 +129,13 @@
     function show(el) { el.classList.remove('d-none'); }
     function hide(el) { el.classList.add('d-none'); }
     function showStep(step) {
-        hide(stepPhone); hide(stepCode); hide(stepLoading); hide(stepExisting); hide(stepNew);
+        hide(stepPhone); hide(stepCode); hide(stepLoading); hide(stepMember); hide(stepLegacy); hide(stepExisting); hide(stepNew);
         sendErr.classList.add('d-none'); verifyErr.classList.add('d-none');
         if (step === 'phone') show(stepPhone);
         else if (step === 'code') show(stepCode);
         else if (step === 'loading') show(stepLoading);
+        else if (step === 'member') show(stepMember);
+        else if (step === 'legacy') show(stepLegacy);
         else if (step === 'existing') show(stepExisting);
         else if (step === 'new') show(stepNew);
     }
@@ -183,7 +207,11 @@
                         .then(function(r) { return r.json(); })
                         .then(function(d) {
                             setTimeout(function() {
-                                if (d.ok && d.found && d.listing_count > 0) {
+                                if (d.ok && d.member_status === 'existing_account') {
+                                    showStep('member');
+                                } else if (d.ok && d.member_status === 'legacy_account') {
+                                    showStep('legacy');
+                                } else if (d.ok && d.found && d.listing_count > 0) {
                                     document.getElementById('join-listing-count').textContent = d.listing_count;
                                     showStep('existing');
                                 } else { showStep('new'); }
@@ -213,6 +241,8 @@
     });
 
     document.getElementById('join-another-phone').onclick = function() { showStep('phone'); document.getElementById('join-phone').value = ''; };
+    document.getElementById('join-member-back').onclick = function() { showStep('phone'); document.getElementById('join-phone').value = ''; };
+    document.getElementById('join-legacy-back').onclick = function() { showStep('phone'); document.getElementById('join-phone').value = ''; };
     document.getElementById('join-new-back').onclick = function() { showStep('phone'); document.getElementById('join-phone').value = ''; };
 })();
 </script>

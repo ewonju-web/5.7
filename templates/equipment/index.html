@@ -1,2 +1,7 @@
 {% extends "equipment/equipment_list.html" %}
-{# 메인 매물 목록: equipment_list와 동일한 화면 (카테고리·정렬·카드 표시) #}
+{# 메인 매물 목록: equipment_list와 동일한 화면 (카테고리·검색·카드 표시) #}
+
+{% block extra_js %}
+{{ block.super }}
+{% include "partials/welcome_popup.html" %}
+{% endblock %}

@@ -696,13 +696,38 @@ def phone_verify(request):
 
 
 def join_check(request):
-    """인증 완료된 휴대폰(session)으로 연결 가능한 매물 건수 조회. JSON."""
+    """인증 완료된 휴대폰(session)으로 회원·매물 여부 조회. JSON."""
     from django.http import JsonResponse
+    from equipment.claim_utils import active_member_for_phone, legacy_member_for_phone
+
     if request.method != 'POST':
         return JsonResponse({'ok': False, 'error': 'Method not allowed'}, status=405)
     phone_norm = request.session.get('verified_phone')
     if not phone_norm:
         return JsonResponse({'ok': False, 'error': '휴대폰 인증을 먼저 완료해 주세요.'})
+
+    existing_profile = active_member_for_phone(phone_norm)
+    if existing_profile:
+        request.session.pop('pending_listing_count', None)
+        request.session.modified = True
+        return JsonResponse({
+            'ok': True,
+            'found': True,
+            'member_status': 'existing_account',
+            'listing_count': 0,
+        })
+
+    legacy_profile = legacy_member_for_phone(phone_norm)
+    if legacy_profile:
+        request.session.pop('pending_listing_count', None)
+        request.session.modified = True
+        return JsonResponse({
+            'ok': True,
+            'found': True,
+            'member_status': 'legacy_account',
+            'listing_count': 0,
+        })
+
     listing_count = claimable_listings_queryset(phone_norm).count()
     if listing_count > 0:
         request.session['pending_listing_count'] = listing_count
@@ -712,6 +737,7 @@ def join_check(request):
     return JsonResponse({
         'ok': True,
         'found': listing_count > 0,
+        'member_status': 'has_listings' if listing_count > 0 else 'new',
         'listing_count': listing_count,
     })
 
