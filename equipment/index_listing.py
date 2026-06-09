@@ -196,6 +196,8 @@ def parse_index_params(request):
         last_category = (request.session.get('last_equipment_category') or '').strip().lower()
         if last_category in VALID_CATEGORIES:
             filter_category = last_category
+        else:
+            filter_category = 'excavator'
     elif not filter_category and query:
         last_category = (request.session.get('last_equipment_category') or '').strip().lower()
         if last_category in VALID_CATEGORIES:
