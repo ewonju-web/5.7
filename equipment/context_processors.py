@@ -4,7 +4,7 @@ from django.conf import settings
 from django.contrib.auth import logout
 from django.utils.timezone import localdate
 
-from .models import VisitorCount
+from .models import VisitorCount, VisitorLog
 
 
 def site_flags(request):
@@ -31,13 +31,15 @@ def visitor_stats(request):
     today_row = VisitorCount.objects.filter(date=today).values('count', 'session_count').first() or {}
     yesterday_row = VisitorCount.objects.filter(date=yesterday).values('count', 'session_count').first() or {}
 
-    # 기존 템플릿 호환: VISITOR_*는 30분 세션 기준 방문수 우선 사용
-    today_count = today_row.get('session_count') or 0
-    yesterday_count = yesterday_row.get('session_count') or 0
+    # 화면 표시: 당일 고유 IP(VisitorLog) 기준 — 집계 누락 시에도 실제 방문 반영
+    today_unique = VisitorLog.objects.filter(visit_date=today).count()
+    yesterday_unique = VisitorLog.objects.filter(visit_date=yesterday).count()
 
     return {
-        "VISITOR_TODAY": today_count,
-        "VISITOR_YESTERDAY": yesterday_count,
-        "VISITOR_UNIQUE_TODAY": today_row.get('count') or 0,
-        "VISITOR_UNIQUE_YESTERDAY": yesterday_row.get('count') or 0,
+        "VISITOR_TODAY": today_unique,
+        "VISITOR_YESTERDAY": yesterday_unique,
+        "VISITOR_UNIQUE_TODAY": today_unique,
+        "VISITOR_UNIQUE_YESTERDAY": yesterday_unique,
+        "VISITOR_SESSION_TODAY": today_row.get('session_count') or 0,
+        "VISITOR_SESSION_YESTERDAY": yesterday_row.get('session_count') or 0,
     }

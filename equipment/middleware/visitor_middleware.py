@@ -33,7 +33,7 @@ class VisitorCounterMiddleware:
                 if created:
                     counter.count = (counter.count or 0) + 1
 
-                session, session_created = VisitorSession.objects.select_for_update().get_or_create(
+                session, session_created = VisitorSession.objects.get_or_create(
                     ip_address=ip,
                     defaults={'last_seen_at': current_time}
                 )
@@ -47,8 +47,6 @@ class VisitorCounterMiddleware:
                 session.save(update_fields=['last_seen_at'])
                 counter.save(update_fields=['count', 'session_count'])
         except IntegrityError:
-            pass
-        except Exception:
             pass
 
         return self.get_response(request)
