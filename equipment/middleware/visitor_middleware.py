@@ -1,5 +1,5 @@
 from django.db import IntegrityError, transaction
-from django.utils.timezone import now
+from django.utils.timezone import localdate, now
 
 from ..models import VisitorCount, VisitorLog, VisitorSession
 
@@ -19,7 +19,7 @@ class VisitorCounterMiddleware:
             return self.get_response(request)
 
         current_time = now()
-        today = current_time.date()
+        today = localdate()
         referer = request.META.get('HTTP_REFERER') or '직접 접속'
 
         try:
