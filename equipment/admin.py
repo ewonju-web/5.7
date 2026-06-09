@@ -18,7 +18,7 @@ from .models import (
     FinanceConsultation,
     ExcavatorEquipment, ForkliftEquipment, DumpEquipment, LoaderEquipment,
     CraneEquipment, AttachmentEquipment, OtherEquipment,
-    VisitSession, VisitPageLog, VisitorCount, VisitorLog,
+    VisitSession, VisitPageLog, VisitorLog,
 )
 from django.contrib.admin.views.main import ERROR_FLAG
 from .index_listing import (
@@ -1048,12 +1048,6 @@ class VisitPageLogAdmin(admin.ModelAdmin):
             return "—"
         return ref if len(ref) <= 60 else ref[:57] + "…"
 
-
-@admin.register(VisitorCount)
-class VisitorCountAdmin(admin.ModelAdmin):
-    list_display = ("date", "count", "session_count")
-    readonly_fields = ("date", "count", "session_count")
-    date_hierarchy = "date"
 
 
 @admin.register(VisitorLog)

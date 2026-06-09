@@ -303,17 +303,8 @@ class EquipmentBumpLog(models.Model):
 
 
 # --- 방문 통계 ---
-class VisitorCount(models.Model):
-    date = models.DateField(auto_now_add=True, unique=True, verbose_name="날짜")
-    count = models.IntegerField(default=0, verbose_name="방문자 수")
-    session_count = models.IntegerField(default=0, verbose_name="방문 수(30분 재방문 포함)")
-
-    class Meta:
-        verbose_name = "일별 방문자 수"
-        verbose_name_plural = "4. 방문자 통계"
-
-
 class VisitorLog(models.Model):
+    """푸터 방문자 수의 단일 진실 소스 — IP당 하루 1건."""
     ip_address = models.GenericIPAddressField(verbose_name="아이피 주소")
     visit_date = models.DateField(auto_now_add=True, verbose_name="방문 날짜")
     referer = models.TextField(null=True, blank=True, verbose_name="유입 경로")
@@ -322,15 +313,6 @@ class VisitorLog(models.Model):
         unique_together = ('ip_address', 'visit_date')
         verbose_name = "방문 상세 기록"
         verbose_name_plural = "5. 방문 상세 로그"
-
-
-class VisitorSession(models.Model):
-    ip_address = models.GenericIPAddressField(unique=True, verbose_name="아이피 주소")
-    last_seen_at = models.DateTimeField(verbose_name="마지막 방문 시각")
-
-    class Meta:
-        verbose_name = "방문 세션 상태"
-        verbose_name_plural = "6. 방문 세션 상태"
 
 
 class VisitSession(models.Model):

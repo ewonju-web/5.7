@@ -7,15 +7,7 @@ from django.db import transaction
 from django.utils.timezone import now
 
 from ..models import VisitPageLog, VisitSession
-
-SKIP_PREFIXES = (
-    "/admin/",
-    "/static/",
-    "/media/",
-    "/index/load-more/",
-    "/favicon",
-)
-SKIP_EXACT = {"/robots.txt", "/health", "/health/"}
+from ..visit_tracking import SKIP_EXACT, SKIP_PREFIXES, client_ip
 
 
 class VisitAnalyticsMiddleware:
@@ -36,7 +28,7 @@ class VisitAnalyticsMiddleware:
         path = request.path or ""
         if path in SKIP_EXACT:
             return False
-        if any(path.startswith(p) for p in SKIP_PREFIXES):
+        if any(path.startswith(prefix) for prefix in SKIP_PREFIXES):
             return False
         if request.headers.get("X-Requested-With") == "XMLHttpRequest":
             return False
@@ -52,7 +44,7 @@ class VisitAnalyticsMiddleware:
         if not session_key:
             return
 
-        ip = self._client_ip(request)
+        ip = client_ip(request)
         if not ip:
             return
 
@@ -128,10 +120,3 @@ class VisitAnalyticsMiddleware:
                 VisitSession.objects.filter(pk=visit.pk).update(**session_updates)
         except Exception:
             pass
-
-    @staticmethod
-    def _client_ip(request) -> str:
-        x_forwarded_for = request.META.get("HTTP_X_FORWARDED_FOR")
-        if x_forwarded_for:
-            return x_forwarded_for.split(",")[0].strip()
-        return (request.META.get("REMOTE_ADDR") or "").strip()
