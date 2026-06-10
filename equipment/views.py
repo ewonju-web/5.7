@@ -69,6 +69,7 @@ from .listing_filters import (
 from .index_listing import (
     parse_index_params,
     build_index_equipment_queryset,
+    filter_similar_equipment_listings,
     INDEX_INITIAL_COUNT,
     INDEX_FILTER_MAX,
     VALID_CATEGORIES,
@@ -2989,16 +2990,8 @@ def equipment_detail(request, pk):
         finance_limit = None
         finance_monthly_60 = None
 
-    # 비슷한 기종·년식(±2년) 시세 통계 및 비슷한 매물 목록 (노출 중인 것만)
-    similar_qs = Equipment.objects.visible().exclude(pk=equipment.pk).filter(is_sold=False)
-    year_val = equipment.year_manufactured or 0
-    if equipment.manufacturer:
-        similar_qs = similar_qs.filter(manufacturer=equipment.manufacturer)
-    if year_val and 1980 <= year_val <= 2030:
-        similar_qs = similar_qs.filter(
-            year_manufactured__gte=year_val - 2,
-            year_manufactured__lte=year_val + 2,
-        )
+    # 비슷한 기종·년식(±2년)·중량구분 시세 통계 및 비슷한 매물 목록 (노출 중인 것만)
+    similar_qs = filter_similar_equipment_listings(Equipment.objects.visible(), equipment)
     similar_stats = similar_qs.aggregate(
         cnt=Count('id'),
         price_min=Min('listing_price'),

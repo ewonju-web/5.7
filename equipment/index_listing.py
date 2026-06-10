@@ -35,6 +35,51 @@ def _exclude_mislabeled_mini_crawler_in_tire_heavy_search(sub_type: str, weight_
         | Q(model_name__iregex=r"(?i)\bHX\s*55\b(?!.*W)")
     )
 
+
+_ATT_TO_CR_WEIGHT_MAP = {
+    'EXC_ATT_LT_1': 'EXC_CR_LE_3_5',
+    'EXC_ATT_LE_2': 'EXC_CR_LE_2',
+    'EXC_ATT_LE_3_5': 'EXC_CR_LE_3_5',
+    'EXC_ATT_LE_6_5': 'EXC_CR_LE_6_5',
+    'EXC_ATT_LE_16': 'EXC_CR_LE_16',
+    'EXC_ATT_EQ_20': 'EXC_CR_EQ_20',
+    'EXC_ATT_GE_30': 'EXC_CR_GE_30',
+}
+
+
+def equivalent_weight_classes(weight_class: str) -> list[str]:
+    """같은 톤수 구간으로 취급하는 중량 코드(어태치↔크롤러 매핑 포함)."""
+    code = (weight_class or '').strip()
+    if not code:
+        return []
+    classes = {code}
+    if code in _ATT_TO_CR_WEIGHT_MAP:
+        classes.add(_ATT_TO_CR_WEIGHT_MAP[code])
+    cr_to_att = {v: k for k, v in _ATT_TO_CR_WEIGHT_MAP.items()}
+    if code in cr_to_att:
+        classes.add(cr_to_att[code])
+    return list(classes)
+
+
+def filter_similar_equipment_listings(queryset, equipment):
+    """비슷한 시세 매물: 같은 기종·제조사·년식±2·같은 중량구분."""
+    qs = queryset.exclude(pk=equipment.pk).filter(is_sold=False)
+    if equipment.equipment_type:
+        qs = qs.filter(equipment_type=equipment.equipment_type)
+    if equipment.manufacturer:
+        qs = qs.filter(manufacturer=equipment.manufacturer)
+    year_val = equipment.year_manufactured or 0
+    if year_val and 1980 <= year_val <= 2030:
+        qs = qs.filter(
+            year_manufactured__gte=year_val - 2,
+            year_manufactured__lte=year_val + 2,
+        )
+    eq_classes = equivalent_weight_classes(equipment.weight_class)
+    if eq_classes:
+        qs = qs.filter(weight_class__in=eq_classes)
+    return qs
+
+
 VALID_CATEGORIES = ('excavator', 'forklift', 'dump', 'loader', 'crane', 'attachment', 'other')
 INDEX_INITIAL_COUNT = 20
 INDEX_FILTER_MAX = 120  # 상세필터 시 한 번에 로드 상한
@@ -63,15 +108,7 @@ def apply_excavator_sub_type_weight_filters(equipment_list, sub_type: str, weigh
         )
         equipment_list = equipment_list.filter(exact_tire_56 | legacy_tire_56)
     else:
-        att_to_cr_map = {
-            'EXC_ATT_LT_1': 'EXC_CR_LE_3_5',
-            'EXC_ATT_LE_2': 'EXC_CR_LE_2',
-            'EXC_ATT_LE_3_5': 'EXC_CR_LE_3_5',
-            'EXC_ATT_LE_6_5': 'EXC_CR_LE_6_5',
-            'EXC_ATT_LE_16': 'EXC_CR_LE_16',
-            'EXC_ATT_EQ_20': 'EXC_CR_EQ_20',
-            'EXC_ATT_GE_30': 'EXC_CR_GE_30',
-        }
+        att_to_cr_map = _ATT_TO_CR_WEIGHT_MAP
         if sub_type == 'EXC_CRAWLER':
             equipment_list = equipment_list.filter(
                 Q(sub_type='EXC_CRAWLER')
