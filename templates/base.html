@@ -109,23 +109,32 @@
             flex-wrap: nowrap;
             flex-shrink: 0;
         }
-        .navbar-gn .gn-nav-visitor {
+        .gn-visitor-subbar {
+            background: var(--gn-nav);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+        }
+        .gn-visitor-subbar .container {
+            display: flex;
+            justify-content: flex-end;
+            align-items: center;
+            min-height: 2rem;
+            padding-top: 0.2rem;
+            padding-bottom: 0.28rem;
+        }
+        .gn-visitor-subbar-inner {
             display: inline-flex;
             align-items: center;
             gap: 0.28rem;
             font-size: 0.82rem;
             color: rgba(255, 255, 255, 0.9);
             white-space: nowrap;
-            padding: 0.38rem 0.62rem;
-            border-radius: 8px;
-            background: rgba(255, 255, 255, 0.07);
             line-height: 1.2;
         }
-        .navbar-gn .gn-nav-visitor .gn-nav-visitor-count {
+        .gn-visitor-subbar-inner .gn-visitor-count {
             color: var(--gn-accent);
             font-weight: 700;
         }
-        .navbar-gn .gn-nav-visitor .gn-nav-visitor-yesterday {
+        .gn-visitor-subbar-inner .gn-visitor-yesterday {
             color: rgba(255, 255, 255, 0.62);
             font-size: 0.78rem;
         }
@@ -976,12 +985,6 @@
                     <li class="nav-item"><a class="nav-link soil-nav {% if request.resolver_match.url_name == 'soil_list' or request.resolver_match.url_name == 'soil_create' or request.resolver_match.url_name == 'soil_detail' or request.resolver_match.url_name == 'soil_edit' %}active{% endif %}" href="{% url 'soil_list' %}">{{ LANG|tr:"nav_soil" }}</a></li>
                 </ul>
                 <div class="d-flex align-items-center gap-2 gn-nav-actions">
-                    <span class="gn-nav-visitor" title="{{ LANG|tr:'오늘 방문자' }}">
-                        <i class="bi bi-people" aria-hidden="true"></i>
-                        <strong>{{ LANG|tr:"오늘 방문자" }}</strong>
-                        <span class="gn-nav-visitor-count">{{ VISITOR_TODAY|default:0 }}</span>{{ LANG|tr:"명" }}
-                        <span class="gn-nav-visitor-yesterday">(어제 {{ VISITOR_YESTERDAY|default:0 }})</span>
-                    </span>
                     <div class="dropdown">
                         <button class="btn btn-outline-light btn-sm dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false" title="언어">{{ LANG|tr:"lang_label" }}</button>
                         <ul class="dropdown-menu dropdown-menu-end">
@@ -1002,6 +1005,17 @@
             </div>
         </div>
     </nav>
+
+    <div class="gn-visitor-subbar d-none d-md-block" aria-label="{{ LANG|tr:'오늘 방문자' }}">
+        <div class="container">
+            <span class="gn-visitor-subbar-inner" title="{{ LANG|tr:'오늘 방문자' }}">
+                <i class="bi bi-people" aria-hidden="true"></i>
+                <strong>{{ LANG|tr:"오늘 방문자" }}</strong>
+                <span class="gn-visitor-count">{{ VISITOR_TODAY|default:0 }}</span>{{ LANG|tr:"명" }}
+                <span class="gn-visitor-yesterday">(어제 {{ VISITOR_YESTERDAY|default:0 }})</span>
+            </span>
+        </div>
+    </div>
 
     <!-- 햄버거 메뉴: 전체 서비스 (모바일, 다크) -->
     <div class="offcanvas offcanvas-end" tabindex="-1" id="gnServiceMenu" aria-labelledby="gnServiceMenuLabel" style="background: var(--gn-card); color: var(--gn-text);">
