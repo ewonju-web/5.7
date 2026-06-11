@@ -120,11 +120,17 @@
           {% else %}
           <button class="btn gn-btn-secondary py-2 fw-bold" disabled><i class="bi bi-chat-dots me-2"></i> {{ LANG|tr:"eq_detail_my_listing" }}</button>
           {% endif %}
-          {% if user.is_authenticated %}
-          <a href="{% url 'toggle_equipment_favorite' equipment.pk %}?next={{ request.get_full_path|urlencode }}" class="btn gn-btn-wishlist py-2">
-            <i class="bi bi-heart{% if is_favorited %}-fill{% endif %}"></i> {% if is_favorited %}{{ LANG|tr:"eq_detail_favorite_remove" }}{% else %}{{ LANG|tr:"eq_detail_favorite_add" }}{% endif %}
-          </a>
-          {% endif %}
+          <div class="d-flex gap-2 align-items-stretch gn-detail-action-row">
+            {% if user.is_authenticated %}
+            <a href="{% url 'toggle_equipment_favorite' equipment.pk %}?next={{ request.get_full_path|urlencode }}" class="btn gn-btn-wishlist py-2 flex-grow-1">
+              <i class="bi bi-heart{% if is_favorited %}-fill{% endif %}"></i> {% if is_favorited %}{{ LANG|tr:"eq_detail_favorite_remove" }}{% else %}{{ LANG|tr:"eq_detail_favorite_add" }}{% endif %}
+            </a>
+            {% endif %}
+            <span class="gn-detail-view-count d-inline-flex align-items-center justify-content-center gap-1 px-3 py-2{% if not user.is_authenticated %} w-100{% endif %}" title="{{ LANG|tr:'조회수' }}">
+              <i class="bi bi-eye" aria-hidden="true"></i>
+              <span class="small text-nowrap">{{ LANG|tr:"조회수" }} <strong>{{ equipment.view_count|default:0|intcomma }}</strong></span>
+            </span>
+          </div>
           <button type="button" class="btn gn-btn-secondary py-2" onclick="navigator.clipboard && navigator.clipboard.writeText(window.location.href); this.innerText='{{ LANG|tr:'eq_detail_link_copied'|escapejs }}';">
             <i class="bi bi-share me-2"></i> {{ LANG|tr:"eq_detail_link_copy" }}
           </button>
@@ -1533,6 +1539,18 @@
     background: rgba(239, 68, 68, 0.1) !important;
     color: #EF4444 !important;
     border-color: #EF4444 !important;
+  }
+  .gn-detail-view-count {
+    background: #f9fafb;
+    border: 1px solid #e5e7eb;
+    border-radius: 10px;
+    color: #6b7280;
+    font-weight: 600;
+    line-height: 1.2;
+  }
+  .gn-detail-view-count strong {
+    color: #111827;
+    font-weight: 800;
   }
 
   /* ----- 5. 비슷한 기종·년식 시세: 밝은 배경 ----- */

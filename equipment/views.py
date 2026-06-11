@@ -2838,7 +2838,7 @@ def attachment_ad_site_redirect(request, pk):
 
 
 def _bump_equipment_view_count(request, equipment_pk):
-    """조회수 DB 갱신 — 동일 방문자 30분에 1회."""
+    """조회수 DB 갱신 — 동일 방문자 2분에 1회."""
     if request.method != "GET":
         return False
     if not request.session.session_key:
@@ -2847,7 +2847,7 @@ def _bump_equipment_view_count(request, equipment_pk):
     cache_key = f"eqview:{equipment_pk}:{visitor}"
     if cache.get(cache_key):
         return False
-    cache.set(cache_key, 1, 1800)
+    cache.set(cache_key, 1, 120)
     Equipment.objects.filter(pk=equipment_pk).update(view_count=F("view_count") + 1)
     return True
 
