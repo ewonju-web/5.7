@@ -85,97 +85,23 @@
                             <th class="text-end py-3" style="width: 140px;">액션</th>
                         </tr>
                     </thead>
-                    <tbody>
-                        {% for job in job_list %}
-                        <tr class="job-row {% if job.is_urgent_highlight %}job-row-urgent{% endif %}" data-href="{% url 'job_detail' job.pk %}?next={{ job_list_back_url|urlencode }}">
-                            <td class="text-center job-td-mobile-order-2 d-none d-md-table-cell" data-label="구분">
-                                {% if job.job_type == 'HIRING' %}
-                                <span class="job-cat-badge job-cat-badge-hiring">사람구함</span>
-                                {% else %}
-                                <span class="job-cat-badge job-cat-badge-seeking">일자리구함</span>
-                                {% endif %}
-                            </td>
-                            {% if show_pay_column %}
-                            <td class="job-td-mobile-order-3 d-none d-md-table-cell" data-label="급여">
-                                <span class="job-pay-cell">{% if job.pay %}{{ job.pay }}{% else %}-{% endif %}</span>
-                            </td>
-                            {% endif %}
-                            <td class="job-td-mobile-order-1 job-td-mobile-title" data-label="제목">
-                                <a href="{% url 'job_detail' job.pk %}?next={{ job_list_back_url|urlencode }}" class="btn btn-sm job-btn-view job-mobile-view-btn d-md-none" onclick="event.stopPropagation();">보기</a>
-                                <div class="d-flex align-items-start flex-wrap gap-2">
-                                    <div class="flex-grow-1">
-                                        <div class="job-mobile-badge-line d-md-none">
-                                            {% if job.is_urgent_highlight %}
-                                            <span class="job-badge-urgent">급구</span>
-                                            {% endif %}
-                                            {% if job.job_type == 'HIRING' %}
-                                            <span class="job-cat-badge job-cat-badge-hiring">사람구함</span>
-                                            {% else %}
-                                            <span class="job-cat-badge job-cat-badge-seeking">일자리구함</span>
-                                            {% endif %}
-                                            {% if show_pay_column %}
-                                            <span class="job-mobile-pay-badge">{% if job.pay %}{{ job.pay }}{% else %}-{% endif %}</span>
-                                            {% endif %}
-                                        </div>
-                                        <div class="job-mobile-title-row d-md-none">
-                                            <div class="job-title-v2 mb-0">{{ job.title }}</div>
-                                        </div>
-                                        <div class="d-none d-md-flex align-items-start flex-wrap gap-2 w-100">
-                                            {% if job.is_urgent_highlight %}
-                                            <span class="job-badge-urgent">급구</span>
-                                            {% endif %}
-                                            <div class="job-title-v2 flex-grow-1">{{ job.title }}</div>
-                                        </div>
-                                    </div>
-                                </div>
-                                <div class="d-md-none text-muted small job-mobile-meta-line">
-                                    <i class="bi bi-geo-alt text-danger"></i>
-                                    {{ job.region_line }}
-                                    · {{ job.created_at|date:"Y-m-d" }}
-                                </div>
-                            </td>
-                            <td class="d-none d-md-table-cell text-muted small">
-                                <i class="bi bi-geo-alt text-danger"></i>
-                                <span class="text-dark">{{ job.region_line }}</span>
-                            </td>
-                            <td class="text-center text-muted small d-none d-lg-table-cell">{{ job.created_at|date:"Y-m-d" }}</td>
-                            <td class="text-end align-middle job-td-actions job-td-mobile-order-4 d-none d-md-table-cell" onclick="event.stopPropagation();">
-                                <a href="{% url 'job_detail' job.pk %}?next={{ job_list_back_url|urlencode }}" class="btn btn-sm job-btn-view" onclick="event.stopPropagation();">보기</a>
-                                {% if user.is_authenticated and job.author_id == user.id %}
-                                <a href="{% url 'job_edit' job.pk %}" class="btn btn-sm rounded-pill gn-btn-edit">
-                                    <i class="bi bi-pencil me-1"></i>수정
-                                </a>
-                                <a href="{% url 'job_delete' job.pk %}" class="btn btn-sm rounded-pill gn-btn-delete" onclick="return confirm('정말 삭제하시겠습니까?');">
-                                    <i class="bi bi-trash me-1"></i>삭제
-                                </a>
-                                {% endif %}
-                            </td>
-                        </tr>
-                        {% empty %}
-                        <tr class="job-empty-row">
-                            <td colspan="{% if show_pay_column %}6{% else %}5{% endif %}" class="text-center py-5 text-muted">등록된 구인구직 공고가 없습니다.</td>
-                        </tr>
-                        {% endfor %}
+                    <tbody id="job-list-tbody">
+                        {% include "equipment/partials/job_list_rows.html" with show_empty_row=True %}
                     </tbody>
                 </table>
             </div>
         </div>
 
-        {% if show_older %}
-        <div class="text-center mt-3 job-list-more-wrap">
-            <p class="small text-muted mb-2">최근 약 3개월 공고와 이전 공고를 모두 표시 중입니다.</p>
-            <a href="{% url 'job_list' %}{{ job_list_recent_only_url }}" class="btn btn-outline-secondary px-4 py-2 job-btn-more-list">
-                <i class="bi bi-chevron-up me-1" aria-hidden="true"></i>최근 3개월만 보기
-            </a>
+        <div class="text-center mt-3 job-list-more-wrap{% if not has_more_list %} d-none{% endif %}"
+             id="job-list-more-controls"
+             data-offset="{{ list_offset }}"
+             data-total="{{ total_count }}"
+             data-per-page="{{ job_list_page_size }}">
+            <button type="button" class="btn btn-outline-secondary px-4 py-2 job-btn-more-list" id="job-list-load-more-btn">
+                <i class="bi bi-chevron-down me-1" aria-hidden="true"></i><span class="job-btn-more-label">더보기</span>
+            </button>
+            <p class="small text-muted mt-2 mb-0 d-none" id="job-list-more-status"></p>
         </div>
-        {% elif older_count > 0 %}
-        <div class="text-center mt-3 job-list-more-wrap">
-            <p class="small text-muted mb-2">최근 약 3개월 공고만 표시 중입니다. (이전 공고 {{ older_count }}건)</p>
-            <a href="{% url 'job_list' %}{{ job_list_load_older_url }}" class="btn btn-outline-secondary px-4 py-2 job-btn-more-list">
-                <i class="bi bi-chevron-down me-1" aria-hidden="true"></i>더보기 (이전 공고 {{ older_count }}건)
-            </a>
-        </div>
-        {% endif %}
     </div>
 </div>
 <script>
@@ -230,16 +156,94 @@
         if (e.persisted) restoreJobListScroll();
     });
 
-    document.querySelectorAll('.job-row').forEach(function(row) {
-        row.addEventListener('click', function(e) {
+    var jobListTbody = document.getElementById('job-list-tbody');
+    if (jobListTbody) {
+        jobListTbody.addEventListener('click', function(e) {
+            var link = e.target.closest('.job-row a[href*="/jobs/"]');
+            if (link) {
+                saveJobListScroll();
+                return;
+            }
+            var row = e.target.closest('.job-row');
+            if (!row || !jobListTbody.contains(row)) return;
             if (e.target.closest('a, button')) return;
             saveJobListScroll();
             window.location.href = row.dataset.href;
         });
-    });
-    document.querySelectorAll('.job-row a[href*="/jobs/"]').forEach(function(link) {
-        link.addEventListener('click', saveJobListScroll);
-    });
+    }
+
+    var moreControls = document.getElementById('job-list-more-controls');
+    var moreBtn = document.getElementById('job-list-load-more-btn');
+    var moreStatus = document.getElementById('job-list-more-status');
+    var moreLabel = moreBtn ? moreBtn.querySelector('.job-btn-more-label') : null;
+    var jobListLoading = false;
+
+    function updateJobListMoreUi() {
+        if (!moreControls) return;
+        var offset = parseInt(moreControls.getAttribute('data-offset'), 10) || 0;
+        var total = parseInt(moreControls.getAttribute('data-total'), 10) || 0;
+        var remaining = Math.max(0, total - offset);
+        if (remaining <= 0) {
+            moreControls.classList.add('d-none');
+            if (moreBtn) moreBtn.disabled = true;
+            if (total > 0 && moreStatus) {
+                moreStatus.textContent = '전체 ' + total.toLocaleString() + '건을 모두 불러왔습니다.';
+                moreStatus.classList.remove('d-none');
+            }
+            return;
+        }
+        moreControls.classList.remove('d-none');
+        if (moreBtn) moreBtn.disabled = false;
+        if (moreStatus) moreStatus.classList.add('d-none');
+        if (moreLabel) {
+            moreLabel.textContent = '더보기 (' + remaining.toLocaleString() + '건 남음)';
+        }
+    }
+
+    function loadMoreJobs() {
+        if (!moreControls || !jobListTbody || jobListLoading) return;
+        var offset = parseInt(moreControls.getAttribute('data-offset'), 10) || 0;
+        var total = parseInt(moreControls.getAttribute('data-total'), 10) || 0;
+        if (offset >= total) return;
+
+        jobListLoading = true;
+        if (moreBtn) {
+            moreBtn.disabled = true;
+            if (moreLabel) moreLabel.textContent = '불러오는 중…';
+        }
+
+        var params = new URLSearchParams(window.location.search || '');
+        params.set('offset', String(offset));
+        var url = window.location.origin + '{% url "job_list_load_more" %}?' + params.toString();
+
+        fetch(url, { headers: { 'X-Requested-With': 'XMLHttpRequest' }, credentials: 'same-origin' })
+            .then(function(res) { return res.json(); })
+            .then(function(data) {
+                if (data.html) {
+                    jobListTbody.insertAdjacentHTML('beforeend', data.html);
+                }
+                if (typeof data.offset === 'number') {
+                    moreControls.setAttribute('data-offset', String(data.offset));
+                }
+                if (typeof data.total_count === 'number') {
+                    moreControls.setAttribute('data-total', String(data.total_count));
+                }
+                updateJobListMoreUi();
+            })
+            .catch(function() {
+                if (moreBtn) moreBtn.disabled = false;
+                if (moreLabel) moreLabel.textContent = '더보기';
+                alert('목록을 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.');
+            })
+            .finally(function() {
+                jobListLoading = false;
+            });
+    }
+
+    if (moreBtn) {
+        moreBtn.addEventListener('click', loadMoreJobs);
+    }
+    updateJobListMoreUi();
 })();
 </script>
 {% endblock %}

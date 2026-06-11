@@ -42,6 +42,7 @@ urlpatterns = [
     path('equipment/create/', views.equipment_create, name='equipment_create'),
     path('new/', views.equipment_create, name='equipment_create_legacy'),
     path('jobs/', views.job_list, name='job_list'),
+    path('jobs/load-more/', views.job_list_load_more, name='job_list_load_more'),
     path('jobs/create/', views.job_create, name='job_create'),
     path('jobs/exam/', views.exam_list, name='exam_list'),
     path('jobs/exam/videos/', views.exam_video_list, name='exam_video_list'),

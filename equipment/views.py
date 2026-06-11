@@ -1321,43 +1321,48 @@ def _split_job_equipment_type(equipment_type: str) -> tuple:
     return '', et
 
 
-# [3] 구인구직 관련
-def job_list(request):
-    from .region_choices import SIDO_CHOICES, SIGUNGU_MAP
-    import json
+JOB_LIST_INITIAL_COUNT = 30
+JOB_LIST_EQUIPMENT_CHOICES = [
+    ('', '전체'),
+    ('excavator', '굴삭기'),
+    ('forklift', '지게차'),
+    ('crane', '크레인기사'),
+    ('site', '건설현장'),
+    ('etc', '기타'),
+]
 
-    JOB_EQUIPMENT_CHOICES = [
-        ('', '전체'),
-        ('excavator', '굴삭기'),
-        ('forklift', '지게차'),
-        ('crane', '크레인기사'),
-        ('site', '건설현장'),
-        ('etc', '기타'),
-    ]
 
-    qs = JobPost.objects.all().order_by('-created_at')
+def _parse_job_list_filters(request):
     job_type = (request.GET.get('type', '') or '').strip().upper()
     region_sido = (request.GET.get('region_sido', '') or '').strip()
     region_sigungu = (request.GET.get('region_sigungu', '') or '').strip()
     equipment = (request.GET.get('equipment', '') or '').strip()
     if equipment not in JOB_EQUIPMENT_KEYS and equipment != '':
         equipment = ''
+    return {
+        'job_type': job_type,
+        'region_sido': region_sido,
+        'region_sigungu': region_sigungu,
+        'equipment': equipment,
+    }
 
+
+def _build_job_list_queryset(filters):
+    qs = JobPost.objects.all().order_by('-created_at')
+    job_type = filters['job_type']
     if job_type in ('HIRING', 'SEEKING'):
         qs = qs.filter(job_type=job_type)
-    if region_sido:
-        qs = qs.filter(region_sido=region_sido)
-    if region_sigungu:
-        qs = qs.filter(region_sigungu=region_sigungu)
-    eq_q = _job_list_equipment_q(equipment)
+    if filters['region_sido']:
+        qs = qs.filter(region_sido=filters['region_sido'])
+    if filters['region_sigungu']:
+        qs = qs.filter(region_sigungu=filters['region_sigungu'])
+    eq_q = _job_list_equipment_q(filters['equipment'])
     if eq_q is not None:
         qs = qs.filter(eq_q)
+    return qs
 
-    # 급여 컬럼 표시 여부(한 건이라도 급여 입력이 있으면 표시)
-    show_pay_column = qs.exclude(pay__isnull=True).exclude(pay='').exists()
 
-    # 목록용 표시 데이터 정리: 지역 중복 제거 + 한 줄 표기
-    jobs = list(qs)
+def _enrich_job_list_items(jobs):
     for job in jobs:
         sido = (job.region_sido or '').strip()
         sigungu = (job.region_sigungu or '').strip()
@@ -1376,10 +1381,29 @@ def job_list(request):
             region_line = f"{region_line} · {location}" if (sido or sigungu) else location
 
         job.region_line = region_line or '—'
+    return jobs
 
-    from django.utils import timezone as dj_tz
 
-    today = dj_tz.now().date()
+def _job_list_row_context(request, jobs, show_pay_column):
+    return {
+        'job_list': jobs,
+        'show_pay_column': show_pay_column,
+        'job_list_back_url': request.get_full_path(),
+        'show_empty_row': False,
+    }
+
+
+# [3] 구인구직 관련
+def job_list(request):
+    from .region_choices import SIDO_CHOICES, SIGUNGU_MAP
+
+    filters = _parse_job_list_filters(request)
+    qs = _build_job_list_queryset(filters)
+    total_count = qs.count()
+    show_pay_column = qs.exclude(pay__isnull=True).exclude(pay='').exists()
+    jobs = _enrich_job_list_items(list(qs[:JOB_LIST_INITIAL_COUNT]))
+
+    today = timezone.now().date()
     job_stats = {
         'total': JobPost.objects.count(),
         'hiring': JobPost.objects.filter(job_type='HIRING').count(),
@@ -1387,20 +1411,52 @@ def job_list(request):
         'today': JobPost.objects.filter(created_at__date=today).count(),
     }
 
+    list_offset = len(jobs)
     return render(request, 'equipment/job_list.html', {
         'job_list': jobs,
         'jobs': jobs,
         'jobs_section': 'jobs',
-        'filter_type': job_type,
-        'filter_region_sido': region_sido,
-        'filter_region_sigungu': region_sigungu,
-        'filter_equipment': equipment,
-        'job_equipment_choices': JOB_EQUIPMENT_CHOICES,
+        'filter_type': filters['job_type'],
+        'filter_region_sido': filters['region_sido'],
+        'filter_region_sigungu': filters['region_sigungu'],
+        'filter_equipment': filters['equipment'],
+        'job_equipment_choices': JOB_LIST_EQUIPMENT_CHOICES,
         'sido_choices': SIDO_CHOICES,
         'sigungu_map_json': json.dumps(SIGUNGU_MAP, ensure_ascii=False),
         'job_stats': job_stats,
         'show_pay_column': show_pay_column,
         'job_list_back_url': request.get_full_path(),
+        'total_count': total_count,
+        'list_offset': list_offset,
+        'has_more_list': list_offset < total_count,
+        'job_list_page_size': JOB_LIST_INITIAL_COUNT,
+    })
+
+
+def job_list_load_more(request):
+    """구인구직 더보기: offset부터 30개 행 HTML(JSON) 반환."""
+    try:
+        offset = max(JOB_LIST_INITIAL_COUNT, int(request.GET.get('offset', str(JOB_LIST_INITIAL_COUNT))))
+    except (TypeError, ValueError):
+        offset = JOB_LIST_INITIAL_COUNT
+
+    filters = _parse_job_list_filters(request)
+    qs = _build_job_list_queryset(filters)
+    total_count = qs.count()
+    show_pay_column = qs.exclude(pay__isnull=True).exclude(pay='').exists()
+    chunk = _enrich_job_list_items(list(qs[offset:offset + JOB_LIST_INITIAL_COUNT]))
+    html = render_to_string(
+        'equipment/partials/job_list_rows.html',
+        _job_list_row_context(request, chunk, show_pay_column),
+        request=request,
+    )
+    new_offset = offset + len(chunk)
+    return JsonResponse({
+        'html': html,
+        'offset': new_offset,
+        'has_more': new_offset < total_count,
+        'total_count': total_count,
+        'loaded_count': len(chunk),
     })
 
 

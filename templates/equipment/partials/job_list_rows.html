@@ -1,0 +1,72 @@
+{% for job in job_list %}
+<tr class="job-row {% if job.is_urgent_highlight %}job-row-urgent{% endif %}" data-href="{% url 'job_detail' job.pk %}?next={{ job_list_back_url|urlencode }}">
+    <td class="text-center job-td-mobile-order-2 d-none d-md-table-cell" data-label="구분">
+        {% if job.job_type == 'HIRING' %}
+        <span class="job-cat-badge job-cat-badge-hiring">사람구함</span>
+        {% else %}
+        <span class="job-cat-badge job-cat-badge-seeking">일자리구함</span>
+        {% endif %}
+    </td>
+    {% if show_pay_column %}
+    <td class="job-td-mobile-order-3 d-none d-md-table-cell" data-label="급여">
+        <span class="job-pay-cell">{% if job.pay %}{{ job.pay }}{% else %}-{% endif %}</span>
+    </td>
+    {% endif %}
+    <td class="job-td-mobile-order-1 job-td-mobile-title" data-label="제목">
+        <a href="{% url 'job_detail' job.pk %}?next={{ job_list_back_url|urlencode }}" class="btn btn-sm job-btn-view job-mobile-view-btn d-md-none" onclick="event.stopPropagation();">보기</a>
+        <div class="d-flex align-items-start flex-wrap gap-2">
+            <div class="flex-grow-1">
+                <div class="job-mobile-badge-line d-md-none">
+                    {% if job.is_urgent_highlight %}
+                    <span class="job-badge-urgent">급구</span>
+                    {% endif %}
+                    {% if job.job_type == 'HIRING' %}
+                    <span class="job-cat-badge job-cat-badge-hiring">사람구함</span>
+                    {% else %}
+                    <span class="job-cat-badge job-cat-badge-seeking">일자리구함</span>
+                    {% endif %}
+                    {% if show_pay_column %}
+                    <span class="job-mobile-pay-badge">{% if job.pay %}{{ job.pay }}{% else %}-{% endif %}</span>
+                    {% endif %}
+                </div>
+                <div class="job-mobile-title-row d-md-none">
+                    <div class="job-title-v2 mb-0">{{ job.title }}</div>
+                </div>
+                <div class="d-none d-md-flex align-items-start flex-wrap gap-2 w-100">
+                    {% if job.is_urgent_highlight %}
+                    <span class="job-badge-urgent">급구</span>
+                    {% endif %}
+                    <div class="job-title-v2 flex-grow-1">{{ job.title }}</div>
+                </div>
+            </div>
+        </div>
+        <div class="d-md-none text-muted small job-mobile-meta-line">
+            <i class="bi bi-geo-alt text-danger"></i>
+            {{ job.region_line }}
+            · {{ job.created_at|date:"Y-m-d" }}
+        </div>
+    </td>
+    <td class="d-none d-md-table-cell text-muted small">
+        <i class="bi bi-geo-alt text-danger"></i>
+        <span class="text-dark">{{ job.region_line }}</span>
+    </td>
+    <td class="text-center text-muted small d-none d-lg-table-cell">{{ job.created_at|date:"Y-m-d" }}</td>
+    <td class="text-end align-middle job-td-actions job-td-mobile-order-4 d-none d-md-table-cell" onclick="event.stopPropagation();">
+        <a href="{% url 'job_detail' job.pk %}?next={{ job_list_back_url|urlencode }}" class="btn btn-sm job-btn-view" onclick="event.stopPropagation();">보기</a>
+        {% if user.is_authenticated and job.author_id == user.id %}
+        <a href="{% url 'job_edit' job.pk %}" class="btn btn-sm rounded-pill gn-btn-edit">
+            <i class="bi bi-pencil me-1"></i>수정
+        </a>
+        <a href="{% url 'job_delete' job.pk %}" class="btn btn-sm rounded-pill gn-btn-delete" onclick="return confirm('정말 삭제하시겠습니까?');">
+            <i class="bi bi-trash me-1"></i>삭제
+        </a>
+        {% endif %}
+    </td>
+</tr>
+{% empty %}
+{% if show_empty_row %}
+<tr class="job-empty-row">
+    <td colspan="{% if show_pay_column %}6{% else %}5{% endif %}" class="text-center py-5 text-muted">등록된 구인구직 공고가 없습니다.</td>
+</tr>
+{% endif %}
+{% endfor %}
