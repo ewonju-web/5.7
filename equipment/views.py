@@ -1427,9 +1427,26 @@ def _resolve_job_detail_back_url(request, job=None):
     return reverse('job_list')
 
 
+def _bump_job_view_count(request, job_pk):
+    """구인구직 조회수 — 동일 방문자 2분에 1회."""
+    if request.method != "GET":
+        return False
+    if not request.session.session_key:
+        request.session.save()
+    visitor = request.session.session_key or request.META.get("REMOTE_ADDR", "anon")
+    cache_key = f"jobview:{job_pk}:{visitor}"
+    if cache.get(cache_key):
+        return False
+    cache.set(cache_key, 1, 120)
+    JobPost.objects.filter(pk=job_pk).update(views=F("views") + 1)
+    return True
+
+
 def job_detail(request, pk):
     """구인구직 상세. 문의는 1:1 채팅으로만 가능(공개 댓글 없음)."""
     job = get_object_or_404(JobPost, pk=pk)
+    if _bump_job_view_count(request, job.pk):
+        job.refresh_from_db(fields=["views"])
     return render(request, 'equipment/job_detail.html', {
         'job': job,
         'job_list_back_url': _resolve_job_detail_back_url(request, job),

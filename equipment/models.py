@@ -440,6 +440,7 @@ class JobPost(models.Model):
     doc_license = models.BooleanField(default=True, verbose_name="제출서류_면허증사본")
     company_name = models.CharField(max_length=200, blank=True, default='', verbose_name="회사명")
     company_address = models.CharField(max_length=300, blank=True, default='', verbose_name="주소")
+    views = models.PositiveIntegerField(default=0, verbose_name="조회수")
 
     def __str__(self):
         return f"[{self.get_job_type_display()}] {self.title}"

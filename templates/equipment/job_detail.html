@@ -1,7 +1,7 @@
 {% extends "base.html" %}
-{% load static i18n_extras %}
+{% load static humanize i18n_extras %}
 {% block extra_css %}
-<link rel="stylesheet" href="{% static 'css/jobs.css' %}?v=20260607c">
+<link rel="stylesheet" href="{% static 'css/jobs.css' %}?v=20260610c">
 {% endblock %}
 {% block content %}
 <div class="container py-5 pb-5 pb-md-4 gn-job-detail-page">
@@ -31,7 +31,13 @@
         <!-- 단순화: 사람구함 / 일자리구함 블록 -->
         <div class="card border-0 gn-job-light-card gn-job-simple-block">
             <div class="card-body">
-                <h2 class="gn-job-card-title">기본 정보</h2>
+                <div class="gn-job-card-title-row">
+                    <h2 class="gn-job-card-title">기본 정보</h2>
+                    <span class="gn-job-view-count" title="조회수">
+                        <i class="bi bi-eye" aria-hidden="true"></i>
+                        조회수 <strong>{{ job.views|default:0|intcomma }}</strong>
+                    </span>
+                </div>
                 {% if job.job_type == 'HIRING' %}
                 <div class="gn-job-simple-list">
                     <div class="gn-job-simple-row"><span class="gn-job-dt">회사명</span><span class="gn-job-dd">{{ job.company_name|default:"—" }}</span></div>
