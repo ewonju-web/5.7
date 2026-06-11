@@ -125,8 +125,12 @@
             <a href="{% url 'toggle_equipment_favorite' equipment.pk %}?next={{ request.get_full_path|urlencode }}" class="btn gn-btn-wishlist py-2 flex-grow-1">
               <i class="bi bi-heart{% if is_favorited %}-fill{% endif %}"></i> {% if is_favorited %}{{ LANG|tr:"eq_detail_favorite_remove" }}{% else %}{{ LANG|tr:"eq_detail_favorite_add" }}{% endif %}
             </a>
+            {% else %}
+            <a href="{% url 'login' %}?next={{ request.get_full_path|urlencode }}" class="btn gn-btn-wishlist py-2 flex-grow-1">
+              <i class="bi bi-heart"></i> {{ LANG|tr:"eq_detail_favorite_add" }}
+            </a>
             {% endif %}
-            <span class="gn-detail-view-count d-inline-flex align-items-center justify-content-center gap-1 px-3 py-2{% if not user.is_authenticated %} w-100{% endif %}" title="{{ LANG|tr:'조회수' }}">
+            <span class="gn-detail-view-count d-inline-flex align-items-center justify-content-center gap-1 px-3 py-2" title="{{ LANG|tr:'조회수' }}">
               <i class="bi bi-eye" aria-hidden="true"></i>
               <span class="small text-nowrap">{{ LANG|tr:"조회수" }} <strong>{{ equipment.view_count|default:0|intcomma }}</strong></span>
             </span>
