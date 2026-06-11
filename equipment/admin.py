@@ -67,12 +67,22 @@ class EquipmentOwnerFilter(admin.SimpleListFilter):
     def lookups(self, request, model_admin):
         return [
             ('unclaimed', '미연결 (작성자 없음)'),
+            ('orphan', '미연결 + 연락처 없음'),
+            ('unclaimed_with_phone', '미연결 + 연락처 있음'),
             ('claimed', '연결됨'),
         ]
 
     def queryset(self, request, queryset):
         if self.value() == 'unclaimed':
             return queryset.filter(author__isnull=True)
+        if self.value() == 'orphan':
+            return queryset.filter(author__isnull=True).filter(
+                Q(unclaimed_phone_norm='') | Q(unclaimed_phone_norm__isnull=True)
+            )
+        if self.value() == 'unclaimed_with_phone':
+            return queryset.filter(author__isnull=True).exclude(
+                Q(unclaimed_phone_norm='') | Q(unclaimed_phone_norm__isnull=True)
+            )
         if self.value() == 'claimed':
             return queryset.filter(author__isnull=False)
         return queryset

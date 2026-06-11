@@ -1,12 +1,11 @@
-from django.contrib.auth import logout
-from django.shortcuts import redirect
+from django.contrib.auth.models import AnonymousUser
 
 
 class AdminSessionIsolationMiddleware:
     """
-    관리자 계정 세션은 /admin/ 경로에서만 유지한다.
-    관리자가 일반 서비스 경로로 이동하면 즉시 로그아웃 처리해
-    서비스 사용자 로그인과 관리자 로그인을 분리한다.
+    관리자(staff) 세션은 /admin/ 에서만 로그인 사용자로 동작한다.
+    일반 서비스 경로에서는 익명으로 보이게만 하고 세션은 유지해,
+    매물 미리보기 후에도 /admin/ 작업(저장 등)을 이어갈 수 있게 한다.
     """
 
     def __init__(self, get_response):
@@ -22,7 +21,7 @@ class AdminSessionIsolationMiddleware:
             and (user.is_staff or user.is_superuser)
             and not path.startswith("/admin/")
         ):
-            logout(request)
-            return redirect("/")
+            request.admin_user = user
+            request.user = AnonymousUser()
 
         return self.get_response(request)
