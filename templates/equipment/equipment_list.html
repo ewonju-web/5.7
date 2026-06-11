@@ -717,7 +717,7 @@
                         <tbody>
                             <tr><td class="gn-list-label">제조사</td><td class="gn-list-value text-truncate">{% if equipment.manufacturer %}{{ equipment.manufacturer }}{% else %}모름{% endif %}</td></tr>
                             <tr><td class="gn-list-label">연식</td><td class="gn-list-value">{% if equipment.year_manufactured %}{{ equipment.year_manufactured }}년 {{ equipment.month_manufactured|default:1|stringformat:"02d" }}월{% else %}모름{% endif %}</td></tr>
-                            {% if equipment.equipment_type == 'excavator' or equipment.equipment_type == 'forklift' %}{% if equipment.operating_hours %}<tr><td class="gn-list-label">가동시간</td><td class="gn-list-value">{{ equipment.operating_hours }}hr</td></tr>{% endif %}{% endif %}
+                            {% if equipment.equipment_type == 'excavator' or equipment.equipment_type == 'forklift' %}<tr class="gn-list-hours-row"><td class="gn-list-label">가동시간</td><td class="gn-list-value">{% if equipment.operating_hours %}{{ equipment.operating_hours|intcomma }}hr{% else %}-{% endif %}</td></tr>{% endif %}
                             <tr><td class="gn-list-label">위치</td><td class="gn-list-value text-truncate">{% if equipment.current_location %}{{ equipment.current_location }}{% elif equipment.region_sido %}{{ equipment.region_sido }}{% if equipment.region_sigungu %} {{ equipment.region_sigungu }}{% endif %}{% else %}모름{% endif %}</td></tr>
                         </tbody>
                     </table>
@@ -776,7 +776,7 @@
                         <tbody>
                             <tr><td class="gn-list-label">제조사</td><td class="gn-list-value text-truncate">{% if equipment.manufacturer %}{{ equipment.manufacturer }}{% else %}모름{% endif %}</td></tr>
                             <tr><td class="gn-list-label">연식</td><td class="gn-list-value">{% if equipment.year_manufactured %}{{ equipment.year_manufactured }}년 {{ equipment.month_manufactured|default:1|stringformat:"02d" }}월{% else %}모름{% endif %}</td></tr>
-                            {% if equipment.equipment_type == 'excavator' or equipment.equipment_type == 'forklift' %}{% if equipment.operating_hours %}<tr><td class="gn-list-label">가동시간</td><td class="gn-list-value">{{ equipment.operating_hours }}hr</td></tr>{% endif %}{% endif %}
+                            {% if equipment.equipment_type == 'excavator' or equipment.equipment_type == 'forklift' %}<tr class="gn-list-hours-row"><td class="gn-list-label">가동시간</td><td class="gn-list-value">{% if equipment.operating_hours %}{{ equipment.operating_hours|intcomma }}hr{% else %}-{% endif %}</td></tr>{% endif %}
                             <tr><td class="gn-list-label">위치</td><td class="gn-list-value text-truncate">{% if equipment.current_location %}{{ equipment.current_location }}{% elif equipment.region_sido %}{{ equipment.region_sido }}{% if equipment.region_sigungu %} {{ equipment.region_sigungu }}{% endif %}{% else %}모름{% endif %}</td></tr>
                         </tbody>
                     </table>
