@@ -181,12 +181,12 @@
       <div class="gn-finance-card card gn-card-sharp h-100" style="border-radius: 10px;">
         <div class="card-body">
           <div class="d-flex flex-wrap justify-content-between align-items-center mb-2 gap-2">
-            <div class="gn-finance-title">이 장비 금융 가능 금액 (예상)</div>
+            <div class="gn-finance-title">할부 예상 (매매금액 기준)</div>
           </div>
           <div class="row g-3 mb-2">
             {% if finance_limit %}
             <div class="col-12 col-md-6">
-              <div class="gn-finance-label">예상 한도 (최대)</div>
+              <div class="gn-finance-label">매매금액</div>
               <div class="gn-finance-limit">{{ finance_limit|floatformat:0|intcomma }} <span class="gn-finance-unit">만원</span></div>
             </div>
             {% endif %}

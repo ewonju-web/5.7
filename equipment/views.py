@@ -2156,6 +2156,7 @@ def finance(request):
                     admin_msg = (
                         "[굴삭기나라] 매물 할부상담 신청\n"
                         f"매물명: {source_listing.model_name or source_listing.get_equipment_type_display()}\n"
+                        f"매매금액: {budget_manwon:,}원\n"
                         f"이름: {applicant_name}\n"
                         f"연락처: {contact}\n"
                         f"희망 할부기간: {desired_months}개월"
@@ -2176,11 +2177,16 @@ def finance(request):
                     return redirect(f"{reverse('finance')}?listing_id={source_listing.pk}")
                 return redirect("finance")
 
+    source_listing_budget_won = None
+    if source_listing and source_listing.listing_price and source_listing.listing_price > 0:
+        source_listing_budget_won = int(source_listing.listing_price) * 10000
+
     return render(request, "equipment/finance.html", {
         "months_options": months_options,
         "equipment_options": equipment_options,
-        "default_rate": "5.9",
+        "default_rate": "7.0" if source_listing else "5.9",
         "source_listing": source_listing,
+        "source_listing_budget_won": source_listing_budget_won,
         "recaptcha_site_key": (getattr(settings, "RECAPTCHA_SITE_KEY", "") or "").strip(),
     })
 
@@ -2970,13 +2976,13 @@ def equipment_detail(request, pk):
         if (getattr(image.image, 'name', '') or '').strip()
     ]
 
-    # 금융 예상 한도 / 월 납입액(60개월, 연 7% 가정)
+    # 금융 예상 / 월 납입액(60개월, 연 7% 가정) — 매매금액 전액 기준
     finance_limit = None
     finance_monthly_60 = None
     try:
         if equipment.listing_price and equipment.listing_price > 0:
             price = Decimal(equipment.listing_price)
-            principal = (price * Decimal('0.8')).quantize(Decimal('1.'), rounding=ROUND_HALF_UP)  # 매물가의 80% (만원 단위)
+            principal = price.quantize(Decimal('1.'), rounding=ROUND_HALF_UP)  # 만원 단위
             r = Decimal('0.07') / Decimal('12')  # 연 7% 가정
             n = Decimal('60')
             if r > 0:

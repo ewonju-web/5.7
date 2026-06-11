@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% load humanize %}
 
 {% block title %}할부/금융 | 굴삭기나라{% endblock %}
 
@@ -69,7 +70,7 @@
           <div class="row g-2">
             <div class="col-12 col-md-6">
               <label class="small text-muted mb-1 d-block">필요자금 (원)</label>
-              <input type="text" id="priceWon" class="form-control" value="30,000,000" placeholder="예) 50,000,000원" inputmode="numeric">
+              <input type="text" id="priceWon" class="form-control" value="{% if source_listing_budget_won %}{{ source_listing_budget_won|intcomma }}{% else %}30,000,000{% endif %}" placeholder="예) 50,000,000원" inputmode="numeric">
             </div>
             <div class="col-12 col-md-6">
               <label class="small text-muted mb-1 d-block">할부기간</label>
@@ -149,14 +150,14 @@
             </div>
             <div class="mb-2">
               <label class="small text-muted mb-1 d-block">구입 예산 (원)</label>
-              <input type="text" name="budget_manwon" class="form-control" value="30,000,000" onfocus="this.value=''" inputmode="numeric" required>
+              <input type="text" name="budget_manwon" class="form-control" value="{% if source_listing_budget_won %}{{ source_listing_budget_won|intcomma }}{% else %}30,000,000{% endif %}" onfocus="this.value=''" inputmode="numeric" required>
             </div>
             <div class="mb-2">
               <label class="small text-muted mb-1 d-block">희망 할부기간</label>
               <select name="desired_months" class="form-select" required>
                 <option value="">선택하세요</option>
                 {% for m in months_options %}
-                <option value="{{ m }}">{{ m }}개월</option>
+                <option value="{{ m }}" {% if source_listing and m == 60 %}selected{% endif %}>{{ m }}개월</option>
                 {% endfor %}
               </select>
             </div>
