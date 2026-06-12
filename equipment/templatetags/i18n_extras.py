@@ -757,6 +757,44 @@ def equipment_row_contact(equipment):
     return "-"
 
 
+_SIDO_SUFFIXES = (
+    "특별자치도",
+    "특별자치시",
+    "광역시",
+    "특별시",
+)
+
+
+def _extract_sido_from_text(text: str) -> str:
+    """위치 문자열에서 시/도 부분만 추출."""
+    text = (text or "").strip()
+    if not text:
+        return ""
+    for suffix in _SIDO_SUFFIXES:
+        idx = text.find(suffix)
+        if idx != -1:
+            return text[: idx + len(suffix)].strip()
+    first = text.split()[0]
+    if first.endswith(("도", "시")):
+        return first
+    return first
+
+
+@register.filter
+def equipment_location_sido(equipment):
+    """목록 카드용 위치 — 시/도만 표시."""
+    if not equipment:
+        return "모름"
+    sido = (getattr(equipment, "region_sido", None) or "").strip()
+    if sido:
+        return sido
+    loc = (getattr(equipment, "current_location", None) or "").strip()
+    if loc:
+        extracted = _extract_sido_from_text(loc)
+        return extracted or "모름"
+    return "모름"
+
+
 @register.filter
 def hide_code_text(value):
     """

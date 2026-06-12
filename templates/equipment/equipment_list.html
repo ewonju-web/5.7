@@ -718,7 +718,7 @@
                             <tr><td class="gn-list-label">제조사</td><td class="gn-list-value text-truncate">{% if equipment.manufacturer %}{{ equipment.manufacturer }}{% else %}모름{% endif %}</td></tr>
                             <tr><td class="gn-list-label">연식</td><td class="gn-list-value">{% if equipment.year_manufactured %}{{ equipment.year_manufactured }}년 {{ equipment.month_manufactured|default:1|stringformat:"02d" }}월{% else %}모름{% endif %}</td></tr>
                             {% if equipment.equipment_type == 'excavator' or equipment.equipment_type == 'forklift' %}<tr class="gn-list-hours-row"><td class="gn-list-label">가동시간</td><td class="gn-list-value">{% if equipment.operating_hours %}{{ equipment.operating_hours|intcomma }} hr{% else %}-{% endif %}</td></tr>{% endif %}
-                            <tr><td class="gn-list-label">위치</td><td class="gn-list-value text-truncate">{% if equipment.current_location %}{{ equipment.current_location }}{% elif equipment.region_sido %}{{ equipment.region_sido }}{% if equipment.region_sigungu %} {{ equipment.region_sigungu }}{% endif %}{% else %}모름{% endif %}</td></tr>
+                            <tr><td class="gn-list-label">위치</td><td class="gn-list-value text-truncate">{{ equipment|equipment_location_sido }}</td></tr>
                         </tbody>
                     </table>
                     <p class="mb-0 mt-1 text-end d-flex align-items-center justify-content-end gap-1 flex-wrap gn-list-price-row">
@@ -777,7 +777,7 @@
                             <tr><td class="gn-list-label">제조사</td><td class="gn-list-value text-truncate">{% if equipment.manufacturer %}{{ equipment.manufacturer }}{% else %}모름{% endif %}</td></tr>
                             <tr><td class="gn-list-label">연식</td><td class="gn-list-value">{% if equipment.year_manufactured %}{{ equipment.year_manufactured }}년 {{ equipment.month_manufactured|default:1|stringformat:"02d" }}월{% else %}모름{% endif %}</td></tr>
                             {% if equipment.equipment_type == 'excavator' or equipment.equipment_type == 'forklift' %}<tr class="gn-list-hours-row"><td class="gn-list-label">가동시간</td><td class="gn-list-value">{% if equipment.operating_hours %}{{ equipment.operating_hours|intcomma }} hr{% else %}-{% endif %}</td></tr>{% endif %}
-                            <tr><td class="gn-list-label">위치</td><td class="gn-list-value text-truncate">{% if equipment.current_location %}{{ equipment.current_location }}{% elif equipment.region_sido %}{{ equipment.region_sido }}{% if equipment.region_sigungu %} {{ equipment.region_sigungu }}{% endif %}{% else %}모름{% endif %}</td></tr>
+                            <tr><td class="gn-list-label">위치</td><td class="gn-list-value text-truncate">{{ equipment|equipment_location_sido }}</td></tr>
                         </tbody>
                     </table>
                     <p class="mb-0 mt-1 text-end d-flex align-items-center justify-content-end gap-1 flex-wrap gn-list-price-row">
@@ -902,7 +902,7 @@
                             <tr><td class="gn-pc-card-label" style="width: 3.4rem;">제조사</td><td class="gn-pc-card-value text-truncate">{% if equipment.manufacturer %}{{ equipment.manufacturer }}{% else %}모름{% endif %}</td></tr>
                             <tr><td class="gn-pc-card-label">연식</td><td class="gn-pc-card-value">{% if equipment.year_manufactured %}{{ equipment.year_manufactured }}년 {{ equipment.month_manufactured|default:1|stringformat:"02d" }}월{% else %}모름{% endif %}</td></tr>
                             {% if equipment.equipment_type == 'excavator' or equipment.equipment_type == 'forklift' %}<tr class="gn-pc-card-hours-row"><td class="gn-pc-card-label">가동시간</td><td class="gn-pc-card-value">{% if equipment.operating_hours %}{{ equipment.operating_hours|intcomma }} hr{% else %}-{% endif %}</td></tr>{% endif %}
-                            <tr><td class="gn-pc-card-label">위치</td><td class="gn-pc-card-value text-truncate">{% if equipment.current_location %}{{ equipment.current_location }}{% elif equipment.region_sido %}{{ equipment.region_sido }}{% if equipment.region_sigungu %} {{ equipment.region_sigungu }}{% endif %}{% else %}모름{% endif %}</td></tr>
+                            <tr><td class="gn-pc-card-label">위치</td><td class="gn-pc-card-value text-truncate">{{ equipment|equipment_location_sido }}</td></tr>
                         </tbody>
                     </table>
                     <p class="mb-0 mt-1 mt-md-2 text-end d-flex align-items-center justify-content-end gap-1 flex-wrap">
