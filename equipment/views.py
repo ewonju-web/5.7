@@ -69,6 +69,8 @@ from .listing_filters import (
 from .index_listing import (
     parse_index_params,
     build_index_equipment_queryset,
+    build_index_list_back_url,
+    sanitize_index_list_back_url,
     filter_similar_equipment_listings,
     INDEX_INITIAL_COUNT,
     INDEX_FILTER_MAX,
@@ -376,7 +378,7 @@ def _index_list_card_context(request, params, equipment_chunk, premium_author_id
         'equipment_list': equipment_chunk,
         'premium_author_ids': premium_author_ids,
         'favorited_equipment_ids': favorited_ids,
-        'equipment_detail_next_q': quote(request.get_full_path(), safe=''),
+        'equipment_detail_next_q': quote(build_index_list_back_url(request), safe=''),
         'total_count_label': total_count_label,
     }
 
@@ -506,7 +508,7 @@ def index(request):
         'hide_advanced_filters': hide_advanced_filters,
         'premium_only': premium_only,
         'list_back_url': request.get_full_path,
-        'equipment_detail_next': quote(request.get_full_path(), safe=''),
+        'equipment_detail_next': quote(build_index_list_back_url(request), safe=''),
     })
 
 
@@ -2885,7 +2887,7 @@ def _resolve_equipment_detail_back_url(request, equipment):
         return reverse('my_page'), '뒤로가기'
 
     allowed_hosts = {request.get_host()}
-    next_url = (request.GET.get('next') or '').strip()
+    next_url = sanitize_index_list_back_url(request, (request.GET.get('next') or '').strip())
     if next_url and url_has_allowed_host_and_scheme(next_url, allowed_hosts=allowed_hosts):
         return next_url, '목록으로 가기'
 

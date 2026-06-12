@@ -1,8 +1,13 @@
 """메인 매물 목록(index) 필터·정렬 공통 로직."""
 from __future__ import annotations
 
+from urllib.parse import urlencode, urlparse
+
 from django.db.models import Q, F, Case, When, IntegerField, Value
 from django.db.models.functions import Coalesce
+from django.http import QueryDict
+from django.urls import reverse
+from django.utils.http import url_has_allowed_host_and_scheme
 
 from .models import Equipment
 from .premium_utils import get_premium_user_ids
@@ -299,6 +304,57 @@ def parse_index_params(request):
         'hide_advanced_filters': hide_advanced_filters,
         'list_per_page': list_per_page,
     }
+
+
+INDEX_LIST_QUERY_KEYS = (
+    'category', 'expand', 'q', 'maker', 'sub_type', 'weight_class', 'model',
+    'year_min', 'year_max', 'region_sido', 'region_sigungu', 'mast_type',
+    'sort', 'per_page', 'premium_only',
+)
+
+
+def build_index_list_back_url_from_get(get_params) -> str:
+    """GET 파라미터 → 매물 목록 페이지 URL (offset 등 더보기 전용 키 제외)."""
+    pairs = []
+    for key in INDEX_LIST_QUERY_KEYS:
+        val = (get_params.get(key) or '').strip() if hasattr(get_params, 'get') else ''
+        if val:
+            pairs.append((key, val))
+    qs = urlencode(pairs)
+    return reverse('index') + ('?' + qs if qs else '')
+
+
+def build_index_list_back_url(request) -> str:
+    """매물 상세 next·목록 복귀용 URL — load-more API가 아닌 목록 페이지."""
+    if request.path.rstrip('/').endswith('index/load-more'):
+        return build_index_list_back_url_from_get(request.GET)
+    get_copy = request.GET.copy()
+    get_copy.pop('offset', None)
+    path = request.path or reverse('index')
+    qs = get_copy.urlencode()
+    return path + ('?' + qs if qs else '')
+
+
+def sanitize_index_list_back_url(request, url: str) -> str:
+    """잘못 저장된 load-more API URL 등을 목록 페이지 URL로 보정."""
+    url = (url or '').strip()
+    if not url:
+        return url
+    allowed_hosts = {request.get_host()}
+    if not url_has_allowed_host_and_scheme(url, allowed_hosts=allowed_hosts):
+        return url
+    parsed = urlparse(url)
+    if '/index/load-more' in (parsed.path or ''):
+        qd = QueryDict(parsed.query, mutable=True)
+        qd.pop('offset', None)
+        return build_index_list_back_url_from_get(qd)
+    if parsed.query and 'offset=' in parsed.query:
+        qd = QueryDict(parsed.query, mutable=True)
+        qd.pop('offset', None)
+        back = parsed.path or reverse('index')
+        qs = qd.urlencode()
+        return back + ('?' + qs if qs else '')
+    return url
 
 
 def build_index_equipment_queryset(request, params: dict):
