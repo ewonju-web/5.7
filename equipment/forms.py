@@ -33,7 +33,7 @@ class EquipmentForm(forms.ModelForm):
                 "inputmode": "numeric",
                 "pattern": "[0-9]*",
                 "maxlength": "2",
-                "placeholder": "1~12 (선택)",
+                "placeholder": "1~12",
                 "autocomplete": "off",
                 "onfocus": "if(!this.dataset.firstClearDone){this.value='';this.dataset.firstClearDone='1';}"
             }),
@@ -42,7 +42,7 @@ class EquipmentForm(forms.ModelForm):
                 "inputmode": "numeric",
                 "pattern": "[0-9]*",
                 "maxlength": "8",
-                "placeholder": "가동시간 (선택)",
+                "placeholder": "가동시간",
                 "autocomplete": "off",
                 "onfocus": "if(!this.dataset.firstClearDone){this.value='';this.dataset.firstClearDone='1';}"
             }),
@@ -55,6 +55,9 @@ class EquipmentForm(forms.ModelForm):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        if not getattr(self.instance, "pk", None) and not self.is_bound:
+            self.initial.setdefault("month_manufactured", "")
+            self.initial.setdefault("operating_hours", "")
         self.fields["model_name"].required = False
         self.fields["manufacturer"].required = False
         self.fields["year_manufactured"].required = False

@@ -134,7 +134,7 @@
                         </div>
                         <div class="col-6 col-md-4" id="fk-op-hours-wrapper">
                             <label class="form-label">가동시간(hr)</label>
-                            <input type="text" name="operating_hours_ui_forklift" id="id_operating_hours_forklift" class="form-control" inputmode="numeric" pattern="[0-9]*" maxlength="8" placeholder="가동시간 (선택)" autocomplete="off" value="{{ form.operating_hours.value|default:'' }}">
+                            <input type="text" name="operating_hours_ui_forklift" id="id_operating_hours_forklift" class="form-control" inputmode="numeric" pattern="[0-9]*" maxlength="8" placeholder="가동시간" autocomplete="off" value="{% if mode == 'create' and form.operating_hours.value == 0 %}{% else %}{{ form.operating_hours.value|default:'' }}{% endif %}">
                         </div>
                     </div>
                     <!-- 덤프/로더/크레인/어태치먼트/기타: 톤수 (제조사·모델명·년월·지역·가격은 공통) -->
@@ -204,17 +204,17 @@
                         </div>
                         <div class="col-12 col-md-4" id="exc-month-wrapper">
                             <label class="form-label">제작월</label>
-                            <input type="hidden" name="month_manufactured" id="id_month_manufactured" value="{{ form.month_manufactured.value|default:'' }}">
-                            <input type="text" id="id_month_manufactured_ui" class="form-control" inputmode="numeric" pattern="[0-9]*" maxlength="2" placeholder="1~12 (선택)" autocomplete="off" value="{{ form.month_manufactured.value|default:'' }}">
+                            <input type="hidden" name="month_manufactured" id="id_month_manufactured" value="{% if mode == 'create' and form.month_manufactured.value == 1 %}{% else %}{{ form.month_manufactured.value|default:'' }}{% endif %}">
+                            <input type="text" id="id_month_manufactured_ui" class="form-control" inputmode="numeric" pattern="[0-9]*" maxlength="2" placeholder="1~12" autocomplete="off" value="{% if mode == 'create' and form.month_manufactured.value == 1 %}{% else %}{{ form.month_manufactured.value|default:'' }}{% endif %}">
                         </div>
                         <div class="col-12 col-md-4" id="exc-op-hours-wrapper">
                             <label class="form-label">가동시간(hr)</label>
-                            <input type="hidden" name="operating_hours" id="id_operating_hours" value="{{ form.operating_hours.value|default:'' }}">
-                            <input type="text" id="id_operating_hours_ui" class="form-control" inputmode="numeric" pattern="[0-9]*" maxlength="8" placeholder="가동시간 (선택)" autocomplete="off" value="{{ form.operating_hours.value|default:'' }}">
+                            <input type="hidden" name="operating_hours" id="id_operating_hours" value="{% if mode == 'create' and form.operating_hours.value == 0 %}{% else %}{{ form.operating_hours.value|default:'' }}{% endif %}">
+                            <input type="text" id="id_operating_hours_ui" class="form-control" inputmode="numeric" pattern="[0-9]*" maxlength="8" placeholder="가동시간" autocomplete="off" value="{% if mode == 'create' and form.operating_hours.value == 0 %}{% else %}{{ form.operating_hours.value|default:'' }}{% endif %}">
                         </div>
                         <div class="col-12 col-md-4 d-none" id="simple-month-wrapper">
                             <label class="form-label">제작월</label>
-                            <input type="text" name="month_manufactured_ui_simple" id="id_month_manufactured_simple" class="form-control" inputmode="numeric" pattern="[0-9]*" maxlength="2" placeholder="1~12" autocomplete="off" value="{{ form.month_manufactured.value|default:'' }}">
+                            <input type="text" name="month_manufactured_ui_simple" id="id_month_manufactured_simple" class="form-control" inputmode="numeric" pattern="[0-9]*" maxlength="2" placeholder="1~12" autocomplete="off" value="{% if mode == 'create' and form.month_manufactured.value == 1 %}{% else %}{{ form.month_manufactured.value|default:'' }}{% endif %}">
                         </div>
                     </div>
                     <div class="col-12" id="gn-row-region">
@@ -787,6 +787,9 @@
   function lockUntilFirstFocus(id) {
     var el = document.getElementById(id);
     if (!el || formMode !== 'create') return;
+    if ((el.value || '').trim() === '1' || (el.value || '').trim() === '0') {
+      el.value = '';
+    }
     // 브라우저 자동복원 방지: 첫 포커스 전까지 readonly
     el.setAttribute('readonly', 'readonly');
     el.addEventListener('focus', function onFocus() {
