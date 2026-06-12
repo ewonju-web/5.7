@@ -1,0 +1,105 @@
+<script>
+(function gnEqListScrollRestore() {
+  if (!document.querySelector('[data-gn-list-restore]')) return;
+
+  function storageKey() {
+    return 'gnEqListState:' + window.location.pathname + window.location.search;
+  }
+
+  function isEquipmentDetailPath(pathname) {
+    return /\/equipment\/\d+\/?$/.test(pathname || '');
+  }
+
+  function saveEqListState(link) {
+    try {
+      var url = new URL(link.href, window.location.origin);
+      if (url.origin !== window.location.origin) return;
+      var m = url.pathname.match(/\/equipment\/(\d+)\/?$/);
+      if (!m) return;
+      var controls = document.querySelector('.gn-more-controls[data-offset]');
+      var state = {
+        scrollY: window.scrollY || 0,
+        equipmentId: m[1],
+        offset: controls ? (parseInt(controls.getAttribute('data-offset'), 10) || 0) : 0
+      };
+      sessionStorage.setItem(storageKey(), JSON.stringify(state));
+    } catch (e) {}
+  }
+
+  function scrollToState(state) {
+    if (!state) return false;
+    if (state.equipmentId) {
+      var card = document.querySelector('[data-equipment-id="' + state.equipmentId + '"]');
+      if (card) {
+        card.scrollIntoView({ block: 'center', behavior: 'auto' });
+        return true;
+      }
+    }
+    var y = parseInt(state.scrollY, 10);
+    if (!isNaN(y) && y >= 0) {
+      window.scrollTo(0, y);
+      return true;
+    }
+    return false;
+  }
+
+  function applyScroll(state) {
+    function run() { scrollToState(state); }
+    requestAnimationFrame(run);
+    setTimeout(run, 50);
+    setTimeout(run, 180);
+    setTimeout(run, 400);
+  }
+
+  function restoreEqListState() {
+    var raw = sessionStorage.getItem(storageKey());
+    if (!raw) return;
+    sessionStorage.removeItem(storageKey());
+    var state;
+    try { state = JSON.parse(raw); } catch (e) { return; }
+
+    var controls = document.querySelector('.gn-more-controls[data-offset]');
+    var targetOffset = parseInt(state.offset, 10) || 0;
+    var currentOffset = controls ? (parseInt(controls.getAttribute('data-offset'), 10) || 0) : 0;
+
+    if (!controls || targetOffset <= currentOffset) {
+      applyScroll(state);
+      return;
+    }
+
+    function loadChain() {
+      var cur = parseInt(controls.getAttribute('data-offset'), 10) || 0;
+      var total = parseInt(controls.getAttribute('data-total'), 10) || 0;
+      if (cur >= targetOffset || cur >= total) {
+        applyScroll(state);
+        return;
+      }
+      var loader = window.gnIndexLoadMoreOnce;
+      if (typeof loader !== 'function') {
+        applyScroll(state);
+        return;
+      }
+      loader().then(loadChain).catch(function() { applyScroll(state); });
+    }
+    loadChain();
+  }
+
+  document.addEventListener('click', function(e) {
+    if (e.defaultPrevented || e.button !== 0) return;
+    if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+    var link = e.target.closest('a[href]');
+    if (!link) return;
+    if (link.closest('[href*="favorite"]')) return;
+    try {
+      var url = new URL(link.href, window.location.origin);
+      if (!isEquipmentDetailPath(url.pathname)) return;
+    } catch (err) { return; }
+    saveEqListState(link);
+  }, true);
+
+  restoreEqListState();
+  window.addEventListener('pageshow', function(e) {
+    if (e.persisted) restoreEqListState();
+  });
+})();
+</script>

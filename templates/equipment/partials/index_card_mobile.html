@@ -1,6 +1,6 @@
 {% load humanize %}
 <div class="col">
-    <div class="card h-100 gn-list-card border shadow-sm overflow-hidden position-relative">
+    <div class="card h-100 gn-list-card border shadow-sm overflow-hidden position-relative" data-equipment-id="{{ equipment.pk }}">
         <div class="position-relative gn-list-card-img" style="z-index: 2;">
             <a href="{% url 'equipment_detail' equipment.pk %}?next={{ equipment_detail_next_q }}" class="d-block text-decoration-none h-100" style="cursor: pointer;">
                 {% if equipment.images.all %}

@@ -2,7 +2,7 @@
 {% load humanize i18n_extras %}
 {% block content %}
 {% firstof equipment_detail_next request.get_full_path|urlencode as equipment_detail_next_q %}
-<div class="container py-3 py-md-4 gn-author-showcase">
+<div class="container py-3 py-md-4 gn-author-showcase" data-gn-list-restore="1">
   {% with first_listing=listings|first %}
   <section class="card border shadow-sm mb-4 overflow-hidden gn-author-id-card">
     <div class="card-body p-3 p-md-4">
@@ -116,7 +116,7 @@
     <div class="row g-3">
       {% for equipment in listings %}
       <div class="col-12 col-md-6 col-xl-4">
-        <a href="{% url 'equipment_detail' equipment.pk %}?next={{ equipment_detail_next_q }}" class="card h-100 text-decoration-none gn-author-grid-card">
+        <a href="{% url 'equipment_detail' equipment.pk %}?next={{ equipment_detail_next_q }}" class="card h-100 text-decoration-none gn-author-grid-card" data-equipment-id="{{ equipment.pk }}">
           <div class="position-relative gn-author-grid-img gn-author-img-frame">
             {% if equipment.images.first %}
             <img src="{{ equipment.images.first.image.url }}" alt="" class="gn-author-img-contain">
@@ -332,4 +332,5 @@
     background: #e29a12;
   }
 </style>
+{% include "equipment/partials/equipment_list_scroll_restore.html" %}
 {% endblock %}

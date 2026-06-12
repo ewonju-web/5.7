@@ -1,5 +1,5 @@
 {% load humanize %}
-<div class="col-md-4 col-lg-3">
+<div class="col-md-4 col-lg-3" data-equipment-id="{{ equipment.pk }}">
     <div class="card h-100 item-card gn-pc-card border shadow-sm position-relative d-flex flex-column" style="border-radius: 10px; overflow: hidden;">
         {% if user.is_authenticated %}
         <a href="{% url 'toggle_equipment_favorite' equipment.pk %}?next={{ request.get_full_path|urlencode }}" class="position-absolute top-0 end-0 m-2 text-decoration-none" style="z-index:6;" onclick="event.stopPropagation();" title="{% if equipment.pk in favorited_equipment_ids %}찜 해제{% else %}찜하기{% endif %}">
