@@ -2274,25 +2274,28 @@
       });
     }
 
-    function loadMore() {
+    function loadMore(opts) {
+      opts = opts || {};
       if (loading) return Promise.resolve(false);
       var offset = getOffset();
       var total = getTotal();
       if (offset >= total) return Promise.resolve(false);
 
       loading = true;
-      controlsList.forEach(function(c) {
-        var btn = c.querySelector('.gn-btn-more-list');
-        if (btn) {
-          btn.disabled = true;
-          var label = btn.querySelector('.gn-btn-more-label');
-          if (label) label.textContent = '불러오는 중…';
-        }
-      });
+      if (!opts.silent) {
+        controlsList.forEach(function(c) {
+          var btn = c.querySelector('.gn-btn-more-list');
+          if (btn) {
+            btn.disabled = true;
+            var label = btn.querySelector('.gn-btn-more-label');
+            if (label) label.textContent = '불러오는 중…';
+          }
+        });
+      }
 
       var params = gnCleanIndexSearchParams(new URLSearchParams(window.location.search || ''));
       params.set('offset', String(offset));
-      params.set('per_page', String(getPerPage()));
+      params.set('per_page', String(opts.perPage || getPerPage()));
       var url = window.location.origin + '/index/load-more/?' + params.toString();
 
       return fetch(url, { headers: { 'X-Requested-With': 'XMLHttpRequest' }, credentials: 'same-origin' })
@@ -2314,7 +2317,9 @@
           return true;
         })
         .catch(function() {
-          alert('매물을 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.');
+          if (!opts.silent) {
+            alert('매물을 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.');
+          }
           updateMoreUi();
           throw new Error('load-more-failed');
         })

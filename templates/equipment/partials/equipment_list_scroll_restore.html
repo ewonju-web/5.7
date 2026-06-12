@@ -1,6 +1,7 @@
 <script>
 (function gnEqListScrollRestore() {
   if (!document.querySelector('[data-gn-list-restore]')) return;
+  if ('scrollRestoration' in history) history.scrollRestoration = 'manual';
 
   var PENDING_KEY = 'gnEqListState:pending';
   var INDEX_QUERY_KEYS = [
@@ -62,31 +63,25 @@
 
   function scrollToState(state) {
     if (!state) return false;
-    var scrolled = false;
     if (state.equipmentId) {
       var card = findEquipmentCard(state.equipmentId);
       if (card) {
         card.scrollIntoView({ block: 'center', behavior: 'auto' });
-        scrolled = true;
+        return true;
       }
     }
-    if (!scrolled) {
-      var y = parseInt(state.scrollY, 10);
-      if (!isNaN(y) && y >= 0) {
-        window.scrollTo(0, y);
-        scrolled = true;
-      }
+    var y = parseInt(state.scrollY, 10);
+    if (!isNaN(y) && y >= 0) {
+      window.scrollTo(0, y);
+      return true;
     }
-    return scrolled;
+    return false;
   }
 
-  function applyScroll(state) {
-    function run() { scrollToState(state); }
-    requestAnimationFrame(run);
-    setTimeout(run, 50);
-    setTimeout(run, 180);
-    setTimeout(run, 400);
-    setTimeout(run, 800);
+  function fineScroll(state) {
+    if (scrollToState(state)) return;
+    requestAnimationFrame(function() { scrollToState(state); });
+    setTimeout(function() { scrollToState(state); }, 80);
   }
 
   function restoreEqListState() {
@@ -99,30 +94,40 @@
 
     sessionStorage.removeItem(PENDING_KEY);
 
+    var y = parseInt(state.scrollY, 10);
+    if (!isNaN(y) && y > 0) {
+      window.scrollTo(0, y);
+    }
+
     var controls = document.querySelector('.gn-more-controls[data-offset]');
     var targetOffset = parseInt(state.offset, 10) || 0;
     var currentOffset = controls ? (parseInt(controls.getAttribute('data-offset'), 10) || 0) : 0;
 
     if (!controls || targetOffset <= currentOffset) {
-      applyScroll(state);
+      fineScroll(state);
       return;
     }
 
-    function loadChain() {
+    function loadUntilOffset() {
       var cur = parseInt(controls.getAttribute('data-offset'), 10) || 0;
       var total = parseInt(controls.getAttribute('data-total'), 10) || 0;
       if (cur >= targetOffset || cur >= total) {
-        applyScroll(state);
+        fineScroll(state);
         return;
       }
       var loader = window.gnIndexLoadMoreOnce;
       if (typeof loader !== 'function') {
-        applyScroll(state);
+        fineScroll(state);
         return;
       }
-      loader().then(loadChain).catch(function() { applyScroll(state); });
+      var need = Math.min(targetOffset - cur, 200, total - cur);
+      loader({ perPage: need, silent: true }).then(function() {
+        loadUntilOffset();
+      }).catch(function() {
+        fineScroll(state);
+      });
     }
-    loadChain();
+    loadUntilOffset();
   }
 
   document.addEventListener('click', function(e) {
