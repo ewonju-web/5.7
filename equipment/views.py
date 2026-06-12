@@ -52,6 +52,7 @@ from .premium_utils import (
     pad_premium_expert_cards,
     PREMIUM_EXPERT_BIO_MAX_LENGTH,
     truncate_premium_expert_bio,
+    _premium_expert_avatar_colors,
     PREMIUM_SIDEBAR_INDEX_PER_SIDE,
     PREMIUM_SIDEBAR_EXPERT_TITLE_BY_CATEGORY,
 )
@@ -99,6 +100,45 @@ def _image_hash_from_equipment(equipment):
             return hashlib.md5(f.read()).hexdigest()
     except Exception:
         return ""
+
+
+def _apply_equipment_image_order(equipment, image_files, delete_ids, primary_token=''):
+    """삭제·추가 후 대표사진(첫 순서) 반영."""
+    if delete_ids:
+        EquipmentImage.objects.filter(equipment_id=equipment.pk, pk__in=delete_ids).delete()
+
+    kept = list(EquipmentImage.objects.filter(equipment=equipment).order_by('sort_order', 'id'))
+    new_images = []
+    for f in image_files:
+        new_images.append(EquipmentImage.objects.create(equipment=equipment, image=f, sort_order=9999))
+
+    token = (primary_token or '').strip()
+    ordered = []
+
+    if token.startswith('id:'):
+        try:
+            primary_id = int(token[3:])
+        except (TypeError, ValueError):
+            primary_id = None
+        primary = next((img for img in kept if img.pk == primary_id), None)
+        if primary:
+            ordered = [primary] + [img for img in kept if img.pk != primary.pk] + new_images
+        else:
+            ordered = kept + new_images
+    elif token.startswith('new:') and new_images:
+        try:
+            new_idx = int(token[4:])
+        except (TypeError, ValueError):
+            new_idx = 0
+        new_idx = max(0, min(new_idx, len(new_images) - 1))
+        primary_new = new_images.pop(new_idx)
+        ordered = [primary_new] + kept + new_images
+    else:
+        ordered = kept + new_images
+
+    for sort_order, img in enumerate(ordered):
+        if img.sort_order != sort_order:
+            EquipmentImage.objects.filter(pk=img.pk).update(sort_order=sort_order)
 
 
 def _get_profile_phone_verified(user):
@@ -934,6 +974,7 @@ def my_page(request):
     phone_norm = normalize_phone_digits(profile.phone)
     if phone_norm:
         claimable_listing_count = claimable_listings_queryset(phone_norm).count()
+    premium_avatar = _premium_expert_avatar_colors(request.user.id)
     return render(request, 'registration/my_page.html', {
         'profile': profile,
         'my_equipments': my_equipments,
@@ -947,6 +988,8 @@ def my_page(request):
         'premium_monthly_price': PREMIUM_MONTHLY_PRICE,
         'premium_region_inquiry_alerts': premium_region_inquiry_alerts,
         'premium_expert_bio_max_length': PREMIUM_EXPERT_BIO_MAX_LENGTH,
+        'premium_expert_avatar_bg': premium_avatar['avatar_bg'],
+        'premium_expert_avatar_fg': premium_avatar['avatar_fg'],
         'claimable_listing_count': claimable_listing_count,
     })
 
@@ -3273,8 +3316,10 @@ def equipment_create(request):
                         obj.operating_hours = 0
                     obj.current_location = _build_location_text(obj.region_sido, obj.region_sigungu)
                     obj.save()
-                    for f in image_files:
-                        EquipmentImage.objects.create(equipment=obj, image=f)
+                    for sort_order, f in enumerate(image_files):
+                        EquipmentImage.objects.create(
+                            equipment=obj, image=f, sort_order=sort_order
+                        )
                     return redirect('equipment_detail', obj.pk)
                 except SellerListingBlocked as exc:
                     messages.error(request, str(exc.message) if hasattr(exc, 'message') else str(exc))
@@ -3361,10 +3406,10 @@ def equipment_edit(request, pk):
                             obj.operating_hours = 0
                         obj.current_location = _build_location_text(obj.region_sido, obj.region_sigungu)
                         obj.save()
-                        if delete_ids:
-                            EquipmentImage.objects.filter(equipment_id=obj.pk, pk__in=delete_ids).delete()
-                        for f in image_files:
-                            EquipmentImage.objects.create(equipment=obj, image=f)
+                        primary_token = (request.POST.get('primary_image_token') or '').strip()
+                        _apply_equipment_image_order(
+                            obj, image_files, delete_ids, primary_token
+                        )
                     return redirect('equipment_detail', obj.pk)
                 except Exception:
                     import traceback

@@ -56,7 +56,7 @@
         <div class="gn-section-head">
             <h5 class="gn-section-title">유료회원 명함</h5>
         </div>
-        <p class="small text-muted mb-2">사진·소개글·전화번호가 매물 상세 「전문가들」 영역에 노출됩니다.</p>
+        <p class="small text-muted mb-2">증명사진·소개글·전화번호가 매물 상세 「전문가들」 영역에 노출됩니다. 증명사진이 없으면 캐릭터 아바타가 표시됩니다.</p>
         <a href="{% url 'billing_upgrade' %}" class="btn gn-gold-btn btn-sm">유료회원 안내</a>
     </section>
     {% endif %}
@@ -70,13 +70,13 @@
                 <button type="button" class="btn btn-sm btn-outline-secondary" id="btnClosePremiumCard">닫기</button>
             </div>
         </div>
-        <p class="small text-muted mb-3">굴삭기·지게차 등 매물 상세 우측 「전문가들」 명함에 표시됩니다. 소개글은 <strong>한 줄 {{ premium_expert_bio_max_length }}자</strong>까지입니다. 해당 기종 매물이 1건 이상 있어야 노출됩니다.</p>
+        <p class="small text-muted mb-3">굴삭기·지게차 등 매물 상세 우측 「전문가들」 명함에 표시됩니다. <strong>증명사진</strong>을 올리지 않으면 캐릭터 아바타가 나옵니다. 소개글은 <strong>한 줄 {{ premium_expert_bio_max_length }}자</strong>까지입니다. 해당 기종 매물이 1건 이상 있어야 노출됩니다.</p>
         <form method="post" enctype="multipart/form-data" class="gn-premium-card-form">
             {% csrf_token %}
             <input type="hidden" name="action" value="update_premium_card">
             <div class="row g-3">
                 <div class="col-12 col-md-4 text-center text-md-start">
-                    <label class="form-label small fw-bold d-block">명함 사진</label>
+                    <label class="form-label small fw-bold d-block">증명사진</label>
                     <div class="gn-premium-photo-preview mb-2 mx-auto mx-md-0">
                         {% if profile.profile_photo %}
                         <img src="{{ profile.profile_photo.url }}" alt="명함 사진" id="premiumPhotoPreview">
@@ -115,17 +115,19 @@
                     <div class="gn-premium-card-sample mb-3" aria-hidden="true">
                         <div class="small text-muted mb-1">명함 미리보기</div>
                         <div class="gn-premium-card-sample-inner">
-                            <div class="gn-premium-card-sample-thumb">
+                            <div class="gn-premium-card-sample-avatar" id="premiumSampleAvatar">
                                 {% if profile.profile_photo %}
-                                <img src="{{ profile.profile_photo.url }}" alt="">
+                                <img src="{{ profile.profile_photo.url }}" alt="" class="gn-premium-card-sample-photo">
                                 {% else %}
-                                <i class="bi bi-person-fill"></i>
+                                <div class="gn-premium-card-sample-character" style="background-color: {{ premium_expert_avatar_bg }}; color: {{ premium_expert_avatar_fg }};">
+                                    <i class="bi bi-person-fill" aria-hidden="true"></i>
+                                </div>
                                 {% endif %}
                             </div>
                             <div class="gn-premium-card-sample-text min-width-0">
                                 <div class="fw-bold text-truncate" id="premiumSampleName">{{ profile.company_name|default:user.first_name|default:user.username }}</div>
                                 <div class="small text-muted gn-premium-card-sample-bio" id="premiumSampleBio">{{ profile.bio|default:"소개글을 입력하세요" }}</div>
-                                <div class="fw-bold text-primary small mt-1" id="premiumSamplePhone">{{ profile.phone|format_phone|default:"010-0000-0000" }}</div>
+                                <div class="fw-bold text-danger small mt-1" id="premiumSamplePhone"><i class="bi bi-telephone-fill me-1" aria-hidden="true"></i>{{ profile.phone|format_phone|default:"010-0000-0000" }}</div>
                             </div>
                         </div>
                     </div>
@@ -388,15 +390,23 @@
   }
   .gn-premium-photo-empty i { font-size: 1.6rem; }
   .gn-premium-card-sample-inner {
-    display: flex; gap: 0.5rem; align-items: flex-start;
+    display: flex; flex-direction: row; align-items: center; gap: 0.65rem;
     border: 1px solid #e5e7eb; border-radius: 10px; background: #fff;
-    padding: 0.55rem; max-width: 280px;
+    overflow: hidden; max-width: 320px; padding: 0.55rem 0.65rem;
   }
-  .gn-premium-card-sample-thumb {
-    width: 52px; height: 52px; flex-shrink: 0; border-radius: 8px;
-    overflow: hidden; background: #f1f5f9; display: flex; align-items: center; justify-content: center;
+  .gn-premium-card-sample-avatar {
+    width: 52px; height: 52px; flex-shrink: 0;
+    border-radius: 50%; overflow: hidden;
+    display: flex; align-items: center; justify-content: center;
   }
-  .gn-premium-card-sample-thumb img { width: 100%; height: 100%; object-fit: cover; }
+  .gn-premium-card-sample-photo {
+    width: 100%; height: 100%; object-fit: cover; object-position: center top; display: block;
+  }
+  .gn-premium-card-sample-character {
+    width: 100%; height: 100%; display: flex; align-items: center; justify-content: center;
+  }
+  .gn-premium-card-sample-character i { font-size: 1.45rem; line-height: 1; }
+  .gn-premium-card-sample-text { min-width: 0; flex: 1 1 auto; padding: 0; }
   .gn-premium-card-sample-bio {
     white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%;
   }
@@ -753,9 +763,9 @@
         img.src = e.target.result;
         preview.replaceWith(img);
       }
-      var sampleThumb = document.querySelector(".gn-premium-card-sample-thumb");
-      if (sampleThumb) {
-        sampleThumb.innerHTML = '<img src="' + e.target.result + '" alt="">';
+      var sampleAvatar = document.getElementById("premiumSampleAvatar");
+      if (sampleAvatar) {
+        sampleAvatar.innerHTML = '<img src="' + e.target.result + '" alt="" class="gn-premium-card-sample-photo">';
       }
     };
     reader.readAsDataURL(file);

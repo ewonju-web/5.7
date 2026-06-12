@@ -24,6 +24,16 @@ PREMIUM_SIDEBAR_EXPERT_TITLE_BY_CATEGORY = {
     "crane": "크레인 전문가들",
 }
 
+# 명함 증명사진 미등록 시 캐릭터 아바타 색상 (배경, 아이콘)
+PREMIUM_EXPERT_AVATAR_PALETTE = (
+    ("#dbeafe", "#2563eb"),
+    ("#dcfce7", "#16a34a"),
+    ("#fce7f3", "#db2777"),
+    ("#fef3c7", "#d97706"),
+    ("#ede9fe", "#7c3aed"),
+    ("#e0f2fe", "#0284c7"),
+)
+
 
 PREMIUM_USER_IDS_CACHE_KEY = "premium_user_ids_v1"
 PREMIUM_USER_IDS_CACHE_TTL = 300  # 5분
@@ -111,15 +121,9 @@ def _premium_display_name(profile):
     return (user.username or "").strip() or "전문가"
 
 
-def _fallback_listing_photo_url(profile, equipment_type=None):
-    qs = Equipment.objects.visible().filter(author_id=profile.user_id, is_sold=False)
-    if equipment_type:
-        qs = qs.filter(equipment_type=equipment_type)
-    listing = qs.prefetch_related("images").order_by("-created_at").first()
-    if not listing:
-        return ""
-    first = listing.images.first()
-    return first.image.url if first and first.image else ""
+def _premium_expert_avatar_colors(user_id):
+    bg, fg = PREMIUM_EXPERT_AVATAR_PALETTE[user_id % len(PREMIUM_EXPERT_AVATAR_PALETTE)]
+    return {"avatar_bg": bg, "avatar_fg": fg}
 
 
 def get_premium_expert_cards(limit=10, equipment_type=None, *, exclude_user_id=None):
@@ -144,11 +148,8 @@ def get_premium_expert_cards(limit=10, equipment_type=None, *, exclude_user_id=N
             eq_qs = eq_qs.filter(equipment_type=equipment_type)
         if not eq_qs.exists():
             continue
-        photo_url = ""
-        if profile.profile_photo:
-            photo_url = profile.profile_photo.url
-        if not photo_url:
-            photo_url = _fallback_listing_photo_url(profile, equipment_type)
+        photo_url = profile.profile_photo.url if profile.profile_photo else ""
+        avatar_colors = _premium_expert_avatar_colors(profile.user_id)
         detail_url = reverse("author_listings", kwargs={"user_id": profile.user_id})
         if equipment_type:
             detail_url = f"{detail_url}?category={equipment_type}"
@@ -157,6 +158,8 @@ def get_premium_expert_cards(limit=10, equipment_type=None, *, exclude_user_id=N
                 "user_id": profile.user_id,
                 "name": _premium_display_name(profile),
                 "photo_url": photo_url,
+                "avatar_bg": avatar_colors["avatar_bg"],
+                "avatar_fg": avatar_colors["avatar_fg"],
                 "bio": truncate_premium_expert_bio(profile.bio),
                 "phone": (profile.phone or "").strip(),
                 "detail_url": detail_url,

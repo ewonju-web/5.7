@@ -250,16 +250,22 @@
                     <div class="col-12">
                         <label class="form-label fw-bold">사진 (1장 이상 필수)</label>
                         <p class="form-text small mb-1 gn-form-notice-strong">허위 매물 방지를 위해 실제 장비 사진을 1장 이상 등록해주세요.</p>
+                        <p class="form-text small mb-2 text-muted">대표 사진(금색 테두리)이 목록·상세 썸네일로 사용됩니다. 첨부 후 「대표로」를 눌러 변경할 수 있습니다.</p>
+                        <input type="hidden" name="primary_image_token" id="id_primary_image_token" value="{% if mode == 'edit' and equipment.images.first %}id:{{ equipment.images.first.pk }}{% else %}new:0{% endif %}">
                         {% if mode == 'edit' and equipment %}
                         <div class="mb-3 p-2 rounded border bg-light">
                             <p class="form-text small fw-bold text-secondary mb-2">등록된 사진</p>
                             {% if equipment.images.count %}
                             <div class="d-flex flex-wrap gap-2">
                                 {% for ei in equipment.images.all %}
-                                <div class="flex-shrink-0 gn-edit-photo-item" style="width:100px;">
-                                    <button type="button" class="gn-edit-photo-thumb-link gn-edit-photo-zoom-trigger d-block border rounded-top overflow-hidden shadow-sm w-100 p-0 m-0 bg-transparent" style="line-height:0;" data-full-src="{{ ei.image.url }}" title="크게 보기" aria-label="등록 사진 크게 보기">
-                                        <img src="{{ ei.image.url }}" alt="" width="100" height="100" loading="lazy" decoding="async" style="width:100px;height:100px;object-fit:cover;display:block;">
-                                    </button>
+                                <div class="flex-shrink-0 gn-edit-photo-item gn-photo-card{% if forloop.first %} gn-photo-is-primary{% endif %}" style="width:100px;" data-image-id="{{ ei.pk }}">
+                                    <div class="gn-photo-thumb-wrap position-relative">
+                                        <span class="gn-photo-primary-badge">대표</span>
+                                        <button type="button" class="gn-edit-photo-thumb-link gn-edit-photo-zoom-trigger d-block border rounded-top overflow-hidden shadow-sm w-100 p-0 m-0 bg-transparent" style="line-height:0;" data-full-src="{{ ei.image.url }}" title="크게 보기" aria-label="등록 사진 크게 보기">
+                                            <img src="{{ ei.image.url }}" alt="" width="100" height="100" loading="lazy" decoding="async" style="width:100px;height:100px;object-fit:cover;display:block;">
+                                        </button>
+                                    </div>
+                                    <button type="button" class="gn-set-primary-btn btn btn-sm w-100 rounded-0 border-start border-end" data-token="id:{{ ei.pk }}">대표로</button>
                                     <label class="gn-photo-delete-row d-flex align-items-center justify-content-center mb-0 rounded-bottom small position-relative">
                                         <input type="checkbox" name="delete_image_ids" value="{{ ei.pk }}" class="gn-delete-photo-check" title="삭제 선택" autocomplete="off">
                                         <span class="gn-photo-delete-row-inner d-flex align-items-center justify-content-center gap-1 py-1 px-1 w-100">
@@ -288,7 +294,7 @@
                             <input id="id_images" type="file" name="images" multiple hidden>
                         </div>
                         <div id="preview-container" class="d-flex flex-wrap gap-2 mt-3"></div>
-                        <p class="form-text small mb-0 mt-2 gn-form-notice-strong">모바일: 갤러리에서 선택은 앨범, 사진 촬영은 카메라가 열려요. X를 누르면 제거됩니다.</p>
+                        <p class="form-text small mb-0 mt-2 gn-form-notice-strong">모바일: 갤러리에서 선택은 앨범, 사진 촬영은 카메라가 열려요. 「대표로」로 썸네일을 정하고, X로 제거할 수 있습니다.</p>
                         {% if form.non_field_errors %}<p class="text-danger small mt-1 mb-0">{{ form.non_field_errors.0 }}</p>{% endif %}
                     </div>
                 </div>
@@ -434,6 +440,73 @@
   }
   .gn-edit-photo-item .gn-photo-delete-row:focus-within {
     box-shadow: 0 0 0 2px rgba(53, 132, 228, 0.35);
+  }
+  .gn-photo-card,
+  .gn-preview-photo-item {
+    border-radius: 8px;
+    overflow: hidden;
+    background: #fff;
+  }
+  .gn-photo-thumb-wrap {
+    line-height: 0;
+  }
+  .gn-photo-primary-badge {
+    display: none;
+    position: absolute;
+    top: 4px;
+    left: 4px;
+    z-index: 2;
+    background: #e8a317;
+    color: #1a1a1a;
+    font-size: 10px;
+    font-weight: 800;
+    padding: 2px 6px;
+    border-radius: 4px;
+    line-height: 1.2;
+    pointer-events: none;
+  }
+  .gn-photo-is-primary .gn-photo-primary-badge {
+    display: block;
+  }
+  .gn-photo-is-primary .gn-edit-photo-thumb-link,
+  .gn-photo-is-primary.gn-preview-photo-item {
+    border: 2px solid #e8a317 !important;
+    box-shadow: 0 0 0 2px rgba(232, 163, 23, 0.28);
+  }
+  .gn-photo-is-primary .gn-set-primary-btn {
+    display: none;
+  }
+  .gn-set-primary-btn {
+    font-size: 11px;
+    font-weight: 700;
+    padding: 0.2rem 0.25rem;
+    color: #92400e;
+    border-color: #e8a317 !important;
+    background: #fffbeb;
+  }
+  .gn-set-primary-btn:hover {
+    background: #fef3c7;
+    color: #78350f;
+  }
+  .gn-preview-photo-item {
+    width: 100px;
+    position: relative;
+    border: 1px solid #dee2e6;
+  }
+  .gn-preview-photo-item img {
+    width: 100px;
+    height: 100px;
+    object-fit: cover;
+    display: block;
+  }
+  .gn-preview-remove-btn {
+    position: absolute;
+    top: 2px;
+    right: 2px;
+    z-index: 3;
+    padding: 0 4px;
+    line-height: 1;
+    font-size: 12px;
   }
   #equipment-form input[type="checkbox"].gn-delete-photo-check {
     position: absolute !important;
@@ -1233,50 +1306,120 @@
   lockUntilFirstFocus('id_operating_hours_ui');
   lockUntilFirstFocus('id_operating_hours_forklift');
 
+  const primaryTokenInput = document.getElementById('id_primary_image_token');
+
   function updateHiddenInput() {
     const dataTransfer = new DataTransfer();
     selectedFiles.forEach(function(file) { dataTransfer.items.add(file); });
     hiddenInput.files = dataTransfer.files;
   }
 
-  function renderPreview() {
-    previewContainer.innerHTML = '';
-    selectedFiles.forEach(function(file, index) {
-      const reader = new FileReader();
-      reader.onload = function(e) {
-        const div = document.createElement('div');
-        div.style.cssText = 'display:inline-block; margin:5px; position:relative; width:100px; height:100px;';
-        div.className = 'border rounded overflow-hidden';
-        div.dataset.index = index;
-        const img = document.createElement('img');
-        img.src = e.target.result;
-        img.style.cssText = 'width:100%; height:100%; object-fit:cover; display:block;';
-        const btn = document.createElement('button');
-        btn.type = 'button';
-        btn.className = 'btn btn-danger btn-sm position-absolute top-0 end-0';
-        btn.style.cssText = 'padding:0 4px; line-height:1; font-size:12px;';
-        btn.textContent = 'X';
-        btn.dataset.index = index;
-        div.appendChild(img);
-        div.appendChild(btn);
-        previewContainer.appendChild(div);
-      };
-      reader.readAsDataURL(file);
+  function clearExistingPrimaryMarks() {
+    document.querySelectorAll('.gn-edit-photo-item.gn-photo-is-primary').forEach(function(el) {
+      el.classList.remove('gn-photo-is-primary');
     });
   }
 
-  previewContainer.addEventListener('click', function(e) {
-    const btn = e.target.closest('button[data-index]');
-    if (!btn) return;
-    const index = parseInt(btn.dataset.index, 10);
-    selectedFiles.splice(index, 1);
-    updateHiddenInput();
+  function setPrimaryToken(token) {
+    if (!primaryTokenInput || !token) return;
+    primaryTokenInput.value = token;
+  }
+
+  function setPrimaryExisting(imageId) {
+    clearExistingPrimaryMarks();
+    document.querySelectorAll('.gn-preview-photo-item').forEach(function(el) {
+      el.classList.remove('gn-photo-is-primary');
+    });
+    var item = document.querySelector('.gn-edit-photo-item[data-image-id="' + imageId + '"]');
+    if (item) item.classList.add('gn-photo-is-primary');
+    setPrimaryToken('id:' + imageId);
+  }
+
+  function setPrimaryNewIndex(index) {
+    if (index > 0 && index < selectedFiles.length) {
+      var file = selectedFiles.splice(index, 1)[0];
+      selectedFiles.unshift(file);
+      updateHiddenInput();
+    }
+    clearExistingPrimaryMarks();
     renderPreview();
+    setPrimaryToken('new:0');
+  }
+
+  function renderPreview() {
+    if (!previewContainer) return;
+    previewContainer.innerHTML = '';
+    selectedFiles.forEach(function(file, index) {
+      const div = document.createElement('div');
+      div.className = 'gn-preview-photo-item flex-shrink-0' + (index === 0 ? ' gn-photo-is-primary' : '');
+      div.dataset.index = String(index);
+
+      const badge = document.createElement('span');
+      badge.className = 'gn-photo-primary-badge';
+      badge.textContent = '대표';
+
+      const img = document.createElement('img');
+      img.alt = '';
+      const reader = new FileReader();
+      reader.onload = function(e) { img.src = e.target.result; };
+      reader.readAsDataURL(file);
+
+      const primaryBtn = document.createElement('button');
+      primaryBtn.type = 'button';
+      primaryBtn.className = 'gn-set-primary-btn btn btn-sm w-100 rounded-0 border-top';
+      primaryBtn.textContent = '대표로';
+      primaryBtn.dataset.index = String(index);
+
+      const removeBtn = document.createElement('button');
+      removeBtn.type = 'button';
+      removeBtn.className = 'btn btn-danger btn-sm gn-preview-remove-btn';
+      removeBtn.textContent = 'X';
+      removeBtn.dataset.index = String(index);
+      removeBtn.title = '제거';
+
+      div.appendChild(badge);
+      div.appendChild(img);
+      div.appendChild(primaryBtn);
+      div.appendChild(removeBtn);
+      previewContainer.appendChild(div);
+    });
+  }
+
+  if (previewContainer) {
+    previewContainer.addEventListener('click', function(e) {
+      const primaryBtn = e.target.closest('.gn-set-primary-btn[data-index]');
+      if (primaryBtn) {
+        setPrimaryNewIndex(parseInt(primaryBtn.dataset.index, 10));
+        return;
+      }
+      const removeBtn = e.target.closest('.gn-preview-remove-btn[data-index]');
+      if (!removeBtn) return;
+      const index = parseInt(removeBtn.dataset.index, 10);
+      selectedFiles.splice(index, 1);
+      updateHiddenInput();
+      if (selectedFiles.length && (primaryTokenInput && primaryTokenInput.value.indexOf('new:') === 0)) {
+        setPrimaryToken('new:0');
+      }
+      renderPreview();
+    });
+  }
+
+  document.querySelectorAll('.gn-edit-photo-item .gn-set-primary-btn').forEach(function(btn) {
+    btn.addEventListener('click', function() {
+      var token = btn.getAttribute('data-token') || '';
+      var imageId = token.replace('id:', '');
+      if (!imageId) return;
+      setPrimaryExisting(imageId);
+    });
   });
 
   function handleFiles(files) {
+    var hadFiles = selectedFiles.length > 0;
     for (var i = 0; i < files.length; i++) selectedFiles.push(files[i]);
     updateHiddenInput();
+    if (!hadFiles && selectedFiles.length && formMode === 'create') {
+      setPrimaryToken('new:0');
+    }
     renderPreview();
   }
 

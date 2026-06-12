@@ -253,10 +253,12 @@ class OtherEquipment(Equipment):
 class EquipmentImage(models.Model):
     equipment = models.ForeignKey(Equipment, related_name='images', on_delete=models.CASCADE, verbose_name="해당 장비")
     image = models.ImageField(upload_to='equipment_images/', verbose_name="장비 사진")
+    sort_order = models.PositiveIntegerField(default=0, verbose_name="정렬 순서")
 
     class Meta:
         verbose_name = "장비 사진"
         verbose_name_plural = "3. 장비 사진 관리"
+        ordering = ['sort_order', 'id']
 
 
 class DeletedListingLog(models.Model):
