@@ -3503,6 +3503,7 @@ def author_listings(request, user_id):
     featured_listings = list(base_qs.order_by('-created_at')[:3])
     total_count = len(listings)
     sold_count = sum(1 for item in listings if item.is_sold)
+    total_views = sum((item.view_count or 0) for item in listings)
     avg_response_text = "빠름"
 
     from trust.services import build_seller_trust_template_context
@@ -3534,6 +3535,7 @@ def author_listings(request, user_id):
         'sort_param': sort,
         'total_count': total_count,
         'sold_count': sold_count,
+        'total_views': total_views,
         'avg_response_text': avg_response_text,
         'list_back_url': request.get_full_path,
         'equipment_detail_next': quote(request.get_full_path(), safe=''),

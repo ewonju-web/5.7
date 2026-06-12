@@ -58,31 +58,37 @@
       {% if author_profile and author_profile.bio %}
       <p class="gn-author-id-bio mb-0">{{ author_profile.bio }}</p>
       {% endif %}
-      <div class="row g-2 mt-3">
-        <div class="col-6 col-md-3">
+      <div class="row row-cols-2 {% if TRUST_SYSTEM_ENABLED %}row-cols-lg-5{% else %}row-cols-lg-4{% endif %} g-2 mt-3">
+        <div class="col">
           <div class="gn-stat-box">
             <div class="gn-stat-label">등록매물</div>
             <div class="gn-stat-value">{{ total_count }}건</div>
           </div>
         </div>
-        <div class="col-6 col-md-3">
+        <div class="col">
           <div class="gn-stat-box">
             <div class="gn-stat-label">판매완료</div>
             <div class="gn-stat-value">{{ sold_count }}건</div>
           </div>
         </div>
         {% if TRUST_SYSTEM_ENABLED %}
-        <div class="col-6 col-md-3">
+        <div class="col">
           <div class="gn-stat-box">
             <div class="gn-stat-label">매너점수</div>
             <div class="gn-stat-value">{% if seller_manner_score %}{{ seller_manner_score.score|floatformat:0 }}{% else %}—{% endif %}</div>
           </div>
         </div>
         {% endif %}
-        <div class="col-6 col-md-3">
+        <div class="col">
           <div class="gn-stat-box">
             <div class="gn-stat-label">평균응답</div>
             <div class="gn-stat-value">{{ avg_response_text }}</div>
+          </div>
+        </div>
+        <div class="col">
+          <div class="gn-stat-box">
+            <div class="gn-stat-label">조회수</div>
+            <div class="gn-stat-value">{{ total_views|intcomma }}</div>
           </div>
         </div>
       </div>

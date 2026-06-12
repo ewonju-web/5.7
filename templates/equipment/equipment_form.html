@@ -972,8 +972,7 @@
         weightDump.disabled = !isDump;
         if (isDump && weightExc && weightExc.value) weightDump.value = weightExc.value;
       }
-      // 굴삭기: exc 제출, 지게차: forklift 복사본 제출, 그 외: exc 제출(숨겨진 div 안)
-      if (opHoursExc) opHoursExc.disabled = isForklift;
+      // 가동시간: UI 입력값을 hidden name=operating_hours 로 항상 동기화 (disabled 시 POST 누락 방지)
       if (opHoursFk) {
         opHoursFk.disabled = !isForklift;
         if (isForklift && opHoursUiInput && opHoursUiInput.value && !opHoursFk.value) opHoursFk.value = opHoursUiInput.value;
@@ -1297,6 +1296,7 @@
   // ----- 사진 최소 1장 필수 (허위 매물 방지): 등록·수정·삭제 체크 반영 -----
   if (form) {
     form.addEventListener('submit', function(e) {
+      syncUiToHiddenValues();
       var mode = form.getAttribute('data-mode') || '';
       var existingCount = parseInt(form.getAttribute('data-edit-existing-images') || '0', 10);
       var toDelete = 0;
@@ -1450,17 +1450,45 @@
   bindNumericSanitizer('id_month_manufactured_simple', 2);
   bindNumericSanitizer('id_operating_hours_ui', 8);
   bindNumericSanitizer('id_operating_hours_forklift', 8);
-  [monthUiInput, monthSimpleUiInput, opHoursUiInput, opHoursForkliftInput].forEach(function(el) {
+
+  function syncUiToHiddenValuesLocal() {
+    var typeEl = document.getElementById('id_equipment_type');
+    var monthHidden = document.getElementById('id_month_manufactured');
+    var monthUi = document.getElementById('id_month_manufactured_ui');
+    var monthSimple = document.getElementById('id_month_manufactured_simple');
+    var opHidden = document.getElementById('id_operating_hours');
+    var opUi = document.getElementById('id_operating_hours_ui');
+    var opFk = document.getElementById('id_operating_hours_forklift');
+    var typeVal = typeEl ? (typeEl.value || '').trim() : '';
+    var isOtherType = ['crane', 'loader', 'dump', 'attachment', 'other'].indexOf(typeVal) !== -1;
+    var isForklift = typeVal === 'forklift';
+    function normalizeDigits(value, maxLen) {
+      var v = String(value || '').replace(/\D/g, '');
+      if (maxLen && v.length > maxLen) v = v.slice(0, maxLen);
+      return v.replace(/^0+(?=\d)/, '');
+    }
+    if (monthHidden) {
+      var monthSrc = isOtherType ? monthSimple : monthUi;
+      monthHidden.value = normalizeDigits(monthSrc ? monthSrc.value : '', 2);
+    }
+    if (opHidden) {
+      var opSrc = isForklift ? opFk : opUi;
+      opHidden.value = normalizeDigits(opSrc ? opSrc.value : '', 8);
+    }
+  }
+
+  ['id_month_manufactured_ui', 'id_month_manufactured_simple', 'id_operating_hours_ui', 'id_operating_hours_forklift'].forEach(function(id) {
+    var el = document.getElementById(id);
     if (!el) return;
-    el.addEventListener('input', syncUiToHiddenValues);
-    el.addEventListener('change', syncUiToHiddenValues);
+    el.addEventListener('input', syncUiToHiddenValuesLocal);
+    el.addEventListener('change', syncUiToHiddenValuesLocal);
   });
   if (form) {
     form.addEventListener('submit', function() {
-      syncUiToHiddenValues();
+      syncUiToHiddenValuesLocal();
     });
   }
-  syncUiToHiddenValues();
+  syncUiToHiddenValuesLocal();
 })();
 </script>
 <script>
