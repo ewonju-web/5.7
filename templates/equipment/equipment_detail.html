@@ -89,7 +89,7 @@
             {% endif %}
             <tr><td class="spec-label">모델명</td><td class="spec-value spec-value-model">{% if equipment.model_name %}{{ equipment.model_name }}{% else %}모름{% endif %}</td></tr>
             <tr><td class="spec-label">연식</td><td class="spec-value">{% if equipment.year_manufactured %}{{ equipment.year_manufactured }}년 {{ equipment.month_manufactured|default:1|stringformat:"02d" }}월{% else %}모름{% endif %}</td></tr>
-            <tr><td class="spec-label">가동시간</td><td class="spec-value">{% if equipment.operating_hours %}{{ equipment.operating_hours }} HR{% else %}-{% endif %}</td></tr>
+            <tr><td class="spec-label">가동시간</td><td class="spec-value">{% if equipment.operating_hours %}{{ equipment.operating_hours|intcomma }} hr{% else %}-{% endif %}</td></tr>
             <tr><td class="spec-label">위치</td><td class="spec-value">{% if equipment.current_location %}{{ equipment.current_location }}{% elif equipment.region_sido %}{{ equipment.region_sido }}{% if equipment.region_sigungu %} {{ equipment.region_sigungu }}{% endif %}{% else %}모름{% endif %}</td></tr>
             <tr><td class="spec-label">매물 등록일</td><td class="spec-value">{{ equipment.created_at|date:"Y-m-d" }}</td></tr>
             <tr><td class="spec-label">판매자</td><td class="spec-value">{{ author_display|default:"-" }}</td></tr>
