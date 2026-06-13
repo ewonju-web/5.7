@@ -119,7 +119,7 @@
         <a href="{% url 'equipment_detail' equipment.pk %}?next={{ equipment_detail_next_q }}" class="card h-100 text-decoration-none gn-author-grid-card" data-equipment-id="{{ equipment.pk }}">
           <div class="position-relative gn-author-grid-img gn-author-img-frame">
             {% if equipment.images.first %}
-            <img src="{{ equipment.images.first.image.url }}" alt="" class="gn-author-img-contain">
+            <img src="{{ equipment.images.first.image.url }}" alt="" class="gn-author-img-cover">
             {% else %}
             <div class="gn-author-img-empty">이미지 없음</div>
             {% endif %}
@@ -255,19 +255,16 @@
     font-size: 1rem;
     font-weight: 800;
   }
-  /* 첫화면 매물 카드와 동일: 4:3 + contain → 사진 안 잘림 */
+  /* 매물 카드: 4:3 영역을 사진으로 꽉 채움 */
   .gn-author-img-frame {
     aspect-ratio: 4 / 3;
     background: #eef2f7;
     overflow: hidden;
-    display: flex;
-    align-items: center;
-    justify-content: center;
   }
-  .gn-author-img-contain {
+  .gn-author-img-cover {
     width: 100%;
     height: 100%;
-    object-fit: contain;
+    object-fit: cover;
     object-position: center center;
     display: block;
   }
