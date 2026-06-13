@@ -2079,6 +2079,7 @@ def excavator_info(request):
         ("forklift_maintenance", "지게차 정비"),
         ("dump_maintenance", "덤프트럭 정비"),
         ("excavator_inspection", "굴삭기 점검"),
+        ("excavator_loading", "굴삭기 상하차"),
     ]
     purpose_keyword_map = {
         "excavator_maintenance": "굴삭기 정비",
@@ -2086,6 +2087,7 @@ def excavator_info(request):
         "forklift_maintenance": "지게차 정비",
         "dump_maintenance": "덤프트럭 정비",
         "excavator_inspection": "굴삭기 점검",
+        "excavator_loading": "굴삭기 상하차",
     }
 
     valid_equipment = {k for k, _ in equipment_tabs}

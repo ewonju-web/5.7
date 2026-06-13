@@ -1,6 +1,9 @@
 {% extends "base.html" %}
 {% block content %}
 <div class="container py-4 gn-equipment-form-page">
+    <div id="gn-equipment-submit-progress" class="gn-submit-progress" aria-hidden="true" role="progressbar" aria-label="{% if mode == 'edit' %}저장 중{% else %}등록 중{% endif %}">
+        <div class="gn-submit-progress-bar"></div>
+    </div>
     <h2 class="section-title mb-4">{% if mode == "edit" %}매물 수정{% else %}매물 등록{% endif %}</h2>
     {% if mode == "create" %}
     <p class="small mb-3 gn-form-notice-strong">
@@ -335,6 +338,37 @@
   }
   .gn-equipment-submit-btn .gn-submit-loading {
     min-height: 1.25rem;
+  }
+  .gn-submit-progress {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 3px;
+    z-index: 10050;
+    overflow: hidden;
+    pointer-events: none;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity .15s ease;
+  }
+  .gn-submit-progress.is-active {
+    opacity: 1;
+    visibility: visible;
+  }
+  .gn-submit-progress-bar {
+    position: absolute;
+    top: 0;
+    left: 0;
+    height: 100%;
+    width: 38%;
+    background: #1a73e8;
+    border-radius: 0 2px 2px 0;
+    animation: gn-submit-progress-slide 1.15s ease-in-out infinite;
+  }
+  @keyframes gn-submit-progress-slide {
+    0% { transform: translateX(-110%); }
+    100% { transform: translateX(320%); }
   }
   #equipment-form .form-label {
     color: #111827;
@@ -1449,6 +1483,7 @@
   // ----- 사진 최소 1장 필수 (허위 매물 방지): 등록·수정·삭제 체크 반영 -----
   function setSubmitLoading(on) {
     var btn = document.getElementById('gn-equipment-submit-btn');
+    var bar = document.getElementById('gn-equipment-submit-progress');
     if (!btn) return;
     var label = btn.querySelector('.gn-submit-label');
     var loading = btn.querySelector('.gn-submit-loading');
@@ -1458,6 +1493,10 @@
     if (loading) {
       loading.classList.toggle('d-none', !on);
       loading.classList.toggle('d-inline-flex', !!on);
+    }
+    if (bar) {
+      bar.classList.toggle('is-active', !!on);
+      bar.setAttribute('aria-hidden', on ? 'false' : 'true');
     }
   }
   window.addEventListener('pageshow', function(e) {
