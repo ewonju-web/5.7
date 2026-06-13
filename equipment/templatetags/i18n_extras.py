@@ -781,6 +781,23 @@ def _extract_sido_from_text(text: str) -> str:
 
 
 @register.filter
+def equipment_year_month_compact(equipment):
+    """목록 카드(모바일) 연식 — '2026. 05.' 형식."""
+    if not equipment:
+        return "모름"
+    year = getattr(equipment, "year_manufactured", None)
+    if not year:
+        return "모름"
+    month = getattr(equipment, "month_manufactured", None) or 1
+    try:
+        month = int(month)
+    except (TypeError, ValueError):
+        month = 1
+    month = max(1, min(12, month))
+    return f"{year}. {month:02d}."
+
+
+@register.filter
 def equipment_location_sido(equipment):
     """목록 카드용 위치 — 시/도만 표시."""
     if not equipment:
