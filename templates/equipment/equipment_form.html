@@ -300,8 +300,12 @@
                 </div>
 
                 <div class="d-flex gap-2 mt-4">
-                    <button type="submit" class="btn fw-bold px-4 py-2 text-dark" style="background: var(--gn-accent); border-radius: 10px;">
-                        {% if mode == "edit" %}수정 저장{% else %}등록하기{% endif %}
+                    <button type="submit" id="gn-equipment-submit-btn" class="btn fw-bold px-4 py-2 text-dark gn-equipment-submit-btn" style="background: var(--gn-accent); border-radius: 10px;">
+                        <span class="gn-submit-label">{% if mode == "edit" %}수정 저장{% else %}등록하기{% endif %}</span>
+                        <span class="gn-submit-loading d-none align-items-center justify-content-center gap-2">
+                            <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+                            <span>{% if mode == "edit" %}저장 중…{% else %}등록 중…{% endif %}</span>
+                        </span>
                     </button>
                     <a href="{% url 'index' %}" class="btn btn-outline-secondary px-4" style="border-radius: 10px;">취소</a>
                 </div>
@@ -325,7 +329,13 @@
     </div>
 </div>
 <style>
-  /* 매물등록 폼 가독성: 라벨/입력창/테두리 대비 강화 */
+  .gn-equipment-submit-btn[disabled] {
+    opacity: 0.82;
+    cursor: wait;
+  }
+  .gn-equipment-submit-btn .gn-submit-loading {
+    min-height: 1.25rem;
+  }
   #equipment-form .form-label {
     color: #111827;
     font-weight: 700;
@@ -1437,6 +1447,23 @@
   }
 
   // ----- 사진 최소 1장 필수 (허위 매물 방지): 등록·수정·삭제 체크 반영 -----
+  function setSubmitLoading(on) {
+    var btn = document.getElementById('gn-equipment-submit-btn');
+    if (!btn) return;
+    var label = btn.querySelector('.gn-submit-label');
+    var loading = btn.querySelector('.gn-submit-loading');
+    btn.disabled = !!on;
+    btn.setAttribute('aria-busy', on ? 'true' : 'false');
+    if (label) label.classList.toggle('d-none', !!on);
+    if (loading) {
+      loading.classList.toggle('d-none', !on);
+      loading.classList.toggle('d-inline-flex', !!on);
+    }
+  }
+  window.addEventListener('pageshow', function(e) {
+    if (e.persisted) setSubmitLoading(false);
+  });
+
   if (form) {
     form.addEventListener('submit', function(e) {
       syncUiToHiddenValues();
@@ -1453,6 +1480,7 @@
         alert('허위 매물 방지를 위해 사진을 최소 1장 이상 남기거나, 삭제한 만큼 새 사진을 추가해 주세요.');
         return false;
       }
+      setSubmitLoading(true);
     });
   }
 })();
