@@ -38,7 +38,7 @@
         <div class="card-footer border-top py-3 gn-chat-input-wrap" style="background: var(--gn-card); border-color: var(--gn-border); position: sticky; bottom: 0; z-index: 10; padding-bottom: calc(0.75rem + env(safe-area-inset-bottom, 0));">
             <form method="post" action="" class="d-flex gap-2">
                 {% csrf_token %}
-                <input type="text" name="message" class="form-control rounded-3" placeholder="{{ LANG|tr:'chat_send_ph' }}" maxlength="1000" required autocomplete="off">
+                <input type="text" name="message" class="form-control rounded-3" placeholder="{{ LANG|tr:'chat_send_ph' }}" maxlength="200" required autocomplete="off">
                 <button type="submit" class="btn rounded-3 text-dark fw-bold" style="background: var(--gn-accent); min-width: 70px;">{{ LANG|tr:"chat_send" }}</button>
             </form>
         </div>

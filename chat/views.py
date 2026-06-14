@@ -1,5 +1,8 @@
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
+from django.contrib import messages
+from django.core.cache import cache
+from django.core.exceptions import ValidationError
 from django.utils import timezone
 from django.db import transaction
 from django.db.models import Q, OuterRef, Subquery, Count, F
@@ -10,8 +13,17 @@ from django.utils.http import url_has_allowed_host_and_scheme
 from django.views.decorators.http import require_GET
 
 from equipment.models import Equipment
+from equipment.finance_security import get_client_ip
 from equipment.templatetags.i18n_extras import SUPPORTED_LANGS
 from .models import ChatRoom, ChatMessage
+from .security import (
+    ban_user_chat,
+    block_chat_ip,
+    bump_chat_rate_limit,
+    check_chat_rate_limit,
+    is_user_chat_banned,
+    validate_chat_message,
+)
 
 
 @require_GET
@@ -37,6 +49,9 @@ def set_language(request):
 @login_required(login_url='/login/')
 def equipment_chat_start(request, pk):
     """매물 상세에서 '판매자에게 문의(채팅)' 클릭 시: 방 생성/조회 후 채팅방으로 리다이렉트."""
+    if is_user_chat_banned(request.user):
+        messages.error(request, '채팅 이용이 제한된 계정입니다.')
+        return redirect('equipment_detail', pk=pk)
     equipment = get_object_or_404(Equipment, pk=pk)
     seller = equipment.author
     if not seller:
@@ -69,6 +84,9 @@ def equipment_chat_start(request, pk):
 @login_required(login_url='/login/')
 def soil_chat_start(request, pk):
     """흙 게시글 상세에서 '채팅으로 문의하기' 클릭 시: 방 생성/조회 후 채팅방으로 리다이렉트."""
+    if is_user_chat_banned(request.user):
+        messages.error(request, '채팅 이용이 제한된 계정입니다.')
+        return redirect('soil_detail', pk=pk)
     from soil.models import SoilPost
     post = get_object_or_404(SoilPost, pk=pk, is_active=True)
     seller = post.author
@@ -99,6 +117,9 @@ def soil_chat_start(request, pk):
 @login_required(login_url='/login/')
 def job_chat_start(request, pk):
     """구인구직 상세에서 '문의하기' 클릭 시: 1:1 대화방 생성/조회 후 채팅방으로 리다이렉트."""
+    if is_user_chat_banned(request.user):
+        messages.error(request, '채팅 이용이 제한된 계정입니다.')
+        return redirect('job_detail', pk=pk)
     from equipment.models import JobPost
     job = get_object_or_404(JobPost, pk=pk)
     seller = job.author
@@ -133,6 +154,9 @@ def job_chat_start(request, pk):
 @login_required(login_url='/login/')
 def chat_room_list(request):
     """내 채팅방 목록 (buyer 또는 seller로 참여 중인 방). Subquery로 최근 메시지 1개만 annotate해 N+1 방지."""
+    if is_user_chat_banned(request.user):
+        messages.error(request, '채팅 이용이 제한된 계정입니다.')
+        return redirect('index')
     user = request.user
     last_msg_sub = ChatMessage.objects.filter(room=OuterRef('pk')).order_by('-created_at')
     rooms = (
@@ -177,6 +201,10 @@ def chat_room_list(request):
 @login_required(login_url='/login/')
 def chat_room_detail(request, room_id):
     """채팅방 상세: 메시지 목록 + 전송. 해당 방의 buyer/seller만 접근 가능. 권한 없으면 404(URL guessing 방지)."""
+    if is_user_chat_banned(request.user):
+        messages.error(request, '채팅 이용이 제한된 계정입니다.')
+        return redirect('chat_room_list')
+
     room = get_object_or_404(ChatRoom.objects.select_related('equipment', 'soil_post', 'job_post'), pk=room_id)
     user = request.user
     if room.buyer_id != user.id and room.seller_id != user.id:
@@ -187,11 +215,31 @@ def chat_room_detail(request, room_id):
     room.messages.filter(is_read=False).exclude(sender=user).update(is_read=True)
 
     if request.method == 'POST':
-        msg_text = (request.POST.get('message') or '').strip()
-        if msg_text:
-            ChatMessage.objects.create(room=room, sender=user, message=msg_text)
-            room.last_message_at = timezone.now()
-            room.save(update_fields=['last_message_at', 'updated_at'])
+        rate_msg = check_chat_rate_limit(request)
+        if rate_msg:
+            messages.error(request, rate_msg)
+            return redirect('chat_room_detail', room_id=room_id)
+
+        raw_text = request.POST.get('message') or ''
+        try:
+            msg_text = validate_chat_message(raw_text)
+        except ValidationError as exc:
+            messages.error(request, exc.messages[0] if exc.messages else '메시지를 확인해 주세요.')
+            block_chat_ip(get_client_ip(request), seconds=3600)
+            if is_user_chat_banned(user) is False:
+                recent_attack_key = f'chat_attack:u{user.id}'
+                attack_count = cache.get(recent_attack_key, 0) + 1
+                cache.set(recent_attack_key, attack_count, 3600)
+                if attack_count >= 3:
+                    ban_user_chat(user)
+                    messages.error(request, '비정상 메시지가 반복되어 계정이 차단되었습니다.')
+                    return redirect('chat_room_list')
+            return redirect('chat_room_detail', room_id=room_id)
+
+        ChatMessage.objects.create(room=room, sender=user, message=msg_text)
+        bump_chat_rate_limit(request)
+        room.last_message_at = timezone.now()
+        room.save(update_fields=['last_message_at', 'updated_at'])
         return redirect('chat_room_detail', room_id=room_id)
 
     chat_messages = room.messages.select_related('sender').order_by('created_at')
