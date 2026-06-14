@@ -172,6 +172,8 @@ def report_create(request):
     disabled = _require_trust_enabled()
     if disabled:
         return disabled
+    if not request.user.is_authenticated:
+        return _json_error('로그인이 필요합니다.', 401)
     data = _parse_json_body(request)
     if data is None:
         return _json_error('잘못된 요청 형식입니다.')

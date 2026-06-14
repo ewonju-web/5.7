@@ -2994,6 +2994,9 @@ def equipment_detail(request, pk):
     comments = Comment.objects.filter(content_type=ct, object_id=pk).order_by('created_at')
 
     if request.method == 'POST' and 'comment_content' in request.POST:
+        if not request.user.is_authenticated:
+            from django.urls import reverse
+            return redirect(f"{reverse('login')}?next={request.get_full_path()}")
         content = (request.POST.get('comment_content') or '').strip()
         if content:
             Comment.objects.create(
@@ -3618,6 +3621,9 @@ def part_detail(request, pk):
     comments = Comment.objects.filter(content_type=ct, object_id=pk).order_by('created_at')
 
     if request.method == 'POST' and 'comment_content' in request.POST:
+        if not request.user.is_authenticated:
+            from django.urls import reverse
+            return redirect(f"{reverse('login')}?next={request.get_full_path()}")
         content = (request.POST.get('comment_content') or '').strip()
         if content:
             Comment.objects.create(

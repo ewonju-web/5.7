@@ -5,6 +5,13 @@ from django.contrib.auth import get_user_model
 from django.core.cache import cache
 from django.core.exceptions import ValidationError
 
+from equipment.content_security import (
+    ATTACK_PATTERNS,
+    ban_user_account,
+    block_ip,
+    is_ip_blocked,
+    text_has_attack_payload,
+)
 from equipment.finance_security import get_client_ip
 
 User = get_user_model()
@@ -16,20 +23,6 @@ CHAT_IP_AUTO_BLOCK_THRESHOLD = 35
 CHAT_IP_BLOCK_SECONDS = 86400
 CHAT_RATE_WINDOW = 60
 
-_CHAT_ATTACK_PATTERNS = re.compile(
-    r'('
-    r'pg_sleep\s*\(|benchmark\s*\(|sleep\s*\(|waitfor\s+delay|sysdate\s*\(\s*\)'
-    r'|dbms_pipe|receive_message|chr\s*\(\s*\d+'
-    r'|select\s+.+\s+from|union\s+select|insert\s+into|drop\s+table|delete\s+from'
-    r'|\bor\s+[\d\'"]|\bor\s+\d+\s*[=+-]|\bxor\s*\(|\'\s*\|\||"\s*\|\|'
-    r'|\'\s*or\s+|"\s*or\s+|-1\s+or\s+'
-    r'|--\s*$|/\*|\*/|;--|%2527|%2522'
-    r'|\(select\s*\(|information_schema|concat\s*\(|char\s*\('
-    r'|@@[a-z0-9]{3,}|if\s*\(\s*now\s*\(\s*\)\s*='
-    r')',
-    re.I,
-)
-
 _CHAT_SUSPICIOUS_CHARS = re.compile(
     r'['
     r'\'"'
@@ -37,7 +30,6 @@ _CHAT_SUSPICIOUS_CHARS = re.compile(
     r']',
 )
 
-_CHAT_BLOCKED_IP_PREFIX = 'chat_block_ip:'
 _CHAT_RL_USER_PREFIX = 'chat_rl:u:'
 _CHAT_RL_IP_PREFIX = 'chat_rl:ip:'
 
@@ -47,13 +39,11 @@ class ChatBlockedError(ValidationError):
 
 
 def is_ip_chat_blocked(ip: str) -> bool:
-    ip = (ip or '').strip() or 'unknown'
-    return bool(cache.get(f'{_CHAT_BLOCKED_IP_PREFIX}{ip}'))
+    return is_ip_blocked(ip)
 
 
 def block_chat_ip(ip: str, seconds: int = CHAT_IP_BLOCK_SECONDS) -> None:
-    ip = (ip or '').strip() or 'unknown'
-    cache.set(f'{_CHAT_BLOCKED_IP_PREFIX}{ip}', 1, max(60, seconds))
+    block_ip(ip, seconds=seconds)
 
 
 def is_user_chat_banned(user) -> bool:
@@ -68,21 +58,7 @@ def is_user_chat_banned(user) -> bool:
 
 
 def ban_user_chat(user, *, deactivate: bool = True) -> None:
-    """계정 채팅·로그인 차단."""
-    if not user or not user.pk:
-        return
-    if deactivate and user.is_active:
-        user.is_active = False
-        user.save(update_fields=['is_active'])
-    try:
-        from trust.models import MannerScore
-
-        MannerScore.objects.update_or_create(
-            user=user,
-            defaults={'score': 0.0, 'tier': 'blocked'},
-        )
-    except Exception:
-        pass
+    ban_user_account(user, deactivate=deactivate)
 
 
 def validate_chat_message(text: str) -> str:
@@ -92,14 +68,10 @@ def validate_chat_message(text: str) -> str:
         raise ValidationError('메시지를 입력해 주세요.')
     if len(msg) > CHAT_MESSAGE_MAX_LEN:
         raise ValidationError(f'메시지는 {CHAT_MESSAGE_MAX_LEN}자 이내로 입력해 주세요.')
-    if _CHAT_ATTACK_PATTERNS.search(msg):
+    if text_has_attack_payload(msg) or ATTACK_PATTERNS.search(msg):
         raise ValidationError('허용되지 않는 문자가 포함되어 있습니다.')
     if _CHAT_SUSPICIOUS_CHARS.search(msg):
         raise ValidationError('허용되지 않는 특수문자가 포함되어 있습니다.')
-    lowered = msg.lower()
-    for token in ('sleep', ' xor ', ' or ', 'union', 'select', 'drop', 'delete', 'insert'):
-        if token.strip() in lowered.replace('(', ' ').replace(')', ' '):
-            raise ValidationError('허용되지 않는 문자가 포함되어 있습니다.')
     return msg
 
 
