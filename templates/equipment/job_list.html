@@ -17,7 +17,8 @@
                 <span class="job-page-heading-bar" aria-hidden="true"></span>
                 구인구직
             </h2>
-            <a href="{% if user.is_authenticated %}{% url 'job_create' %}{% else %}{% url 'login' %}?next={% url 'job_create' %}{% endif %}" class="job-btn-write-outline">
+            {% url 'job_create' as job_create_url %}
+            <a href="{% url 'login' %}?next={{ job_create_url|urlencode }}" class="job-btn-write-outline">
                 <i class="bi bi-pencil-square job-write-icon me-1" aria-hidden="true"></i>글쓰기
             </a>
         </div>

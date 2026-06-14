@@ -112,7 +112,8 @@
                 구인구직 · 자격증 시험{% if show_youtube_videos %} · 시험동영상{% endif %}
             </h2>
             {% if not show_youtube_videos %}
-            <a href="{% if user.is_authenticated %}{% url 'exam_create' %}{% else %}{% url 'login' %}?next={% url 'exam_create' %}{% endif %}" class="job-btn-write-outline">
+            {% url 'exam_create' as exam_create_url %}
+            <a href="{% url 'login' %}?next={{ exam_create_url|urlencode }}" class="job-btn-write-outline">
                 <i class="bi bi-pencil-square job-write-icon me-1" aria-hidden="true"></i>글쓰기
             </a>
             {% endif %}

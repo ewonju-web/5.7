@@ -1556,8 +1556,12 @@ def job_detail(request, pk):
 
 @login_required(login_url='/login/')
 def job_create(request):
+    from urllib.parse import quote
+    from django.urls import reverse
     from .region_choices import SIDO_CHOICES, SIGUNGU_MAP
     import json
+    if not request.user.is_authenticated:
+        return redirect(reverse('login') + '?next=' + quote(request.get_full_path(), safe=''))
     redirect_resp = _require_phone_verified(request)
     if redirect_resp:
         messages.info(request, '구인·구직 글 등록을 위해 휴대폰 본인인증이 필요합니다.')
@@ -1665,6 +1669,7 @@ def job_create(request):
     )
 
 
+@login_required(login_url='/login/')
 def job_edit(request, pk):
     from .region_choices import SIDO_CHOICES, SIGUNGU_MAP
     import json
@@ -1910,6 +1915,10 @@ def exam_detail(request, pk):
 
 @login_required(login_url='/login/')
 def exam_create(request):
+    from urllib.parse import quote
+    from django.urls import reverse
+    if not request.user.is_authenticated:
+        return redirect(reverse('login') + '?next=' + quote(request.get_full_path(), safe=''))
     redirect_resp = _require_phone_verified(request)
     if redirect_resp:
         messages.info(request, '글 등록을 위해 휴대폰 본인인증이 필요합니다.')
