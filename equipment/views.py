@@ -160,28 +160,37 @@ def _social_auth_login_url(provider, next_url=''):
     return f'/accounts/{provider}/login/?' + urlencode(params)
 
 
+def _is_home_login_path(path: str) -> bool:
+    """첫 화면(/) 경로 여부."""
+    path = ((path or '/').split('?')[0].rstrip('/') or '/')
+    return path == '/'
+
+
 def _login_next_url(request, explicit_next=''):
     """로그인 후 복귀 경로 — next 파라미터 우선, 없으면 로그인 직전 페이지(매물보기 강제 이동 방지)."""
     next_url = (explicit_next or '').strip()
     if next_url and url_has_allowed_host_and_scheme(next_url, allowed_hosts={request.get_host()}):
+        if _is_home_login_path(urlparse(next_url).path):
+            return reverse('my_page')
         return next_url
     referer = (request.META.get('HTTP_REFERER') or '').strip()
     if referer and url_has_allowed_host_and_scheme(referer, allowed_hosts={request.get_host()}):
-        from urllib.parse import urlparse
         path = urlparse(referer).path or '/'
         skip_prefixes = ('/login', '/join', '/signup', '/accounts/', '/admin/login')
         if not any(path.startswith(p) for p in skip_prefixes):
+            if _is_home_login_path(path):
+                return reverse('my_page')
             return referer
     return ''
 
 
-def _redirect_after_login(request, next_url='', default='index'):
+def _redirect_after_login(request, next_url='', default='my_page'):
     next_url = _login_next_url(request, next_url)
     if next_url:
         return redirect(next_url)
     if default:
         return redirect(default)
-    return redirect('index')
+    return redirect('my_page')
 
 
 def _require_phone_verified_strict(request):

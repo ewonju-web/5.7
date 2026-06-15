@@ -273,7 +273,7 @@ USE_I18N = True
 
 # 로그인 관련 설정 (일반 + allauth 소셜 로그인)
 LOGIN_URL = 'login'
-LOGIN_REDIRECT_URL = 'index'
+LOGIN_REDIRECT_URL = 'my_page'
 LOGOUT_REDIRECT_URL = 'index'
 ACCOUNT_LOGOUT_REDIRECT_URL = '/'
 
