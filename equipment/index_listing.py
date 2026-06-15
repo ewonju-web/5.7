@@ -284,7 +284,7 @@ def parse_index_params(request):
         list_per_page = int(request.GET.get('per_page', '40'))
     except (TypeError, ValueError):
         list_per_page = 40
-    if list_per_page not in (24, 40, 60):
+    if list_per_page not in (24, 40, 60, 80):
         list_per_page = 40
 
     return {
