@@ -53,8 +53,11 @@
   .info-card-body { padding: 0.75rem; }
   .info-thumb-wrap { border-radius: 10px; overflow: hidden; background: #e2e8f0; display: block; aspect-ratio: 16 / 9; position: relative; }
   .info-thumb { width: 100%; height: 100%; object-fit: cover; object-position: center; display: block; }
-  .info-thumb.is-zoom { transform: scale(1.6); }
-  .info-thumb.is-zoom-heavy { transform: scale(2.4); }
+  /* 유튜브 썸네일 pillarbox(좌우 검정바) 제거 목적:
+     wrapper(.info-thumb-wrap)는 overflow hidden + aspect-ratio 고정이라
+     썸네일을 더 크게 확대해 좌우 검정 기둥을 크롭한다. */
+  .info-thumb.is-zoom { transform: scale(2.1); }
+  .info-thumb.is-zoom-heavy { transform: scale(3.1); }
   .info-title-link { color: var(--gn-text); text-decoration: none; }
   .info-title-link:hover { color: #1d4ed8; text-decoration: underline; }
   .info-channel { font-size: .82rem; color: #64748b; margin: .2rem 0 .3rem; font-weight: 600; }
@@ -427,7 +430,7 @@
     }
 
     function detectPillarbox(img) {
-      if (img.dataset.needsCrop !== "1" || img.dataset.cropChecked === "1") {
+      if (img.dataset.cropChecked === "1") {
         return;
       }
       img.dataset.cropChecked = "1";
@@ -437,28 +440,33 @@
         return;
       }
       var canvas = document.createElement("canvas");
-      var sw = Math.max(8, Math.floor(w * 0.12));
+      // 좌/우 썸네일 기둥(검정바) 영역을 더 잘 잡기 위해
+      // 샘플 폭/깊이 및 '어두움' 판정을 더 관대하게 조정한다.
+      var sw = Math.max(6, Math.floor(w * 0.1));
       canvas.width = sw * 2;
-      canvas.height = 12;
+      canvas.height = Math.max(12, Math.floor(h * 0.08));
       var ctx = canvas.getContext("2d");
       if (!ctx) {
         return;
       }
-      ctx.drawImage(img, 0, 0, sw, h, 0, 0, sw, 12);
-      ctx.drawImage(img, w - sw, 0, sw, h, sw, 0, sw, 12);
+      // 샘플 높이는 canvas.height에 맞춘다.
+      ctx.drawImage(img, 0, 0, sw, h, 0, 0, sw, canvas.height);
+      ctx.drawImage(img, w - sw, 0, sw, h, sw, 0, sw, canvas.height);
       var data = ctx.getImageData(0, 0, canvas.width, canvas.height).data;
       var dark = 0;
       var total = data.length / 4;
+      var darkCutoff = 65; // 검정바가 '진짜 검정'이 아닐 수 있어 임계값을 완화
       for (var i = 0; i < data.length; i += 4) {
-        if (data[i] < 40 && data[i + 1] < 40 && data[i + 2] < 40) {
+        if (data[i] < darkCutoff && data[i + 1] < darkCutoff && data[i + 2] < darkCutoff) {
           dark++;
         }
       }
       var ratio = dark / total;
-      if (ratio > 0.5) {
+      // 임계값을 더 낮춰 남아있는 검정바도 크롭되도록 한다.
+      if (ratio > 0.22) {
         img.classList.add("is-zoom");
       }
-      if (ratio > 0.72) {
+      if (ratio > 0.42) {
         img.classList.add("is-zoom-heavy");
       }
     }
