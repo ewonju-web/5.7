@@ -28,9 +28,10 @@ certbot --version
 echo ""
 echo "=== 3. DNS 확인 ==="
 dns_ok=true
+DNS_RESOLVER="${DNS_RESOLVER:-8.8.8.8}"
 for domain in "${DOMAINS[@]}"; do
-  resolved="$(dig +short "$domain" | tail -1)"
-  echo "${domain} -> ${resolved:-없음}"
+  resolved="$(dig +short "$domain" @"${DNS_RESOLVER}" | tail -1)"
+  echo "${domain} -> ${resolved:-없음} (via ${DNS_RESOLVER})"
   if [[ "$resolved" != "$TARGET_IP" ]]; then
     dns_ok=false
   fi

@@ -26,6 +26,59 @@ EXAM_VIDEO_EQUIPMENT_LABELS = {
 }
 
 
+def _ytimg_exists(video_id: str, quality: str) -> bool:
+    url = f'https://i.ytimg.com/vi/{video_id}/{quality}.jpg'
+    try:
+        req = Request(url, method='HEAD')
+        with urlopen(req, timeout=4) as resp:
+            size = int(resp.headers.get('Content-Length') or 0)
+            return resp.status == 200 and size > 500
+    except Exception:
+        try:
+            req = Request(url, headers={'Range': 'bytes=0-1023'})
+            with urlopen(req, timeout=4) as resp:
+                return resp.status in (200, 206)
+        except Exception:
+            return False
+
+
+def youtube_thumbnail_pick(video_id: str) -> dict:
+    """세로(쇼츠)는 oardefault, 가로는 maxresdefault. 검정 여백 보정 여부 포함."""
+    vid = (video_id or '').strip()
+    if not vid:
+        return {'url': '', 'needs_crop': False}
+    if _ytimg_exists(vid, 'oardefault'):
+        return {
+            'url': f'https://i.ytimg.com/vi/{vid}/oardefault.jpg',
+            'needs_crop': False,
+        }
+    if _ytimg_exists(vid, 'maxresdefault'):
+        return {
+            'url': f'https://i.ytimg.com/vi/{vid}/maxresdefault.jpg',
+            'needs_crop': True,
+        }
+    if _ytimg_exists(vid, 'mqdefault'):
+        return {
+            'url': f'https://i.ytimg.com/vi/{vid}/mqdefault.jpg',
+            'needs_crop': True,
+        }
+    return {
+        'url': f'https://i.ytimg.com/vi/{vid}/hqdefault.jpg',
+        'needs_crop': True,
+    }
+
+
+def youtube_thumbnail_src(video_id: str, quality: str = 'maxresdefault') -> str:
+    """YouTube 썸네일 URL (가능하면 oardefault/maxres 우선 선택)."""
+    picked = youtube_thumbnail_pick(video_id)
+    if picked['url']:
+        return picked['url']
+    vid = (video_id or '').strip()
+    if not vid:
+        return ''
+    return f'https://i.ytimg.com/vi/{vid}/{quality}.jpg'
+
+
 def extract_youtube_id(url: str) -> str:
     """youtu.be/ID 와 youtube.com/watch?v=ID (및 /embed/ID) 처리."""
     if not url:
@@ -62,7 +115,7 @@ def fetch_exam_youtube_videos(equipment_key: str = '') -> list[dict]:
     if not api_key:
         return []
 
-    cache_key = f'youtube_api:exam:v2:{equipment_key or "all"}'
+    cache_key = f'youtube_api:exam:v4:{equipment_key or "all"}'
     cached = cache.get(cache_key)
     if cached is not None:
         return cached
@@ -91,18 +144,13 @@ def fetch_exam_youtube_videos(equipment_key: str = '') -> list[dict]:
         snippet = row.get('snippet') or {}
         if not video_id:
             continue
-        thumbs = snippet.get('thumbnails') or {}
-        thumb = (
-            ((thumbs.get('high') or {}).get('url'))
-            or ((thumbs.get('medium') or {}).get('url'))
-            or ((thumbs.get('default') or {}).get('url'))
-            or ''
-        )
+        thumb = youtube_thumbnail_pick(video_id)
         items.append({
             'video_id': video_id,
             'title': html.unescape((snippet.get('title') or '').strip()),
             'channel_title': (snippet.get('channelTitle') or '').strip(),
-            'thumbnail_url': thumb,
+            'thumbnail_url': thumb['url'],
+            'thumbnail_needs_crop': thumb['needs_crop'],
             'youtube_url': f'https://www.youtube.com/watch?v={video_id}',
             'equipment_label': equipment_label,
         })

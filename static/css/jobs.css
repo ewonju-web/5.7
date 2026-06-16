@@ -1326,7 +1326,8 @@ h1.job-title,
   position: relative;
   display: block;
   overflow: hidden;
-  background: #111827;
+  background: #e2e8f0;
+  aspect-ratio: 16 / 9;
 }
 .exam-video-thumb-wrap::after {
   content: "";
@@ -1338,11 +1339,14 @@ h1.job-title,
 }
 .exam-video-thumb {
   width: 100%;
-  aspect-ratio: 16 / 9;
+  height: 100%;
   object-fit: cover;
+  object-position: center;
   display: block;
   transition: transform 0.2s ease;
 }
+.exam-video-thumb.is-zoom { transform: scale(1.6); }
+.exam-video-thumb.is-zoom-heavy { transform: scale(2.4); }
 .exam-video-play {
   position: absolute;
   top: 50%;
@@ -1366,7 +1370,7 @@ h1.job-title,
   .exam-video-thumb-btn:hover .exam-video-thumb-wrap::after {
     background: rgba(0, 0, 0, 0.18);
   }
-  .exam-video-thumb-btn:hover .exam-video-thumb {
+  .exam-video-thumb-btn:hover .exam-video-thumb:not(.is-zoom):not(.is-zoom-heavy) {
     transform: scale(1.02);
   }
 }

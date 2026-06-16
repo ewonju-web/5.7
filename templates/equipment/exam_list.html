@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 {% load static i18n_extras %}
 {% block extra_css %}
-<link rel="stylesheet" href="{% static 'css/jobs.css' %}?v=20260607b">
+<link rel="stylesheet" href="{% static 'css/jobs.css' %}?v=20260616a">
 <style>
   .exam-list-shell { background: #fff; border: 1px solid var(--gn-border, #e5e7eb); border-radius: 14px; padding: 1rem; box-shadow: var(--gn-shadow, 0 1px 3px rgba(0,0,0,.06)); }
   .exam-list-head { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 0.75rem; margin-bottom: 0.85rem; }
@@ -162,10 +162,20 @@
                         data-video-title="{{ item.title|escape }}"
                         aria-label="{{ item.title }} 재생">
                     <span class="exam-video-thumb-wrap">
-                        {% if item.thumbnail_url %}
+                        {% if item.video_id %}
+                        <img
+                            src="{{ item.thumbnail_url|default:'' }}"
+                            data-fallback="https://i.ytimg.com/vi/{{ item.video_id }}/mqdefault.jpg"
+                            data-needs-crop="{% if item.thumbnail_needs_crop %}1{% else %}0{% endif %}"
+                            class="exam-video-thumb js-yt-thumb"
+                            alt="{{ item.title }}"
+                            loading="lazy"
+                            crossorigin="anonymous"
+                        >
+                        {% elif item.thumbnail_url %}
                         <img src="{{ item.thumbnail_url }}" class="exam-video-thumb" alt="{{ item.title }}" loading="lazy">
                         {% else %}
-                        <img src="https://img.youtube.com/vi/{{ item.video_id }}/mqdefault.jpg" class="exam-video-thumb" alt="{{ item.title }}" loading="lazy">
+                        <img src="https://img.youtube.com/vi/0/mqdefault.jpg" class="exam-video-thumb" alt="{{ item.title }}" loading="lazy">
                         {% endif %}
                         <span class="exam-video-play" aria-hidden="true">▶</span>
                     </span>
@@ -255,6 +265,40 @@
 {% if show_youtube_videos %}
 <script>
 (function () {
+    function detectPillarbox(img) {
+        if (img.dataset.needsCrop !== '1' || img.dataset.cropChecked === '1') return;
+        img.dataset.cropChecked = '1';
+        var w = img.naturalWidth, h = img.naturalHeight;
+        if (!w || !h) return;
+        var canvas = document.createElement('canvas');
+        var sw = Math.max(8, Math.floor(w * 0.12));
+        canvas.width = sw * 2; canvas.height = 12;
+        var ctx = canvas.getContext('2d');
+        if (!ctx) return;
+        ctx.drawImage(img, 0, 0, sw, h, 0, 0, sw, 12);
+        ctx.drawImage(img, w - sw, 0, sw, h, sw, 0, sw, 12);
+        var data = ctx.getImageData(0, 0, canvas.width, canvas.height).data;
+        var dark = 0, total = data.length / 4;
+        for (var i = 0; i < data.length; i += 4) {
+            if (data[i] < 40 && data[i + 1] < 40 && data[i + 2] < 40) dark++;
+        }
+        var ratio = dark / total;
+        if (ratio > 0.5) img.classList.add('is-zoom');
+        if (ratio > 0.72) img.classList.add('is-zoom-heavy');
+    }
+    function bindYtThumb(img) {
+        if (img.dataset.bound === '1') return;
+        img.dataset.bound = '1';
+        img.addEventListener('error', function () {
+            if (!img.dataset.fallback || img.dataset.fallbackUsed === '1') return;
+            img.dataset.fallbackUsed = '1';
+            img.src = img.dataset.fallback;
+        });
+        var run = function () { detectPillarbox(img); };
+        if (img.complete) run(); else img.addEventListener('load', run, { once: true });
+    }
+    document.querySelectorAll('.js-yt-thumb').forEach(bindYtThumb);
+
     var openButtons = document.querySelectorAll('.js-video-open');
     var overlay = document.getElementById('videoModalOverlay');
     var closeBtn = document.getElementById('videoModalClose');

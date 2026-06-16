@@ -31,7 +31,7 @@ from .rental_utils import (
     fetch_regional_heavy_companies,
     get_kakao_rest_key,
 )
-from .exam_utils import extract_youtube_id, fetch_exam_youtube_videos
+from .exam_utils import extract_youtube_id, fetch_exam_youtube_videos, youtube_thumbnail_pick, youtube_thumbnail_src
 from soil.models import SoilPost
 from .forms import EquipmentForm, EquipmentEditForm, PartForm
 from .premium_utils import (
@@ -2062,141 +2062,65 @@ def exam_delete(request, pk):
     return redirect('exam_detail', pk=pk)
 
 
-# [3-1] 굴삭기 유튜브·정보
+# [3-1] 중장비 유튜브·정보
 def excavator_info(request):
-    """유튜브 콘텐츠: 기종 + 목적 동시 필터 (YouTube Data API + 일 1회 캐시)."""
-    import json
-    from urllib.parse import urlencode
-    from urllib.request import urlopen, Request
-    from django.core.cache import cache
+    """유튜브 콘텐츠: 분야별 필터 (초기 HTML + 클라이언트 필터)."""
+    from .youtube_info_service import (
+        CATEGORY_TABS,
+        fetch_youtube_videos,
+        resolve_category_from_request,
+    )
 
-    selected_equipment_type = (request.GET.get("equipment_type", "all") or "all").strip().lower()
-    selected_purpose = (request.GET.get("purpose", "excavator_maintenance") or "excavator_maintenance").strip().lower()
-
-    equipment_tabs = [
-        ("all", "전체"),
-        ("excavator", "굴삭기"),
-        ("forklift", "지게차"),
-        ("dump", "덤프트럭"),
-        ("loader", "스키로더"),
-        ("crane", "크레인"),
-        ("attachment", "어태치먼트"),
-    ]
-    equipment_label_map = {
-        "all": "전체",
-        "excavator": "굴삭기",
-        "forklift": "지게차",
-        "dump": "덤프트럭",
-        "loader": "스키로더",
-        "crane": "크레인",
-        "attachment": "어태치먼트",
-    }
-    purpose_tabs = [
-        ("excavator_maintenance", "굴삭기 정비"),
-        ("excavator_repair", "굴삭기 수리"),
-        ("forklift_maintenance", "지게차 정비"),
-        ("dump_maintenance", "덤프트럭 정비"),
-        ("excavator_inspection", "굴삭기 점검"),
-        ("excavator_loading", "굴삭기 상하차"),
-    ]
-    purpose_keyword_map = {
-        "excavator_maintenance": "굴삭기 정비",
-        "excavator_repair": "굴삭기 수리",
-        "forklift_maintenance": "지게차 정비",
-        "dump_maintenance": "덤프트럭 정비",
-        "excavator_inspection": "굴삭기 점검",
-        "excavator_loading": "굴삭기 상하차",
-    }
-
-    valid_equipment = {k for k, _ in equipment_tabs}
-    valid_purpose = {k for k, _ in purpose_tabs}
-    if selected_equipment_type not in valid_equipment:
-        selected_equipment_type = "all"
-    if selected_purpose not in valid_purpose:
-        selected_purpose = "excavator_maintenance"
-
-    base_keyword = purpose_keyword_map[selected_purpose]
-    equipment_label = equipment_label_map.get(selected_equipment_type, "")
-    if selected_equipment_type == "all" or equipment_label in base_keyword:
-        query_keyword = base_keyword
-    else:
-        query_keyword = f"{equipment_label} {base_keyword}"
-
-    def _fetch_youtube_items():
-        api_key = (getattr(settings, "YOUTUBE_API_KEY", "") or "").strip()
-        if not api_key:
-            return []
-        cache_key = f"youtube_api:{selected_equipment_type}:{selected_purpose}"
-        cached = cache.get(cache_key)
-        if cached is not None:
-            return cached
-        params = {
-            "part": "snippet",
-            "q": query_keyword,
-            "type": "video",
-            "maxResults": 24,
-            "order": "relevance",
-            "regionCode": "KR",
-            "safeSearch": "moderate",
-            "key": api_key,
-        }
-        req_url = f"https://www.googleapis.com/youtube/v3/search?{urlencode(params)}"
-        try:
-            req = Request(req_url)
-            with urlopen(req, timeout=7) as resp:
-                payload = json.loads(resp.read().decode("utf-8"))
-        except Exception:
-            return []
-
-        items = []
-        for row in payload.get("items") or []:
-            video_id = (
-                ((row.get("id") or {}).get("videoId") or "").strip()
-            )
-            snippet = row.get("snippet") or {}
-            if not video_id:
-                continue
-            thumbs = snippet.get("thumbnails") or {}
-            thumb = (
-                ((thumbs.get("high") or {}).get("url"))
-                or ((thumbs.get("medium") or {}).get("url"))
-                or ((thumbs.get("default") or {}).get("url"))
-                or ""
-            )
-            items.append({
-                "title": (snippet.get("title") or "").strip(),
-                "channel_title": (snippet.get("channelTitle") or "").strip(),
-                "thumbnail_url": thumb,
-                "youtube_url": f"https://www.youtube.com/watch?v={video_id}",
-                "equipment_label": equipment_label_map.get(selected_equipment_type, "전체"),
-                "purpose_label": purpose_keyword_map.get(selected_purpose, ""),
-            })
-        cache.set(cache_key, items, timeout=86400)
-        return items
-
-    video_items = _fetch_youtube_items()
-    if not video_items:
-        contents = YoutubeContent.objects.filter(is_active=True)
-        if selected_equipment_type != "all":
-            contents = contents.filter(equipment_type=selected_equipment_type)
-        fallback = []
-        for item in contents[:24]:
-            fallback.append({
-                "title": item.title,
-                "channel_title": "굴삭기나라",
-                "thumbnail_url": "",
-                "youtube_url": item.youtube_url,
-                "equipment_label": item.get_equipment_type_display(),
-                "purpose_label": item.get_purpose_display(),
-            })
-        video_items = fallback
+    selected_category = resolve_category_from_request(
+        request.GET.get("category"),
+        request.GET.get("equipment_type"),
+        request.GET.get("purpose"),
+    )
+    video_items = fetch_youtube_videos(selected_category)
 
     return render(request, "equipment/excavator_info.html", {
-        "equipment_tabs": equipment_tabs,
-        "purpose_tabs": purpose_tabs,
-        "selected_equipment_type": selected_equipment_type,
-        "selected_purpose": selected_purpose,
+        "category_tabs": CATEGORY_TABS,
+        "selected_category": selected_category,
         "video_items": video_items,
+    })
+
+
+def excavator_info_videos_api(request):
+    """중장비 유튜브 필터 AJAX — 카드 영역만 갱신용."""
+    from .youtube_info_service import fetch_youtube_videos, resolve_category_from_request
+
+    category = resolve_category_from_request(
+        request.GET.get("category"),
+        request.GET.get("equipment_type"),
+        request.GET.get("purpose"),
+    )
+    items = fetch_youtube_videos(category)
+    return JsonResponse({
+        "ok": True,
+        "category": category,
+        "items": items,
+        "count": len(items),
+    })
+
+
+def excavator_info_catalog_api(request):
+    """중장비 유튜브 카탈로그 JSON — 캐시된 분야 즉시 반환(백그라운드 워밍용)."""
+    from .youtube_info_service import (
+        CATEGORY_TABS,
+        count_catalog_items,
+        fetch_youtube_catalog,
+    )
+
+    warm = (request.GET.get("warm") or "").strip().lower() in ("1", "true", "yes")
+    catalog = fetch_youtube_catalog(allow_api=warm)
+    missing_keys = [key for key, items in catalog.items() if not items]
+    return JsonResponse({
+        "ok": True,
+        "catalog": catalog,
+        "category_tabs": CATEGORY_TABS,
+        "total_items": count_catalog_items(catalog),
+        "missing_keys": missing_keys,
+        "partial": bool(missing_keys) and not warm,
     })
 
 

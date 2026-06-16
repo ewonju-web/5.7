@@ -20,6 +20,8 @@
     display: inline-flex;
     align-items: center;
     transition: background-color .18s ease, transform .18s ease, box-shadow .18s ease, color .18s ease, border-color .18s ease;
+    cursor: pointer;
+    font-family: inherit;
   }
   @media (hover: hover) {
     .info-tab:hover {
@@ -49,8 +51,10 @@
   @media (min-width: 1200px) { .info-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
   .info-card { border: 1px solid var(--gn-border); border-radius: 12px; background: #fff; overflow: hidden; }
   .info-card-body { padding: 0.75rem; }
-  .info-thumb-wrap { border-radius: 10px; overflow: hidden; background: #111827; display:block; }
-  .info-thumb { width: 100%; aspect-ratio: 16 / 9; object-fit: cover; display: block; }
+  .info-thumb-wrap { border-radius: 10px; overflow: hidden; background: #e2e8f0; display: block; aspect-ratio: 16 / 9; position: relative; }
+  .info-thumb { width: 100%; height: 100%; object-fit: cover; object-position: center; display: block; }
+  .info-thumb.is-zoom { transform: scale(1.6); }
+  .info-thumb.is-zoom-heavy { transform: scale(2.4); }
   .info-title-link { color: var(--gn-text); text-decoration: none; }
   .info-title-link:hover { color: #1d4ed8; text-decoration: underline; }
   .info-channel { font-size: .82rem; color: #64748b; margin: .2rem 0 .3rem; font-weight: 600; }
@@ -141,27 +145,25 @@
     <div class="info-shell">
       <div class="info-head">
         <div>
-          <h2 class="info-title">굴삭기 유튜브 / 정보</h2>
-          <p class="info-desc">기종 + 목적을 동시에 선택해 필요한 영상만 빠르게 확인하세요.</p>
+          <h2 class="info-title">중장비 유투브/정보</h2>
+          <p class="info-desc">분야별 영상을 선택해 필요한 정보를 빠르게 확인하세요.</p>
         </div>
       </div>
 
-      <div class="info-tab-label">기종</div>
-      <div class="info-tabs">
-        {% for key, label in equipment_tabs %}
-          <a href="{% url 'excavator_info' %}?equipment_type={{ key }}&purpose={{ selected_purpose }}" class="info-tab {% if selected_equipment_type == key %}active{% endif %}">{{ label }}</a>
+      <div class="info-tabs mb-3" id="info-category-tabs" role="tablist" aria-label="분야 필터">
+        {% for key, label in category_tabs %}
+          <button
+            type="button"
+            class="info-tab js-info-filter-tab {% if selected_category == key %}active{% endif %}"
+            data-category="{{ key }}"
+            aria-pressed="{% if selected_category == key %}true{% else %}false{% endif %}"
+          >{{ label }}</button>
         {% endfor %}
       </div>
 
-      <div class="info-tab-label">목적</div>
-      <div class="info-tabs mb-3">
-        {% for key, label in purpose_tabs %}
-          <a href="{% url 'excavator_info' %}?equipment_type={{ selected_equipment_type }}&purpose={{ key }}" class="info-tab {% if selected_purpose == key %}active{% endif %}">{{ label }}</a>
-        {% endfor %}
-      </div>
-
+      <div id="info-video-results">
       {% if video_items %}
-      <div class="info-grid">
+      <div class="info-grid" id="info-video-grid">
         {% for item in video_items %}
         <article class="info-card">
           <div class="info-card-body">
@@ -173,10 +175,20 @@
               aria-label="{{ item.title }} 재생"
             >
             <span class="info-thumb-wrap mb-2">
-              {% if item.thumbnail_url %}
-              <img src="{{ item.thumbnail_url }}" class="info-thumb" alt="{{ item.title }}">
+              {% if item.video_id %}
+              <img
+                src="{{ item.thumbnail_url|default:'' }}"
+                data-fallback="https://i.ytimg.com/vi/{{ item.video_id }}/mqdefault.jpg"
+                data-needs-crop="{% if item.thumbnail_needs_crop %}1{% else %}0{% endif %}"
+                class="info-thumb js-yt-thumb"
+                alt="{{ item.title }}"
+                loading="lazy"
+                crossorigin="anonymous"
+              >
+              {% elif item.thumbnail_url %}
+              <img src="{{ item.thumbnail_url }}" class="info-thumb js-yt-thumb" alt="{{ item.title }}" loading="lazy">
               {% else %}
-              <img src="https://i.ytimg.com/vi/0/hqdefault.jpg" class="info-thumb" alt="{{ item.title }}">
+              <img src="https://i.ytimg.com/vi/0/mqdefault.jpg" class="info-thumb" alt="{{ item.title }}" loading="lazy">
               {% endif %}
             </span>
             </button>
@@ -190,8 +202,7 @@
             </button>
             <div class="info-channel">{{ item.channel_title|default:"YouTube" }}</div>
             <div class="info-meta">
-              <span class="info-badge">{{ item.equipment_label }}</span>
-              <span class="info-badge">{{ item.purpose_label }}</span>
+              <span class="info-badge">{{ item.category_label }}</span>
               <button
                 type="button"
                 class="info-badge text-decoration-none video-open-btn js-video-open"
@@ -204,12 +215,15 @@
         {% endfor %}
       </div>
       {% else %}
-      <div class="info-empty">
+      <div class="info-empty" id="info-video-empty">
         선택한 조건에 맞는 영상이 없습니다.
       </div>
       {% endif %}
+      </div>
     </div>
 </div>
+
+{{ video_items|json_script:"initial-video-items" }}
 
 <div id="videoModalOverlay" class="video-modal-overlay" aria-hidden="true">
   <div class="video-modal-dialog" role="dialog" aria-modal="true" aria-labelledby="videoModalTitle">
@@ -234,28 +248,237 @@
 
 <script>
   (function () {
-    const openButtons = document.querySelectorAll(".js-video-open");
-    const overlay = document.getElementById("videoModalOverlay");
-    const closeBtn = document.getElementById("videoModalClose");
-    const frame = document.getElementById("videoModalFrame");
-    const title = document.getElementById("videoModalTitle");
-    const body = document.body;
+    var catalogUrl = "{% url 'excavator_info_catalog_api' %}";
+    var videosApiUrl = "{% url 'excavator_info_videos_api' %}";
+    var initialCategory = "{{ selected_category|escapejs }}";
 
-    if (!openButtons.length || !overlay || !closeBtn || !frame || !title) {
-      return;
+    var clientCatalog = Object.create(null);
+    var selectedCategory = initialCategory;
+    var prefetchDone = false;
+
+    (function seedInitialCatalog() {
+      var node = document.getElementById("initial-video-items");
+      if (!node) return;
+      try {
+        var items = JSON.parse(node.textContent);
+        clientCatalog[initialCategory] = items || [];
+      } catch (error) {}
+    })();
+
+    function escapeHtml(text) {
+      var div = document.createElement("div");
+      div.textContent = text || "";
+      return div.innerHTML;
     }
+
+    function renderThumb(item) {
+      if (item.video_id) {
+        var fallback = "https://i.ytimg.com/vi/" + encodeURIComponent(item.video_id) + "/mqdefault.jpg";
+        return '<img src="' + escapeHtml(item.thumbnail_url || fallback) + '" data-fallback="' + fallback + '" data-needs-crop="' + (item.thumbnail_needs_crop ? "1" : "0") + '" class="info-thumb js-yt-thumb" alt="' + escapeHtml(item.title) + '" loading="lazy" crossorigin="anonymous">';
+      }
+      if (item.thumbnail_url) {
+        return '<img src="' + escapeHtml(item.thumbnail_url) + '" class="info-thumb js-yt-thumb" alt="' + escapeHtml(item.title) + '" loading="lazy">';
+      }
+      return '<img src="https://i.ytimg.com/vi/0/mqdefault.jpg" class="info-thumb" alt="' + escapeHtml(item.title) + '" loading="lazy">';
+    }
+
+    function renderCard(item) {
+      return (
+        '<article class="info-card">' +
+          '<div class="info-card-body">' +
+            '<button type="button" class="video-open-btn js-video-open" data-youtube-url="' + escapeHtml(item.youtube_url) + '" data-video-title="' + escapeHtml(item.title) + '" aria-label="' + escapeHtml(item.title) + ' 재생">' +
+              '<span class="info-thumb-wrap mb-2">' + renderThumb(item) + '</span>' +
+            '</button>' +
+            '<button type="button" class="video-open-btn js-video-open info-title-link" data-youtube-url="' + escapeHtml(item.youtube_url) + '" data-video-title="' + escapeHtml(item.title) + '">' +
+              '<h6 class="fw-bold mb-1">' + escapeHtml(item.title) + '</h6>' +
+            '</button>' +
+            '<div class="info-channel">' + escapeHtml(item.channel_title || "YouTube") + '</div>' +
+            '<div class="info-meta">' +
+              '<span class="info-badge">' + escapeHtml(item.category_label || "") + '</span>' +
+              '<button type="button" class="info-badge text-decoration-none video-open-btn js-video-open" data-youtube-url="' + escapeHtml(item.youtube_url) + '" data-video-title="' + escapeHtml(item.title) + '">유튜브 보기</button>' +
+            '</div>' +
+          '</div>' +
+        '</article>'
+      );
+    }
+
+    function renderResults(items) {
+      var wrap = document.getElementById("info-video-results");
+      if (!wrap) return;
+      if (!items || !items.length) {
+        wrap.innerHTML = '<div class="info-empty" id="info-video-empty">선택한 조건에 맞는 영상이 없습니다.</div>';
+        return;
+      }
+      wrap.innerHTML = '<div class="info-grid" id="info-video-grid">' + items.map(renderCard).join("") + '</div>';
+      document.querySelectorAll(".js-yt-thumb").forEach(bindYtThumb);
+      bindVideoOpenButtons();
+    }
+
+    function updateUrl() {
+      var params = new URLSearchParams();
+      params.set("category", selectedCategory);
+      var next = window.location.pathname + "?" + params.toString();
+      if (window.location.pathname + window.location.search !== next) {
+        window.history.replaceState({ category: selectedCategory }, "", next);
+      }
+    }
+
+    function setActiveTabs() {
+      document.querySelectorAll(".js-info-filter-tab").forEach(function (btn) {
+        var value = btn.getAttribute("data-category");
+        var active = value === selectedCategory;
+        btn.classList.toggle("active", active);
+        btn.setAttribute("aria-pressed", active ? "true" : "false");
+      });
+    }
+
+    function hasCachedVideos(category) {
+      return Object.prototype.hasOwnProperty.call(clientCatalog, category) && clientCatalog[category].length > 0;
+    }
+
+    function showLoading() {
+      var wrap = document.getElementById("info-video-results");
+      if (!wrap) return;
+      wrap.innerHTML = '<div class="info-empty" id="info-video-loading">영상을 불러오는 중입니다...</div>';
+    }
+
+    function fetchVideos(category) {
+      if (hasCachedVideos(category)) {
+        return Promise.resolve(clientCatalog[category]);
+      }
+      var url = videosApiUrl + "?category=" + encodeURIComponent(category);
+      return fetch(url, { credentials: "same-origin", headers: { "Accept": "application/json" } })
+        .then(function (res) { return res.json(); })
+        .then(function (data) {
+          if (!data || !data.ok) return [];
+          var items = data.items || [];
+          if (items.length) {
+            clientCatalog[category] = items;
+          }
+          return items;
+        })
+        .catch(function () { return []; });
+    }
+
+    function applyFilter(category) {
+      selectedCategory = category;
+      setActiveTabs();
+      updateUrl();
+      if (hasCachedVideos(category)) {
+        renderResults(clientCatalog[category]);
+        return;
+      }
+      showLoading();
+      fetchVideos(category).then(renderResults);
+    }
+
+    function prefetchCatalog() {
+      if (prefetchDone) return;
+      prefetchDone = true;
+      fetch(catalogUrl, { credentials: "same-origin", headers: { "Accept": "application/json" } })
+        .then(function (res) { return res.json(); })
+        .then(function (data) {
+          if (!data || !data.ok || !data.catalog) return;
+          Object.keys(data.catalog).forEach(function (key) {
+            if (data.catalog[key] && data.catalog[key].length) {
+              clientCatalog[key] = data.catalog[key];
+            }
+          });
+        })
+        .catch(function () {});
+    }
+
+    document.querySelectorAll(".js-info-filter-tab").forEach(function (btn) {
+      btn.addEventListener("click", function () {
+        var category = btn.getAttribute("data-category");
+        if (category) applyFilter(category);
+      });
+    });
+
+    if ("requestIdleCallback" in window) {
+      requestIdleCallback(prefetchCatalog, { timeout: 2500 });
+    } else {
+      setTimeout(prefetchCatalog, 400);
+    }
+
+    function detectPillarbox(img) {
+      if (img.dataset.needsCrop !== "1" || img.dataset.cropChecked === "1") {
+        return;
+      }
+      img.dataset.cropChecked = "1";
+      var w = img.naturalWidth;
+      var h = img.naturalHeight;
+      if (!w || !h) {
+        return;
+      }
+      var canvas = document.createElement("canvas");
+      var sw = Math.max(8, Math.floor(w * 0.12));
+      canvas.width = sw * 2;
+      canvas.height = 12;
+      var ctx = canvas.getContext("2d");
+      if (!ctx) {
+        return;
+      }
+      ctx.drawImage(img, 0, 0, sw, h, 0, 0, sw, 12);
+      ctx.drawImage(img, w - sw, 0, sw, h, sw, 0, sw, 12);
+      var data = ctx.getImageData(0, 0, canvas.width, canvas.height).data;
+      var dark = 0;
+      var total = data.length / 4;
+      for (var i = 0; i < data.length; i += 4) {
+        if (data[i] < 40 && data[i + 1] < 40 && data[i + 2] < 40) {
+          dark++;
+        }
+      }
+      var ratio = dark / total;
+      if (ratio > 0.5) {
+        img.classList.add("is-zoom");
+      }
+      if (ratio > 0.72) {
+        img.classList.add("is-zoom-heavy");
+      }
+    }
+
+    function bindYtThumb(img) {
+      if (img.dataset.bound === "1") {
+        return;
+      }
+      img.dataset.bound = "1";
+      img.addEventListener("error", function () {
+        if (!img.dataset.fallback || img.dataset.fallbackUsed === "1") {
+          return;
+        }
+        img.dataset.fallbackUsed = "1";
+        img.src = img.dataset.fallback;
+      });
+      var run = function () {
+        detectPillarbox(img);
+      };
+      if (img.complete) {
+        run();
+      } else {
+        img.addEventListener("load", run, { once: true });
+      }
+    }
+
+    document.querySelectorAll(".js-yt-thumb").forEach(bindYtThumb);
+
+    var overlay = document.getElementById("videoModalOverlay");
+    var closeBtn = document.getElementById("videoModalClose");
+    var frame = document.getElementById("videoModalFrame");
+    var title = document.getElementById("videoModalTitle");
+    var body = document.body;
 
     function extractVideoId(urlString) {
       if (!urlString) return "";
       try {
-        const url = new URL(urlString);
+        var url = new URL(urlString);
         if (url.hostname.includes("youtu.be")) {
           return url.pathname.replace("/", "");
         }
         if (url.searchParams.get("v")) {
           return url.searchParams.get("v");
         }
-        const embedParts = url.pathname.split("/embed/");
+        var embedParts = url.pathname.split("/embed/");
         if (embedParts.length > 1) {
           return embedParts[1].split("/")[0];
         }
@@ -273,7 +496,7 @@
     }
 
     function openModal(youtubeUrl, videoTitle) {
-      const videoId = extractVideoId(youtubeUrl);
+      var videoId = extractVideoId(youtubeUrl);
       if (!videoId) return;
       title.textContent = videoTitle || "영상 재생";
       frame.src = "https://www.youtube.com/embed/" + encodeURIComponent(videoId) + "?autoplay=1&rel=0";
@@ -282,20 +505,25 @@
       body.style.overflow = "hidden";
     }
 
-    openButtons.forEach(function (button) {
-      button.addEventListener("click", function () {
-        openModal(button.dataset.youtubeUrl, button.dataset.videoTitle);
+    function bindVideoOpenButtons() {
+      document.querySelectorAll(".js-video-open").forEach(function (button) {
+        if (button.dataset.bound === "1") return;
+        button.dataset.bound = "1";
+        button.addEventListener("click", function () {
+          openModal(button.dataset.youtubeUrl, button.dataset.videoTitle);
+        });
       });
-    });
+    }
 
-    closeBtn.addEventListener("click", closeModal);
-    overlay.addEventListener("click", function (event) {
-      if (event.target === overlay) {
-        closeModal();
-      }
-    });
+    bindVideoOpenButtons();
+    if (closeBtn) closeBtn.addEventListener("click", closeModal);
+    if (overlay) {
+      overlay.addEventListener("click", function (event) {
+        if (event.target === overlay) closeModal();
+      });
+    }
     document.addEventListener("keydown", function (event) {
-      if (event.key === "Escape" && overlay.classList.contains("open")) {
+      if (event.key === "Escape" && overlay && overlay.classList.contains("open")) {
         closeModal();
       }
     });
