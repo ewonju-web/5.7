@@ -132,6 +132,10 @@ def send_code(phone_norm: str) -> tuple[bool, str]:
     인증번호 발송. 재발송 30초 제한 적용.
     Returns: (success, error_message)
     """
+    from equipment.bot_blocklist import is_blocked_bot_phone
+
+    if is_blocked_bot_phone(phone_norm):
+        return False, '사용할 수 없는 휴대폰 번호입니다.'
     key = _cache_key(phone_norm)
     data = cache.get(key)
     now = time.time()

@@ -712,6 +712,12 @@ def phone_send(request):
     phone_norm = _normalize_phone(phone_raw)
     if not phone_norm or len(phone_norm) < 10:
         return JsonResponse({'ok': False, 'error': '휴대폰 번호를 정확히 입력해 주세요.'})
+    from equipment.bot_blocklist import is_blocked_bot_phone, block_bot_ip
+    from equipment.finance_security import get_client_ip
+
+    if is_blocked_bot_phone(phone_norm):
+        block_bot_ip(get_client_ip(request))
+        return JsonResponse({'ok': False, 'error': '사용할 수 없는 휴대폰 번호입니다.'})
     from .phone_verify_service import send_code
     success, err = send_code(phone_norm)
     if not success:
@@ -729,6 +735,12 @@ def legacy_convert_send_code(request):
     phone_norm = _normalize_phone(phone_raw)
     if not phone_norm or len(phone_norm) < 10:
         return JsonResponse({'ok': False, 'error': '휴대폰 번호를 정확히 입력해 주세요.'})
+    from equipment.bot_blocklist import is_blocked_bot_phone, block_bot_ip
+    from equipment.finance_security import get_client_ip
+
+    if is_blocked_bot_phone(phone_norm):
+        block_bot_ip(get_client_ip(request))
+        return JsonResponse({'ok': False, 'error': '사용할 수 없는 휴대폰 번호입니다.'})
     request.session['legacy_convert_name'] = name or ''
     request.session.modified = True
     from .phone_verify_service import send_code
@@ -748,6 +760,12 @@ def phone_verify(request):
     phone_norm = _normalize_phone(phone_raw)
     if not phone_norm or len(phone_norm) < 10:
         return JsonResponse({'ok': False, 'error': '휴대폰 번호를 입력해 주세요.'})
+    from equipment.bot_blocklist import is_blocked_bot_phone, block_bot_ip
+    from equipment.finance_security import get_client_ip
+
+    if is_blocked_bot_phone(phone_norm):
+        block_bot_ip(get_client_ip(request))
+        return JsonResponse({'ok': False, 'error': '사용할 수 없는 휴대폰 번호입니다.'})
     if not code or len(code) != 6:
         return JsonResponse({'ok': False, 'error': '인증번호 6자리를 입력해 주세요.'})
     from .phone_verify_service import verify_code
@@ -885,6 +903,10 @@ def check_username(request):
     username = (request.GET.get("username") or "").strip()
     if not username:
         return JsonResponse({"ok": False, "msg": "아이디를 입력하세요."})
+    from equipment.bot_blocklist import is_blocked_bot_username
+
+    if is_blocked_bot_username(username):
+        return JsonResponse({"ok": False, "msg": "사용할 수 없는 아이디입니다."})
     existing = User.objects.filter(username=username).first()
     if existing and existing.is_active:
         return JsonResponse({

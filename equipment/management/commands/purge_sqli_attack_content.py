@@ -90,7 +90,9 @@ class Command(BaseCommand):
             self.stdout.write(f'{label}: {deleted}건 {"(dry-run)" if dry_run else "삭제"}')
 
         # fnfOzvSR 등 알려진 공격 계정 강제 포함
-        known = User.objects.filter(username__in=['fnfOzvSR']).values_list('pk', flat=True)
+        from equipment.bot_blocklist import find_bot_user_queryset
+
+        known = find_bot_user_queryset().values_list('pk', flat=True)
         author_ids |= set(known)
 
         if not dry_run:

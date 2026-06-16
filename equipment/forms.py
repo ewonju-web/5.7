@@ -234,11 +234,23 @@ class UserSignupForm(TermsAgreementFieldsMixin, forms.ModelForm):
         username = self.cleaned_data.get("username", "").strip()
         if not username:
             raise forms.ValidationError("아이디를 입력하세요.")
+        from equipment.bot_blocklist import is_blocked_bot_username
+
+        if is_blocked_bot_username(username):
+            raise forms.ValidationError("사용할 수 없는 아이디입니다.")
         existing = User.objects.filter(username=username).first()
         if existing and existing.is_active:
             raise forms.ValidationError("이미 사용 중인 아이디입니다.")
         self._reusable_user = existing
         return username
+
+    def clean_phone(self):
+        phone = (self.cleaned_data.get("phone") or "").strip()
+        from equipment.bot_blocklist import is_blocked_bot_phone
+
+        if phone and is_blocked_bot_phone(phone):
+            raise forms.ValidationError("사용할 수 없는 휴대폰 번호입니다.")
+        return phone
 
     def clean_password2(self):
         p1 = self.cleaned_data.get("password1")

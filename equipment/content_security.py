@@ -127,6 +127,13 @@ def validate_user_text(text: str, *, field_name: str = 'content', required: bool
 
 def is_ip_blocked(ip: str) -> bool:
     ip = (ip or '').strip() or 'unknown'
+    try:
+        from equipment.bot_blocklist import is_blocked_bot_ip
+
+        if is_blocked_bot_ip(ip):
+            return True
+    except Exception:
+        pass
     return bool(cache.get(f'{_BLOCKED_IP_PREFIX}{ip}'))
 
 
