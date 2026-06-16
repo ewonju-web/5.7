@@ -887,7 +887,11 @@ def check_username(request):
         return JsonResponse({"ok": False, "msg": "아이디를 입력하세요."})
     existing = User.objects.filter(username=username).first()
     if existing and existing.is_active:
-        return JsonResponse({"ok": False, "msg": "이미 사용 중인 아이디입니다."})
+        return JsonResponse({
+            "ok": False,
+            "msg": "이미 사용 중인 아이디입니다.",
+            "existing_account": True,
+        })
     return JsonResponse({"ok": True, "msg": "사용 가능한 아이디입니다."})
 
 

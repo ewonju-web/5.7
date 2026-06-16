@@ -30,7 +30,10 @@
                         <div class="mb-3">
                             <label class="form-label small fw-bold text-secondary">이메일</label>
                             <input type="email" name="email" class="form-control" placeholder="이메일" value="{{ form.email.value|default:'' }}" required style="border-radius: 10px;">
-                            {% if form.email.errors %}<div class="text-danger small">{{ form.email.errors.0 }}</div>{% endif %}
+                            {% if form.email.errors %}
+                            <div class="text-danger small">{{ form.email.errors.0 }}</div>
+                            {% include "socialaccount/partials/existing_account_help.html" %}
+                            {% endif %}
                         </div>
                         <div class="mb-3">
                             <label class="form-label small fw-bold text-secondary">아이디</label>
@@ -39,7 +42,13 @@
                                 <button type="button" id="btn-check-username" class="btn btn-outline-secondary" style="border-radius: 10px; white-space: nowrap;">중복확인</button>
                             </div>
                             <span id="username-msg" class="form-text small"></span>
-                            {% if form.username.errors %}<div class="text-danger small">{{ form.username.errors.0 }}</div>{% endif %}
+                            {% if form.username.errors %}
+                            <div class="text-danger small">{{ form.username.errors.0 }}</div>
+                            {% include "socialaccount/partials/existing_account_help.html" %}
+                            {% endif %}
+                            <div id="username-existing-help" class="d-none">
+                                {% include "socialaccount/partials/existing_account_help.html" %}
+                            </div>
                         </div>
                         <div class="mb-3">
                             <label class="form-label small fw-bold text-secondary">휴대폰번호</label>
@@ -56,10 +65,18 @@
 </div>
 <script>
 var checkUsernameBtn = document.getElementById("btn-check-username");
+var usernameExistingHelp = document.getElementById("username-existing-help");
+
+function setUsernameExistingHelpVisible(show) {
+  if (!usernameExistingHelp) return;
+  usernameExistingHelp.classList.toggle("d-none", !show);
+}
+
 if (checkUsernameBtn) {
   checkUsernameBtn.onclick = function() {
     var un = document.getElementById("id_username").value.trim();
     var msg = document.getElementById("username-msg");
+    setUsernameExistingHelpVisible(false);
     if (!un) {
       msg.textContent = "아이디를 입력하세요.";
       msg.className = "form-text small text-danger";
@@ -70,12 +87,26 @@ if (checkUsernameBtn) {
       .then(function(d){
         msg.textContent = d.msg;
         msg.className = "form-text small " + (d.ok ? "text-success" : "text-danger");
+        setUsernameExistingHelpVisible(!!d.existing_account);
       })
       .catch(function(){
         msg.textContent = "중복확인 중 오류가 발생했습니다.";
         msg.className = "form-text small text-danger";
+        setUsernameExistingHelpVisible(false);
       });
   };
+}
+
+var usernameInput = document.getElementById("id_username");
+if (usernameInput) {
+  usernameInput.addEventListener("input", function () {
+    setUsernameExistingHelpVisible(false);
+    var msg = document.getElementById("username-msg");
+    if (msg) {
+      msg.textContent = "";
+      msg.className = "form-text small";
+    }
+  });
 }
 
 function formatPhoneNumber(value) {

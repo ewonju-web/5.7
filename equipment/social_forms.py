@@ -49,8 +49,20 @@ class RequiredSocialSignupForm(TermsAgreementFieldsMixin, SignupForm):
         if not username:
             raise forms.ValidationError("아이디를 입력하세요.")
         if User.objects.filter(username=username, is_active=True).exists():
-            raise forms.ValidationError("이미 사용 중인 아이디입니다.")
+            raise forms.ValidationError(
+                "이미 사용 중인 아이디입니다.",
+                code="existing_account",
+            )
         return username
+
+    def validate_unique_email(self, value):
+        try:
+            return super().validate_unique_email(value)
+        except forms.ValidationError:
+            raise forms.ValidationError(
+                "이미 가입된 이메일입니다. 기존 계정으로 로그인한 뒤 소셜 계정을 연결해 주세요.",
+                code="existing_account",
+            )
 
     def save(self, request):
         user = super().save(request)
