@@ -24,10 +24,9 @@
     <link rel="icon" type="image/png" sizes="192x192" href="{% static 'img/icon-192.png' %}?v=20260611">
     <link rel="apple-touch-icon" sizes="180x180" href="{% static 'img/apple-touch-icon.png' %}?v=20260611">
     <title>{% block title %}굴삭기나라{% endblock %}</title>
-    <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
-    <link href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css" rel="stylesheet">
+    <link rel="preload" href="{% static 'vendor/bootstrap/css/bootstrap.min.css' %}?v=20260616" as="style">
+    <link href="{% static 'vendor/bootstrap/css/bootstrap.min.css' %}?v=20260616" rel="stylesheet">
+    <link rel="stylesheet" href="{% static 'vendor/bootstrap-icons/font/bootstrap-icons.css' %}?v=20260616">
     <style>
         :root {
             --gn-nav: #374151;
@@ -46,7 +45,7 @@
             --gn-shadow-hover: 0 8px 24px -4px rgba(0,0,0,.12);
         }
         body {
-            font-family: "Pretendard", -apple-system, BlinkMacSystemFont, sans-serif;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Noto Sans KR", sans-serif;
             background-color: var(--gn-bg);
             color: var(--gn-text);
             min-height: 100vh;
@@ -904,6 +903,7 @@
     {% block extra_css %}{% endblock %}
 </head>
 <body class="{% block body_class %}{% endblock %}">
+    <style id="gn-critical-boot">html,body{background:#fff;color:#111827;visibility:visible}</style>
     <!-- 모바일 전용 상단바 (당근 스타일) -->
     <div class="gn-mobile-header">
         <a href="{% url 'index' %}?category=excavator" class="gn-mobile-brand text-white text-decoration-none fw-bold">
@@ -1209,7 +1209,7 @@
         <span class="gn-kakao-fab-label">카카오톡 문의</span>
     </a>
 
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="{% static 'vendor/bootstrap/js/bootstrap.bundle.min.js' %}?v=20260616"></script>
     {{ I18N_PAGE|json_script:"gn-i18n-page" }}
     <script>
       (function () {
@@ -1306,7 +1306,6 @@
         setTimeout(applyTranslations, 300);
         setTimeout(applyTranslations, 800);
       })();
-    </script>
     </script>
     <script>
       (function () {

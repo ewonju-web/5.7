@@ -7,7 +7,7 @@ from django.db import transaction
 from django.utils.timezone import now
 
 from ..models import VisitPageLog, VisitSession
-from ..visit_tracking import SKIP_EXACT, SKIP_PREFIXES, client_ip
+from ..visit_tracking import SKIP_EXACT, SKIP_PREFIXES, client_ip, is_bot_request
 
 
 class VisitAnalyticsMiddleware:
@@ -23,6 +23,8 @@ class VisitAnalyticsMiddleware:
         return response
 
     def _should_track(self, request, response) -> bool:
+        if is_bot_request(request):
+            return False
         if response.status_code >= 400:
             return False
         path = request.path or ""

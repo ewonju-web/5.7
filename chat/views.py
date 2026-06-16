@@ -13,6 +13,7 @@ from django.utils.http import url_has_allowed_host_and_scheme
 from django.views.decorators.http import require_GET
 
 from equipment.models import Equipment
+from equipment.visit_tracking import is_bot_request
 from equipment.finance_security import get_client_ip
 from equipment.templatetags.i18n_extras import SUPPORTED_LANGS
 from .models import ChatRoom, ChatMessage
@@ -29,12 +30,20 @@ from .security import (
 @require_GET
 def set_language(request):
     """세션에 언어 저장 후 안전한 URL로 리다이렉트."""
+    next_url = (request.GET.get('next') or '').strip()
+    allowed_hosts = {request.get_host()}
+    if is_bot_request(request):
+        if next_url and url_has_allowed_host_and_scheme(next_url, allowed_hosts=allowed_hosts):
+            return redirect(next_url)
+        referer = request.META.get('HTTP_REFERER') or ''
+        if referer and url_has_allowed_host_and_scheme(referer, allowed_hosts=allowed_hosts):
+            return redirect(referer)
+        return redirect('/')
+
     lang = (request.GET.get('lang') or 'ko').strip().lower()
     if lang not in SUPPORTED_LANGS:
         lang = 'ko'
     request.session['lang'] = lang
-    next_url = (request.GET.get('next') or '').strip()
-    allowed_hosts = {request.get_host()}
     if next_url and url_has_allowed_host_and_scheme(next_url, allowed_hosts=allowed_hosts):
         redirect_to = next_url
     else:

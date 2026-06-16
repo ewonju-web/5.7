@@ -2,7 +2,7 @@ from django.db import IntegrityError, transaction
 from django.utils.timezone import localdate
 
 from ..models import VisitorLog
-from ..visit_tracking import client_ip, should_skip_path
+from ..visit_tracking import client_ip, is_bot_request, should_skip_path
 
 
 class VisitorCounterMiddleware:
@@ -12,7 +12,7 @@ class VisitorCounterMiddleware:
         self.get_response = get_response
 
     def __call__(self, request):
-        if should_skip_path(request):
+        if should_skip_path(request) or is_bot_request(request):
             return self.get_response(request)
 
         ip = client_ip(request)
