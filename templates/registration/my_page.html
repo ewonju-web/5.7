@@ -35,7 +35,10 @@
                 {% endif %}
             </div>
         </div>
-        <a href="{% url 'equipment_create' %}" class="btn gn-upgrade-btn">{{ LANG|tr:"nav_register" }}</a>
+        <div class="gn-profile-actions">
+            <a href="{% url 'equipment_create' %}" class="btn gn-upgrade-btn">{{ LANG|tr:"nav_register" }}</a>
+            <a href="{% url 'logout' %}" class="btn gn-logout-strong-btn">로그아웃</a>
+        </div>
     </div>
 
     <div class="gn-stats-grid mb-3">
@@ -429,6 +432,24 @@
     white-space: nowrap;
   }
   .gn-upgrade-btn:hover { background: #e3a12d; color: #1f2937; }
+  .gn-profile-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    flex-shrink: 0;
+  }
+  .gn-logout-strong-btn {
+    background: #ef4444;
+    color: #fff;
+    border-radius: 10px;
+    font-weight: 700;
+    border: none;
+    white-space: nowrap;
+  }
+  .gn-logout-strong-btn:hover {
+    background: #dc2626;
+    color: #fff;
+  }
   .gn-stats-grid { display: grid; grid-template-columns: repeat(4, minmax(0,1fr)); gap: 0.65rem; }
   .gn-stat-card { background: #fff; border: 1px solid #e5e7eb; border-radius: 12px; padding: 1.25rem 0.8rem; text-align: center; }
   .gn-stat-num { color: #F5A623; font-weight: 600; font-size: 24px; margin-bottom: 0.2rem; }
@@ -684,7 +705,8 @@
   }
   @media (max-width: 575px) {
     .gn-profile-card { flex-direction: column; align-items: stretch; }
-    .gn-upgrade-btn { width: 100%; }
+    .gn-profile-actions { width: 100%; }
+    .gn-profile-actions .btn { width: 100%; }
     .gn-quick-grid { grid-template-columns: repeat(2, minmax(0,1fr)); }
   }
 </style>
