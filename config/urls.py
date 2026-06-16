@@ -4,7 +4,7 @@ from django.conf import settings
 from django.conf.urls.static import static
 from django.contrib.auth import views as auth_views
 from django.contrib.auth import logout
-from django.http import HttpResponseRedirect
+from django.http import HttpResponse, HttpResponseRedirect
 from equipment.views import user_login, user_logout, signup, check_username, find_username
 from equipment.forms import MigratedPasswordResetForm
 
@@ -59,9 +59,43 @@ def _redirect_authenticated_to_mypage(request):
     return None
 
 
+def _robots_txt(request):
+    body = "\n".join([
+        "User-agent: *",
+        "Allow: /",
+        "Sitemap: https://www.direct-nara.co.kr/sitemap.xml",
+        "",
+    ])
+    return HttpResponse(body, content_type="text/plain; charset=utf-8")
+
+
+def _sitemap_xml(request):
+    body = """<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <url><loc>https://www.direct-nara.co.kr/</loc></url>
+  <url><loc>https://www.direct-nara.co.kr/login/</loc></url>
+  <url><loc>https://www.direct-nara.co.kr/jobs/</loc></url>
+  <url><loc>https://www.direct-nara.co.kr/jobs/exam/</loc></url>
+  <url><loc>https://www.direct-nara.co.kr/jobs/exam/videos/</loc></url>
+  <url><loc>https://www.direct-nara.co.kr/info/</loc></url>
+  <url><loc>https://www.direct-nara.co.kr/parts-as/</loc></url>
+  <url><loc>https://www.direct-nara.co.kr/finance/</loc></url>
+</urlset>
+"""
+    return HttpResponse(body, content_type="application/xml; charset=utf-8")
+
+
+def _google_site_verification(request):
+    body = "google-site-verification: googledb8cba55fc2c39e4.html"
+    return HttpResponse(body, content_type="text/plain; charset=utf-8")
+
+
 admin.site.site_url = "/admin/view-site/"
 
 urlpatterns = [
+    path('googledb8cba55fc2c39e4.html', _google_site_verification, name='google_site_verification'),
+    path('robots.txt', _robots_txt, name='robots_txt'),
+    path('sitemap.xml', _sitemap_xml, name='sitemap_xml'),
     path('admin/view-site/', _admin_view_site, name='admin_view_site'),
     path('admin/', admin.site.urls),
     path('accounts/', include('allauth.urls')),  # 소셜 로그인: /accounts/login/ 에서 카카오/네이버

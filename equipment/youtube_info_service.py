@@ -152,13 +152,22 @@ def _search_youtube(query_keyword: str, *, allow_api: bool) -> list[dict]:
         snippet = row.get("snippet") or {}
         if not video_id:
             continue
-        thumb = youtube_thumbnail_pick(video_id)
+        # 분야별 영상 목록은 응답 속도 우선:
+        # 각 영상마다 썸네일 존재 확인 요청을 보내지 않고
+        # YouTube API 응답 썸네일을 바로 사용한다.
+        thumbs = snippet.get("thumbnails") or {}
+        thumb_url = (
+            ((thumbs.get("high") or {}).get("url"))
+            or ((thumbs.get("medium") or {}).get("url"))
+            or ((thumbs.get("default") or {}).get("url"))
+            or f"https://i.ytimg.com/vi/{video_id}/hqdefault.jpg"
+        )
         rows.append({
             "video_id": video_id,
             "title": (snippet.get("title") or "").strip(),
             "channel_title": (snippet.get("channelTitle") or "").strip(),
-            "thumbnail_url": thumb["url"],
-            "thumbnail_needs_crop": thumb["needs_crop"],
+            "thumbnail_url": thumb_url,
+            "thumbnail_needs_crop": False,
             "youtube_url": f"https://www.youtube.com/watch?v={video_id}",
         })
     return rows

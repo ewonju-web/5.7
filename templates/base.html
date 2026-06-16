@@ -6,6 +6,15 @@
     <meta name="google" content="notranslate">
     <meta http-equiv="Content-Language" content="{{ LANG|default:'ko' }}">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <meta name="description" content="{% block meta_description %}굴삭기나라 리뉴얼: 중고 굴삭기·지게차·덤프트럭 매물, 구인구직, 정비 유튜브, 부품 A/S 정보를 빠르게 확인하세요.{% endblock %}">
+    <meta name="robots" content="{% block meta_robots %}index,follow{% endblock %}">
+    <link rel="canonical" href="{% block canonical_url %}https://{{ request.get_host }}{{ request.path }}{% endblock %}">
+    <meta property="og:type" content="website">
+    <meta property="og:site_name" content="굴삭기나라">
+    <meta property="og:title" content="{% block og_title %}굴삭기나라 리뉴얼{% endblock %}">
+    <meta property="og:description" content="{% block og_description %}중고 매물·구인구직·정비 유튜브·부품 A/S를 한 곳에서 확인하세요.{% endblock %}">
+    <meta property="og:url" content="https://{{ request.get_host }}{{ request.path }}">
+    <meta name="twitter:card" content="summary">
     <meta name="theme-color" content="#DADCE0">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
