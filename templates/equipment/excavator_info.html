@@ -391,11 +391,16 @@
         .then(function (res) { return res.json(); })
         .then(function (data) {
           if (!data || !data.ok || !data.catalog) return;
+          var hadSelectedBefore = hasCachedVideos(selectedCategory);
           Object.keys(data.catalog).forEach(function (key) {
             if (data.catalog[key] && data.catalog[key].length) {
               clientCatalog[key] = data.catalog[key];
             }
           });
+          // 초기 화면이 "영상 없음" 상태였다면, prefetch 결과로 즉시 다시 그려준다.
+          if (!hadSelectedBefore && hasCachedVideos(selectedCategory)) {
+            renderResults(clientCatalog[selectedCategory]);
+          }
         })
         .catch(function () {});
     }
@@ -411,6 +416,14 @@
       requestIdleCallback(prefetchCatalog, { timeout: 2500 });
     } else {
       setTimeout(prefetchCatalog, 400);
+    }
+    // 첫 렌더가 비어 있어도 현재 선택 탭은 1회 보강 조회한다.
+    if (!hasCachedVideos(selectedCategory)) {
+      fetchVideos(selectedCategory).then(function (items) {
+        if (items && items.length) {
+          renderResults(items);
+        }
+      });
     }
 
     function detectPillarbox(img) {

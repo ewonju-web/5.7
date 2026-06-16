@@ -38,6 +38,11 @@
     border-color: #9ca3af;
     color: #111827;
   }
+  @media (max-width: 767.98px) {
+    .gn-login-page .gn-google-login-wrap {
+      display: none !important;
+    }
+  }
 </style>
 {% endblock %}
 {% block content %}
@@ -66,9 +71,11 @@
                             <a href="{{ kakao_login_url }}" class="btn btn-lg py-2 fw-bold d-flex align-items-center justify-content-center gap-2" style="background-color: #FEE500; color: #191919; border-radius: 10px; border: none;">
                                 <i class="bi bi-chat-dots-fill"></i> 카카오로 로그인
                             </a>
-                            <a href="{{ google_login_url }}" class="btn btn-lg py-2 fw-bold d-flex align-items-center justify-content-center gap-2 gn-google-login-btn" style="border-radius: 10px;">
-                                <i class="bi bi-google"></i> Google로 로그인
-                            </a>
+                            <div class="gn-google-login-wrap">
+                                <a href="{{ google_login_url }}" class="btn btn-lg py-2 fw-bold d-flex align-items-center justify-content-center gap-2 gn-google-login-btn" style="border-radius: 10px;">
+                                    <i class="bi bi-google"></i> Google로 로그인
+                                </a>
+                            </div>
                         </div>
                     </form>
                     <p class="small text-muted mb-0">소셜 로그인은 편의용이며, 매물 등록·유료 결제 전에는 휴대폰 본인인증이 별도로 필요합니다.</p>

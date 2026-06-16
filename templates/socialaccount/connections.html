@@ -112,6 +112,11 @@
   .gn-provider-btn:hover {
     filter: brightness(0.97);
   }
+  @media (max-width: 767.98px) {
+    .gn-google-connect-btn {
+      display: none !important;
+    }
+  }
 </style>
 {% endblock %}
 
@@ -198,7 +203,7 @@
             <button type="submit" class="gn-provider-btn gn-provider-btn--disconnect">해제</button>
           </form>
           {% else %}
-          <a class="gn-provider-btn gn-provider-btn--google" href="{% provider_login_url 'google' process='connect' %}">연결하기</a>
+          <a class="gn-provider-btn gn-provider-btn--google gn-google-connect-btn" href="{% provider_login_url 'google' process='connect' %}">연결하기</a>
           {% endif %}
         </div>
       {% endwith %}
