@@ -351,6 +351,15 @@ def legacy_redirect_community_to_board(request, uid):
     return redirect("board_detail", pk=uid_int, permanent=True)
 
 
+def legacy_redirect_login(request):
+    """구 고도몰 로그인 URL → /login/ (301)."""
+    query = request.META.get("QUERY_STRING", "")
+    target = reverse("login")
+    if query:
+        target = f"{target}?{query}"
+    return redirect(target, permanent=True)
+
+
 def board_post_detail(request, pk):
     """
     신규 커뮤니티 상세 URL (/board/<pk>/).
@@ -880,16 +889,37 @@ def check_username(request):
 
 
 def find_username(request):
-    """이메일로 가입 시 사용한 아이디(들) 안내"""
+    """이메일 또는 휴대폰 번호로 가입 아이디 안내."""
+    from .claim_utils import normalize_phone_digits
+
     result = None
+    query = ''
     if request.method == 'POST':
-        email = (request.POST.get('email') or '').strip().lower()
-        if email:
-            users = User.objects.filter(email__iexact=email).values_list('username', flat=True)
-            result = list(users) if users else []
+        query = (request.POST.get('query') or request.POST.get('email') or '').strip()
+        if not query:
+            messages.error(request, '이메일 또는 휴대폰 번호를 입력하세요.')
+        elif '@' in query:
+            email = query.lower()
+            users = User.objects.filter(email__iexact=email, is_active=True).values_list('username', flat=True)
+            result = list(users)
         else:
-            messages.error(request, '이메일을 입력하세요.')
-    return render(request, 'registration/find_username.html', {'result': result})
+            phone_norm = normalize_phone_digits(query)
+            if len(phone_norm) < 10:
+                messages.error(request, '올바른 휴대폰 번호를 입력하세요.')
+            else:
+                usernames = set()
+                for username in User.objects.filter(
+                    username=phone_norm, is_active=True,
+                ).values_list('username', flat=True):
+                    usernames.add(username)
+                for profile in Profile.objects.filter(user__is_active=True).select_related('user'):
+                    if normalize_phone_digits(profile.phone) == phone_norm:
+                        usernames.add(profile.user.username)
+                result = sorted(usernames)
+    return render(request, 'registration/find_username.html', {
+        'result': result,
+        'query': query,
+    })
 
 
 def my_page(request):

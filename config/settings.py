@@ -243,7 +243,8 @@ CSRF_TRUSTED_ORIGINS = [
     'http://211.110.140.201', 'https://211.110.140.201',
     'http://211.110.140.201:8001', 'https://211.110.140.201:8001',
     'http://61.111.38.50', 'https://61.111.38.50',
-    'http://direct-nara.co.kr', 'http://www.direct-nara.co.kr',
+    'http://direct-nara.co.kr', 'https://direct-nara.co.kr',
+    'http://www.direct-nara.co.kr', 'https://www.direct-nara.co.kr',
 ]
 _csrf_extra = _env_str("CSRF_TRUSTED_ORIGINS_EXTRA", "")
 if _csrf_extra:
@@ -314,7 +315,7 @@ if _email_host:
     EMAIL_USE_TLS = os.getenv('EMAIL_USE_TLS', 'true').lower() in ('1', 'true', 'yes')
     EMAIL_HOST_USER = os.getenv('EMAIL_HOST_USER', '')
     EMAIL_HOST_PASSWORD = os.getenv('EMAIL_HOST_PASSWORD', '')
-    DEFAULT_FROM_EMAIL = os.getenv('DEFAULT_FROM_EMAIL', EMAIL_HOST_USER or 'noreply@gulsakgi-nara.local')
+    DEFAULT_FROM_EMAIL = os.getenv('DEFAULT_FROM_EMAIL', '') or EMAIL_HOST_USER or 'noreply@gulsakgi-nara.local'
 else:
     EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
     DEFAULT_FROM_EMAIL = os.getenv('DEFAULT_FROM_EMAIL', 'noreply@gulsakgi-nara.local')

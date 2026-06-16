@@ -29,6 +29,11 @@ urlpatterns = [
         views.legacy_redirect_community_to_board,
         name="legacy_community_to_board",
     ),
+    # 구 고도몰 로그인 URL → 신규 로그인
+    path("member/login/", views.legacy_redirect_login, name="legacy_member_login_slash"),
+    path("member/login", views.legacy_redirect_login, name="legacy_member_login"),
+    path("member/login.php", views.legacy_redirect_login, name="legacy_member_login_php"),
+    path("shop/member/login.php", views.legacy_redirect_login, name="legacy_shop_member_login_php"),
     # 신규 커뮤니티 상세 (구 /community/… 301 대상)
     path(
         "board/<int:pk>/",

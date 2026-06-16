@@ -1,4 +1,5 @@
 from django import forms
+from django.contrib.auth.forms import PasswordResetForm, _unicode_ci_compare
 from .models import Equipment, Profile, Part
 
 class EquipmentForm(forms.ModelForm):
@@ -287,3 +288,23 @@ class UserSignupForm(TermsAgreementFieldsMixin, forms.ModelForm):
             self._apply_marketing_consent(profile)
             profile.save(update_fields=["phone", "marketing_consent", "marketing_consent_at"])
         return user
+
+
+class MigratedPasswordResetForm(PasswordResetForm):
+    """비밀번호 미설정(이관) 회원도 재설정 메일을 받을 수 있게 한다."""
+
+    def get_users(self, email):
+        from django.contrib.auth import get_user_model
+
+        User = get_user_model()
+        email_field_name = User.get_email_field_name()
+        active_users = User._default_manager.filter(
+            **{
+                f'{email_field_name}__iexact': email,
+                'is_active': True,
+            }
+        )
+        return (
+            u for u in active_users
+            if _unicode_ci_compare(email, getattr(u, email_field_name))
+        )

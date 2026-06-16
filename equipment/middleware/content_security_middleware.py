@@ -26,8 +26,10 @@ POST_SKIP_PATH_PREFIXES = (
     '/phone',
     '/setlang/',
     '/health',
-    '/favicon',
+    '/favicon/',
     '/robots.txt',
+    '/find-username/',
+    '/password-reset/',
 )
 
 POST_SKIP_PATH_RE = re.compile(

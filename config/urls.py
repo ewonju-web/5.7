@@ -6,6 +6,7 @@ from django.contrib.auth import views as auth_views
 from django.contrib.auth import logout
 from django.http import HttpResponseRedirect
 from equipment.views import user_login, user_logout, signup, check_username, find_username
+from equipment.forms import MigratedPasswordResetForm
 
 
 def _social_callback_alias(request, provider: str):
@@ -52,6 +53,12 @@ def _admin_view_site(request):
     return response
 
 
+def _redirect_authenticated_to_mypage(request):
+    if request.user.is_authenticated:
+        return HttpResponseRedirect("/mypage/")
+    return None
+
+
 admin.site.site_url = "/admin/view-site/"
 
 urlpatterns = [
@@ -72,14 +79,21 @@ urlpatterns = [
     path('signup/', signup, name='signup'),
     path('find-username/', find_username, name='find_username'),
     # 비밀번호 찾기(재설정)
-    path('password-reset/', auth_views.PasswordResetView.as_view(
-        template_name='registration/password_reset_form.html',
-        email_template_name='registration/password_reset_email.html',
-        subject_template_name='registration/password_reset_subject.txt',
-        success_url='/password-reset/done/'
+    path('password-reset/', lambda request: (
+        _redirect_authenticated_to_mypage(request)
+        or auth_views.PasswordResetView.as_view(
+            template_name='registration/password_reset_form.html',
+            email_template_name='registration/password_reset_email.html',
+            subject_template_name='registration/password_reset_subject.txt',
+            form_class=MigratedPasswordResetForm,
+            success_url='/password-reset/done/'
+        )(request)
     ), name='password_reset'),
-    path('password-reset/done/', auth_views.PasswordResetDoneView.as_view(
-        template_name='registration/password_reset_done.html'
+    path('password-reset/done/', lambda request: (
+        _redirect_authenticated_to_mypage(request)
+        or auth_views.PasswordResetDoneView.as_view(
+            template_name='registration/password_reset_done.html'
+        )(request)
     ), name='password_reset_done'),
     path('password-reset-confirm/<uidb64>/<token>/', auth_views.PasswordResetConfirmView.as_view(
         template_name='registration/password_reset_confirm.html',
