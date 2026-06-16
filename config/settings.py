@@ -41,12 +41,13 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'rest_framework',
     'django_filters',
-    # 소셜 로그인 (카카오/네이버) — 로그인 편의용, 매물/결제 전 휴대폰 인증 별도 필수
+    # 소셜 로그인 (카카오/네이버/구글) — 로그인 편의용, 매물/결제 전 휴대폰 인증 별도 필수
     'allauth',
     'allauth.account',
     'allauth.socialaccount',
     'allauth.socialaccount.providers.kakao',
     'allauth.socialaccount.providers.naver',
+    'allauth.socialaccount.providers.google',
 ]
 
 MIDDLEWARE = [
@@ -177,12 +178,17 @@ SOCIALACCOUNT_AUTO_SIGNUP = False
 SOCIALACCOUNT_FORMS = {
     'signup': 'equipment.social_forms.RequiredSocialSignupForm',
 }
-# 카카오/네이버 키는 Admin > Sites > Social applications 에서 등록하거나, 여기 APP으로 env 설정
+# 카카오/네이버/구글 키는 Admin > Sites > Social applications 에서 등록하거나, 여기 APP으로 env 설정
 # 카카오: https://developers.kakao.com/apps → REST API 키, 리다이렉트: /accounts/kakao/login/callback/
 # 네이버: https://developers.naver.com/appinfo → Client ID/Secret, 리다이렉트: /accounts/naver/login/callback/
+# 구글: https://console.cloud.google.com/ → OAuth Client, 리다이렉트: /accounts/google/login/callback/
 SOCIALACCOUNT_PROVIDERS = {
     'kakao': {},
     'naver': {},
+    'google': {
+        'SCOPE': ['profile', 'email'],
+        'AUTH_PARAMS': {'access_type': 'online'},
+    },
 }
 # NOTE:
 # 카카오는 Admin > Social applications(DB) 설정을 단일 소스로 사용한다.
@@ -192,6 +198,11 @@ if os.getenv('NAVER_CLIENT_ID'):
     SOCIALACCOUNT_PROVIDERS['naver']['APP'] = {
         'client_id': os.getenv('NAVER_CLIENT_ID'),
         'secret': os.getenv('NAVER_CLIENT_SECRET', ''),
+    }
+if os.getenv('GOOGLE_CLIENT_ID'):
+    SOCIALACCOUNT_PROVIDERS['google']['APP'] = {
+        'client_id': os.getenv('GOOGLE_CLIENT_ID'),
+        'secret': os.getenv('GOOGLE_CLIENT_SECRET', ''),
     }
 
 AUTH_PASSWORD_VALIDATORS = [

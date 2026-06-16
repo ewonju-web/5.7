@@ -627,6 +627,7 @@ def user_login(request):
                 'next_url': next_url,
                 'kakao_login_url': _social_auth_login_url('kakao', next_url),
                 'naver_login_url': _social_auth_login_url('naver', next_url),
+                'google_login_url': _social_auth_login_url('google', next_url),
             })
         user = authenticate(request, username=username, password=password)
         # 보완 로그인은 활성 계정에만 제한한다.
@@ -654,10 +655,12 @@ def user_login(request):
     )
     kakao_login_url = _social_auth_login_url('kakao', next_url)
     naver_login_url = _social_auth_login_url('naver', next_url)
+    google_login_url = _social_auth_login_url('google', next_url)
     return render(request, 'registration/login.html', {
         'next_url': next_url,
         'kakao_login_url': kakao_login_url,
         'naver_login_url': naver_login_url,
+        'google_login_url': google_login_url,
     })
 
 

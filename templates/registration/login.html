@@ -28,6 +28,16 @@
     .gn-login-page .gn-login-field { margin-bottom: 1rem; }
     .gn-login-page .gn-login-field-password { margin-bottom: 1.5rem; }
   }
+  .gn-login-page .gn-google-login-btn {
+    background-color: #f3f4f6;
+    border: 1px solid #d1d5db;
+    color: #111827;
+  }
+  .gn-login-page .gn-google-login-btn:hover {
+    background-color: #e5e7eb;
+    border-color: #9ca3af;
+    color: #111827;
+  }
 </style>
 {% endblock %}
 {% block content %}
@@ -56,11 +66,9 @@
                             <a href="{{ kakao_login_url }}" class="btn btn-lg py-2 fw-bold d-flex align-items-center justify-content-center gap-2" style="background-color: #FEE500; color: #191919; border-radius: 10px; border: none;">
                                 <i class="bi bi-chat-dots-fill"></i> 카카오로 로그인
                             </a>
-                            {% comment %} 구글 추가 시 뷰에 google_login_url 추가 후 아래 주석 해제
-                            <a href="{{ google_login_url }}" class="btn btn-outline-secondary btn-lg py-2 fw-bold d-flex align-items-center justify-content-center gap-2" style="border-radius: 10px;">
+                            <a href="{{ google_login_url }}" class="btn btn-lg py-2 fw-bold d-flex align-items-center justify-content-center gap-2 gn-google-login-btn" style="border-radius: 10px;">
                                 <i class="bi bi-google"></i> Google로 로그인
                             </a>
-                            {% endcomment %}
                         </div>
                     </form>
                     <p class="small text-muted mb-0">소셜 로그인은 편의용이며, 매물 등록·유료 결제 전에는 휴대폰 본인인증이 별도로 필요합니다.</p>

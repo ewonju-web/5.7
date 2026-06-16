@@ -2,7 +2,7 @@
 {% load i18n %}
 
 {% block title %}
-{% if provider.id == "naver" %}네이버 로그인 | 굴삭기나라{% else %}카카오 로그인 | 굴삭기나라{% endif %}
+{% if provider.id == "naver" %}네이버 로그인 | 굴삭기나라{% elif provider.id == "google" %}구글 로그인 | 굴삭기나라{% else %}카카오 로그인 | 굴삭기나라{% endif %}
 {% endblock %}
 
 {% block extra_css %}
@@ -38,6 +38,10 @@
   .social-logo-badge--naver {
     background: #03c75a;
   }
+  .social-logo-badge--google {
+    background: #f3f4f6;
+    border: 1px solid #d1d5db;
+  }
   .social-title {
     font-size: 1.1rem;
     font-weight: 700;
@@ -50,6 +54,9 @@
   .social-title--naver {
     color: #03c75a;
   }
+  .social-title--google {
+    color: #374151;
+  }
   .social-desc {
     font-size: 0.96rem;
     text-align: center;
@@ -61,12 +68,19 @@
   .social-desc--naver {
     color: #047857;
   }
+  .social-desc--google {
+    color: #4b5563;
+  }
   .social-provider--kakao {
     color: #191919;
     font-weight: 700;
   }
   .social-provider--naver {
     color: #03c75a;
+    font-weight: 700;
+  }
+  .social-provider--google {
+    color: #374151;
     font-weight: 700;
   }
   .social-continue-btn {
@@ -94,6 +108,15 @@
     filter: brightness(0.96);
     color: #ffffff;
   }
+  .social-continue-btn--google {
+    background: #e5e7eb;
+    color: #111827;
+    border: 1px solid #d1d5db;
+  }
+  .social-continue-btn--google:hover {
+    background: #d1d5db;
+    color: #111827;
+  }
   .social-continue-btn:disabled {
     opacity: 0.85;
     cursor: not-allowed;
@@ -110,10 +133,14 @@
 {% block content %}
 <div class="container social-login-wrap">
   <div class="kakao-login-card">
-    <div class="social-logo-badge {% if provider.id == "naver" %}social-logo-badge--naver{% else %}social-logo-badge--kakao{% endif %}" aria-hidden="true">
+    <div class="social-logo-badge {% if provider.id == "naver" %}social-logo-badge--naver{% elif provider.id == "google" %}social-logo-badge--google{% else %}social-logo-badge--kakao{% endif %}" aria-hidden="true">
       {% if provider.id == "naver" %}
       <svg width="26" height="26" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
         <path d="M6 4H11.2L17.4 13.1V4H22V20H16.8L10.6 10.9V20H6V4Z" fill="#FFFFFF"/>
+      </svg>
+      {% elif provider.id == "google" %}
+      <svg width="28" height="28" viewBox="0 0 24 24" aria-hidden="true">
+        <path fill="#EA4335" d="M12 10.2v3.9h5.4c-.2 1.2-1.4 3.5-5.4 3.5-3.3 0-6-2.7-6-6s2.7-6 6-6c1.9 0 3.2.8 3.9 1.5l2.7-2.6C17.1 3 14.8 2 12 2 6.9 2 2.8 6.1 2.8 11.2S6.9 20.4 12 20.4c6.9 0 9.1-4.8 9.1-7.2 0-.5 0-.8-.1-1.2H12z"/>
       </svg>
       {% else %}
       <svg width="28" height="28" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -122,11 +149,11 @@
       {% endif %}
     </div>
 
-    <p class="social-title {% if provider.id == "naver" %}social-title--naver{% else %}social-title--kakao{% endif %}">
-      {% if provider.id == "naver" %}네이버 계정으로 로그인을 진행합니다{% else %}카카오 계정으로 로그인을 진행합니다{% endif %}
+    <p class="social-title {% if provider.id == "naver" %}social-title--naver{% elif provider.id == "google" %}social-title--google{% else %}social-title--kakao{% endif %}">
+      {% if provider.id == "naver" %}네이버 계정으로 로그인을 진행합니다{% elif provider.id == "google" %}구글 계정으로 로그인을 진행합니다{% else %}카카오 계정으로 로그인을 진행합니다{% endif %}
     </p>
-    <p class="social-desc {% if provider.id == "naver" %}social-desc--naver{% else %}social-desc--kakao{% endif %}">
-      <span class="{% if provider.id == "naver" %}social-provider--naver{% else %}social-provider--kakao{% endif %}">{{ provider.name }}</span> 계정 인증 후 굴삭기나라로 돌아옵니다.
+    <p class="social-desc {% if provider.id == "naver" %}social-desc--naver{% elif provider.id == "google" %}social-desc--google{% else %}social-desc--kakao{% endif %}">
+      <span class="{% if provider.id == "naver" %}social-provider--naver{% elif provider.id == "google" %}social-provider--google{% else %}social-provider--kakao{% endif %}">{{ provider.name }}</span> 계정 인증 후 굴삭기나라로 돌아옵니다.
     </p>
 
     <form method="post" id="kakaoSocialLoginForm">
@@ -139,7 +166,7 @@
       {% if redirect_field_value %}
         <input type="hidden" name="{{ redirect_field_name }}" value="{{ redirect_field_value }}">
       {% endif %}
-      <button type="submit" id="kakaoContinueBtn" class="social-continue-btn {% if provider.id == "naver" %}social-continue-btn--naver{% else %}social-continue-btn--kakao{% endif %}">
+      <button type="submit" id="kakaoContinueBtn" class="social-continue-btn {% if provider.id == "naver" %}social-continue-btn--naver{% elif provider.id == "google" %}social-continue-btn--google{% else %}social-continue-btn--kakao{% endif %}">
         <span class="btn-label">계속</span>
         <span class="spinner-border spinner-border-sm ms-2 d-none" id="kakaoLoginSpinner" role="status" aria-hidden="true"></span>
       </button>
