@@ -37,6 +37,7 @@ DEFAULT_CATEGORY = "excavator_maintenance_repair"
 
 CACHE_PREFIX = "youtube_api:v5"
 CACHE_TIMEOUT = 86400
+FALLBACK_CACHE_TIMEOUT = 600
 
 
 def normalize_category(category: str) -> str:
@@ -93,6 +94,11 @@ def _cache_key(category: str) -> str:
 
 
 def _fallback_db_items(category: str) -> list[dict]:
+    fallback_cache_key = f"{CACHE_PREFIX}:fallback:{category}"
+    cached = cache.get(fallback_cache_key)
+    if cached is not None:
+        return cached
+
     contents = YoutubeContent.objects.filter(is_active=True)
     items = []
     label = CATEGORY_KEYWORD_MAP.get(category, "")
@@ -109,6 +115,7 @@ def _fallback_db_items(category: str) -> list[dict]:
             "category": category,
             "category_label": label,
         })
+    cache.set(fallback_cache_key, items, timeout=FALLBACK_CACHE_TIMEOUT)
     return items
 
 
@@ -133,7 +140,8 @@ def _search_youtube(query_keyword: str, *, allow_api: bool) -> list[dict]:
     req_url = f"https://www.googleapis.com/youtube/v3/search?{urlencode(params)}"
     try:
         req = Request(req_url)
-        with urlopen(req, timeout=15) as resp:
+        # 외부 API 지연으로 페이지 체감 속도가 떨어지지 않도록 타임아웃을 짧게 둔다.
+        with urlopen(req, timeout=6) as resp:
             payload = json.loads(resp.read().decode("utf-8"))
     except Exception:
         return []

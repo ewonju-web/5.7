@@ -2106,7 +2106,9 @@ def excavator_info(request):
         request.GET.get("equipment_type"),
         request.GET.get("purpose"),
     )
-    video_items = fetch_youtube_videos(selected_category)
+    # 첫 화면은 "빠른 응답" 우선: 캐시/로컬 데이터만 사용
+    # (YouTube API 갱신은 별도 워밍 경로에서 수행)
+    video_items = fetch_youtube_videos(selected_category, allow_api=False)
 
     return render(request, "equipment/excavator_info.html", {
         "category_tabs": CATEGORY_TABS,
@@ -2124,12 +2126,15 @@ def excavator_info_videos_api(request):
         request.GET.get("equipment_type"),
         request.GET.get("purpose"),
     )
-    items = fetch_youtube_videos(category)
+    warm = (request.GET.get("warm") or "").strip().lower() in ("1", "true", "yes")
+    # 기본은 빠른 응답(캐시/로컬), 필요 시 warm=1로 API 갱신 허용
+    items = fetch_youtube_videos(category, allow_api=warm)
     return JsonResponse({
         "ok": True,
         "category": category,
         "items": items,
         "count": len(items),
+        "warm": warm,
     })
 
 

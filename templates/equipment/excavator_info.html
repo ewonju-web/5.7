@@ -346,18 +346,28 @@
       if (hasCachedVideos(category)) {
         return Promise.resolve(clientCatalog[category]);
       }
-      var url = videosApiUrl + "?category=" + encodeURIComponent(category);
-      return fetch(url, { credentials: "same-origin", headers: { "Accept": "application/json" } })
-        .then(function (res) { return res.json(); })
-        .then(function (data) {
-          if (!data || !data.ok) return [];
-          var items = data.items || [];
-          if (items.length) {
-            clientCatalog[category] = items;
+      var baseUrl = videosApiUrl + "?category=" + encodeURIComponent(category);
+      function request(url) {
+        return fetch(url, { credentials: "same-origin", headers: { "Accept": "application/json" } })
+          .then(function (res) { return res.json(); })
+          .then(function (data) {
+            if (!data || !data.ok) return [];
+            var items = data.items || [];
+            if (items.length) {
+              clientCatalog[category] = items;
+            }
+            return items;
+          })
+          .catch(function () { return []; });
+      }
+      return request(baseUrl)
+        .then(function (items) {
+          if (items && items.length) {
+            return items;
           }
-          return items;
-        })
-        .catch(function () { return []; });
+          // 빠른 경로에서 비어 있으면 1회만 warm 조회로 보완
+          return request(baseUrl + "&warm=1");
+        });
     }
 
     function applyFilter(category) {
@@ -375,7 +385,9 @@
     function prefetchCatalog() {
       if (prefetchDone) return;
       prefetchDone = true;
-      fetch(catalogUrl, { credentials: "same-origin", headers: { "Accept": "application/json" } })
+      // 유휴 시간에만 API 워밍을 수행해 체감 로딩을 지키고,
+      // 이후 탭 전환은 메모리 캐시에서 즉시 응답되도록 한다.
+      fetch(catalogUrl + "?warm=1", { credentials: "same-origin", headers: { "Accept": "application/json" } })
         .then(function (res) { return res.json(); })
         .then(function (data) {
           if (!data || !data.ok || !data.catalog) return;
