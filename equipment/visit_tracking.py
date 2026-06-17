@@ -9,7 +9,7 @@ SKIP_PREFIXES = (
     "/index/load-more/",
     "/favicon",
 )
-SKIP_EXACT = {"/robots.txt", "/health", "/health/"}
+SKIP_EXACT = {"/robots.txt", "/sitemap.xml", "/health", "/health/"}
 
 _BOT_UA_RE = re.compile(
     r"bot|crawler|spider|crawling|slurp|gptbot|chatgpt|bytespider|semrush|ahrefs|"
