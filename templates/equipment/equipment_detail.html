@@ -10,6 +10,7 @@
 <meta property="og:image" content="https://{{ request.get_host }}{{ detail_images.0.image.url }}">
 <meta name="twitter:card" content="summary_large_image">
 {% endif %}
+{% equipment_schema_ld_json equipment request detail_images %}
 {% endblock %}
 
 {% block content %}
