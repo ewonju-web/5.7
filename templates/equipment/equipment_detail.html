@@ -1,5 +1,17 @@
 {% extends "base.html" %}
-{% load humanize i18n_extras %}
+{% load humanize i18n_extras seo_tags %}
+
+{% block title %}{% equipment_seo_title equipment %}{% endblock %}
+{% block meta_description %}{% equipment_seo_description equipment %}{% endblock %}
+{% block og_title %}{% equipment_seo_title equipment %}{% endblock %}
+{% block og_description %}{% equipment_seo_description equipment %}{% endblock %}
+{% block meta_extra %}
+{% if detail_images %}
+<meta property="og:image" content="https://{{ request.get_host }}{{ detail_images.0.image.url }}">
+<meta name="twitter:card" content="summary_large_image">
+{% endif %}
+{% endblock %}
+
 {% block content %}
 <div class="container-fluid px-md-5 py-4 gn-detail-page">
   <div class="mb-3">
