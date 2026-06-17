@@ -7,6 +7,7 @@ from django.contrib.auth import logout
 from django.http import HttpResponse, HttpResponseRedirect
 from equipment.views import user_login, user_logout, signup, check_username, find_username
 from equipment.forms import MigratedPasswordResetForm
+from equipment.sitemap_views import sitemap_xml
 
 
 def _social_callback_alias(request, provider: str):
@@ -63,26 +64,12 @@ def _robots_txt(request):
     body = "\n".join([
         "User-agent: *",
         "Allow: /",
+        "User-agent: Yeti",
+        "Allow: /",
         "Sitemap: https://www.direct-nara.co.kr/sitemap.xml",
         "",
     ])
     return HttpResponse(body, content_type="text/plain; charset=utf-8")
-
-
-def _sitemap_xml(request):
-    body = """<?xml version="1.0" encoding="UTF-8"?>
-<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
-  <url><loc>https://www.direct-nara.co.kr/</loc></url>
-  <url><loc>https://www.direct-nara.co.kr/login/</loc></url>
-  <url><loc>https://www.direct-nara.co.kr/jobs/</loc></url>
-  <url><loc>https://www.direct-nara.co.kr/jobs/exam/</loc></url>
-  <url><loc>https://www.direct-nara.co.kr/jobs/exam/videos/</loc></url>
-  <url><loc>https://www.direct-nara.co.kr/info/</loc></url>
-  <url><loc>https://www.direct-nara.co.kr/parts-as/</loc></url>
-  <url><loc>https://www.direct-nara.co.kr/finance/</loc></url>
-</urlset>
-"""
-    return HttpResponse(body, content_type="application/xml; charset=utf-8")
 
 
 def _google_site_verification(request):
@@ -90,12 +77,32 @@ def _google_site_verification(request):
     return HttpResponse(body, content_type="text/plain; charset=utf-8")
 
 
+def _naver_site_verification(request):
+    body = "naver-site-verification: naverf64974053e050b966dec6a8be99e4970.html"
+    return HttpResponse(body, content_type="text/plain; charset=utf-8")
+
+
+def _naver_site_verification_www(request):
+    body = "naver-site-verification: naver228461d9e717dc8f2780d4adc712f733.html"
+    return HttpResponse(body, content_type="text/plain; charset=utf-8")
+
+
 admin.site.site_url = "/admin/view-site/"
 
 urlpatterns = [
     path('googledb8cba55fc2c39e4.html', _google_site_verification, name='google_site_verification'),
+    path(
+        'naverf64974053e050b966dec6a8be99e4970.html',
+        _naver_site_verification,
+        name='naver_site_verification',
+    ),
+    path(
+        'naver228461d9e717dc8f2780d4adc712f733.html',
+        _naver_site_verification_www,
+        name='naver_site_verification_www',
+    ),
     path('robots.txt', _robots_txt, name='robots_txt'),
-    path('sitemap.xml', _sitemap_xml, name='sitemap_xml'),
+    path('sitemap.xml', sitemap_xml, name='sitemap_xml'),
     path('admin/view-site/', _admin_view_site, name='admin_view_site'),
     path('admin/', admin.site.urls),
     path('accounts/', include('allauth.urls')),  # 소셜 로그인: /accounts/login/ 에서 카카오/네이버
