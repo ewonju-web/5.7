@@ -20,8 +20,16 @@ from ..models import (
 )
 
 
-def fulfill_billing_payment(payment: Payment) -> None:
-    """Payment 가 SUCCESS 이고 paid_at 이 있을 때 한 번만(멱등) 처리."""
+def fulfill_billing_payment(payment: Payment, *, auto_renew: bool | None = None) -> None:
+    """
+    Payment 가 SUCCESS 이고 paid_at 이 있을 때 한 번만(멱등) 처리.
+    프리미엄(딜러 멤버십) 상품을 결제한 만큼 기간 연장 → equipment 유료 동기화.
+
+    auto_renew:
+        None  → 상품의 is_recurring 값을 따름(1회 결제).
+        True  → 자동 정기결제로 활성화(빌링키 청구).
+        False → 자동결제 해제.
+    """
     if payment.status != PaymentStatus.SUCCESS or not payment.paid_at:
         return
 
@@ -39,6 +47,7 @@ def fulfill_billing_payment(payment: Payment) -> None:
                 continue
 
             days = product.duration_days or 30
+            want_auto = product.is_recurring if auto_renew is None else auto_renew
 
             dm = DealerMembership.objects.filter(user_id=order.user_id).first()
             if dm is None:
@@ -48,7 +57,7 @@ def fulfill_billing_payment(payment: Payment) -> None:
                     order_item=item,
                     period_start=paid_date,
                     period_end=end,
-                    is_auto_renew=product.is_recurring,
+                    is_auto_renew=want_auto,
                 )
             else:
                 # 갱신: 남은 기간이 있으면 그 이후부터 기간 연장
@@ -56,7 +65,7 @@ def fulfill_billing_payment(payment: Payment) -> None:
                 new_end = base + timedelta(days=days)
                 dm.order_item = item
                 dm.period_end = new_end
-                dm.is_auto_renew = product.is_recurring or dm.is_auto_renew
+                dm.is_auto_renew = want_auto if auto_renew is not None else (product.is_recurring or dm.is_auto_renew)
                 dm.save(
                     update_fields=[
                         "order_item",

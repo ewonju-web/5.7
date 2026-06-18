@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="container py-5 text-center" style="max-width: 560px;">
+  <div class="mb-3"><i class="bi bi-x-circle-fill text-danger" style="font-size: 3.2rem;"></i></div>
+  <h2 class="fw-bold mb-2">결제에 실패했습니다</h2>
+  <p class="text-muted mb-1">{{ message }}</p>
+  {% if code %}<p class="text-muted small mb-4">오류코드: {{ code }}</p>{% endif %}
+
+  <div class="d-flex flex-column flex-md-row gap-2 justify-content-center mt-3">
+    <a href="{% url 'billing_premium' %}" class="btn btn-primary px-4">다시 시도</a>
+    <a href="/" class="btn btn-outline-secondary px-4">홈으로</a>
+  </div>
+</div>
+{% endblock %}

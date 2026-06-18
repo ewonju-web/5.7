@@ -10,6 +10,7 @@ from django.template.loader import render_to_string
 from django.utils import timezone
 from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.decorators import login_required
+from django.views.decorators.cache import never_cache
 from django.contrib import messages
 from django.conf import settings
 from decimal import Decimal, ROUND_HALF_UP
@@ -100,6 +101,9 @@ def _image_hash_from_equipment(equipment):
             return hashlib.md5(f.read()).hexdigest()
     except Exception:
         return ""
+
+
+MAX_LISTING_IMAGES = 10  # 매물 1건당 첨부 사진 최대 장수
 
 
 def _apply_equipment_image_order(equipment, image_files, delete_ids, primary_token=''):
@@ -2983,6 +2987,7 @@ def _bump_equipment_view_count(request, equipment_pk):
     Equipment.objects.filter(pk=equipment_pk).update(view_count=F("view_count") + 1)
     return True
 
+@never_cache
 def equipment_detail(request, pk):
     equipment = get_object_or_404(
         Equipment.objects.select_related("author__profile").prefetch_related("images"),
@@ -3100,10 +3105,13 @@ def equipment_detail(request, pk):
                 break
 
     # 상세 사진 (prefetch 활용, 디스크 exists 체크 제거로 응답 속도 개선)
+    # 최대 MAX_LISTING_IMAGES 장까지만 노출 — 사진이 많을 때 썸네일 줄이 가로로
+    # 늘어나 좌우 스크롤이 생기는 문제 방지. 이미 10장을 넘긴 기존 매물도 11번째
+    # 사진부터는 노출되지 않는다.
     detail_images = [
         image for image in equipment.images.all()
         if (getattr(image.image, 'name', '') or '').strip()
-    ]
+    ][:MAX_LISTING_IMAGES]
 
     # 금융 예상 / 월 납입액(60개월, 연 7% 가정) — 매매금액 전액 기준
     finance_limit = None
@@ -3284,8 +3292,8 @@ def equipment_create(request):
                     'monthly_listing_limit': monthly_limit,
                     'is_premium': is_user_premium(request.user),
                 })
-            # 허위 매물 방지: 사진 최소 1장 필수
-            image_files = request.FILES.getlist('images')
+            # 허위 매물 방지: 사진 최소 1장 필수 / 최대 10장 제한
+            image_files = request.FILES.getlist('images')[:MAX_LISTING_IMAGES]
             if not image_files or len(image_files) < 1:
                 form.add_error(None, ValidationError('허위 매물 방지를 위해 사진을 최소 1장 이상 등록해주세요.'))
             else:
@@ -3400,6 +3408,10 @@ def equipment_edit(request, pk):
                 else 0
             )
             n_remain_after = obj.images.count() - n_delete
+            # 최대 10장 제한: 남는 사진 + 새 사진이 10장을 넘으면 초과분은 받지 않음
+            allowed_new = max(0, MAX_LISTING_IMAGES - n_remain_after)
+            if len(image_files) > allowed_new:
+                image_files = image_files[:allowed_new]
             if n_remain_after + len(image_files) < 1:
                 form.add_error(
                     None,

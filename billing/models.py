@@ -297,6 +297,61 @@ class DealerMembership(models.Model):
         return self.period_end >= timezone.now().date()
 
 
+# --- 자동 정기결제 (토스 빌링키) ---
+class BillingKey(models.Model):
+    """
+    토스 자동결제(빌링) 카드 등록 정보.
+    한 사용자가 여러 건을 가질 수 있으나, 활성(ACTIVE)은 사실상 1건 운용.
+    next_billing_at 이 지난 ACTIVE 건을 크론이 청구한다.
+    """
+    PLAN_MONTHLY = 'monthly'
+    PLAN_YEARLY = 'yearly'
+    PLAN_CHOICES = [
+        (PLAN_MONTHLY, '월 자동결제'),
+        (PLAN_YEARLY, '연 자동결제'),
+    ]
+
+    STATUS_ACTIVE = 'ACTIVE'
+    STATUS_CANCELLED = 'CANCELLED'
+    STATUS_FAILED = 'FAILED'
+    STATUS_CHOICES = [
+        (STATUS_ACTIVE, '활성'),
+        (STATUS_CANCELLED, '해지'),
+        (STATUS_FAILED, '청구 실패'),
+    ]
+
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='billing_keys'
+    )
+    customer_key = models.CharField(max_length=64, db_index=True, verbose_name='토스 customerKey')
+    billing_key = models.CharField(max_length=200, verbose_name='토스 billingKey')
+    product = models.ForeignKey(Product, on_delete=models.SET_NULL, null=True, blank=True)
+    plan = models.CharField(max_length=10, choices=PLAN_CHOICES, default=PLAN_MONTHLY)
+    amount = models.PositiveIntegerField(default=0, verbose_name='청구 금액(원)')
+    card_company = models.CharField(max_length=40, blank=True, verbose_name='카드사')
+    card_number_masked = models.CharField(max_length=40, blank=True, verbose_name='카드번호(마스킹)')
+    status = models.CharField(
+        max_length=12, choices=STATUS_CHOICES, default=STATUS_ACTIVE, db_index=True
+    )
+    next_billing_at = models.DateTimeField(db_index=True, verbose_name='다음 청구 예정')
+    last_charged_at = models.DateTimeField(null=True, blank=True, verbose_name='마지막 청구 시각')
+    fail_count = models.PositiveSmallIntegerField(default=0, verbose_name='연속 청구 실패 수')
+    cancelled_at = models.DateTimeField(null=True, blank=True, verbose_name='해지 시각')
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = '자동결제 빌링키'
+        verbose_name_plural = '자동결제 빌링키'
+        ordering = ['-created_at']
+        indexes = [
+            models.Index(fields=['status', 'next_billing_at']),
+        ]
+
+    def __str__(self):
+        return f"BillingKey {self.user_id} {self.plan} ({self.get_status_display()})"
+
+
 # --- 수익 집계 (시뮬레이션/대시보드용) ---
 class RevenueDaily(models.Model):
     """일별 매출 집계 (크론으로 채움)"""

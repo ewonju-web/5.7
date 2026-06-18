@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% load humanize %}
+{% block content %}
+<div class="container py-5 text-center" style="max-width: 560px;">
+  <div class="mb-3"><i class="bi bi-check-circle-fill text-success" style="font-size: 3.2rem;"></i></div>
+  <h2 class="fw-bold mb-2">결제가 완료되었습니다</h2>
+  <p class="text-muted mb-4">
+    프리미엄 유료회원이 활성화되었습니다.
+    {% if auto %}<br>다음 결제일에 자동으로 결제됩니다(마이페이지에서 해지 가능).{% endif %}
+  </p>
+
+  {% if order %}
+  <div class="card border-0 shadow-sm rounded-4 text-start mb-4">
+    <div class="card-body p-4">
+      <div class="d-flex justify-content-between py-1"><span class="text-muted">주문번호</span><span class="fw-semibold">{{ order.order_number }}</span></div>
+      <div class="d-flex justify-content-between py-1"><span class="text-muted">결제금액</span><span class="fw-bold">{{ order.total_amount|floatformat:0|intcomma }}원</span></div>
+    </div>
+  </div>
+  {% endif %}
+
+  <div class="d-flex flex-column flex-md-row gap-2 justify-content-center">
+    <a href="{% url 'my_page' %}" class="btn btn-primary px-4">마이페이지</a>
+    <a href="/" class="btn btn-outline-secondary px-4">홈으로</a>
+  </div>
+</div>
+{% endblock %}

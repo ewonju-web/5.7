@@ -113,6 +113,7 @@ urlpatterns = [
     path('soil/', include('soil.urls')),
     path('rental/', include('rental.urls')),
     path('trust/', include('trust.urls')),
+    path('billing/', include('billing.urls')),
     path('', include('equipment.urls')),
     path('login/', user_login, name='login'),
     path('logout/', user_logout, name='logout'),

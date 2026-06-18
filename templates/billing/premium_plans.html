@@ -1,0 +1,59 @@
+{% extends "base.html" %}
+{% load humanize %}
+{% block content %}
+<div class="container py-4 py-md-5" style="max-width: 860px;">
+  <div class="text-center mb-4">
+    <h2 class="fw-bold mb-2">프리미엄 유료회원 결제</h2>
+    <p class="text-muted mb-0">요금제와 결제 방식을 선택하세요.{% if not toss_is_live %} <span class="badge bg-secondary">테스트 결제</span>{% endif %}</p>
+  </div>
+
+  <div class="row g-3 g-md-4">
+    <!-- 월 -->
+    <div class="col-12 col-md-6">
+      <div class="card h-100 border-0 shadow-sm rounded-4">
+        <div class="card-body p-4 d-flex flex-column">
+          <div class="small text-muted mb-1">월간</div>
+          <div class="display-6 fw-bold mb-1">{{ monthly_price|intcomma }}<span class="fs-5 fw-normal">원/월</span></div>
+          <div class="small text-muted mb-3">VAT 포함 · 30일 이용</div>
+          <div class="mt-auto d-grid gap-2">
+            <a href="{% url 'billing_checkout' %}?plan=monthly&mode=once" class="btn btn-primary fw-bold">1회 결제</a>
+            <a href="{% url 'billing_checkout' %}?plan=monthly&mode=auto" class="btn btn-outline-primary">매월 자동결제</a>
+          </div>
+        </div>
+      </div>
+    </div>
+    <!-- 연 -->
+    <div class="col-12 col-md-6">
+      <div class="card h-100 border-0 shadow-sm rounded-4 border-primary" style="border-width:2px !important;">
+        <div class="card-body p-4 d-flex flex-column position-relative">
+          <span class="position-absolute top-0 end-0 m-3 badge bg-primary">약 2개월 무료</span>
+          <div class="small text-muted mb-1">연간</div>
+          <div class="display-6 fw-bold mb-1">{{ yearly_price|intcomma }}<span class="fs-5 fw-normal">원/년</span></div>
+          <div class="small text-muted mb-3">월 {{ yearly_monthly_equiv|intcomma }}원 꼴 · 365일 이용</div>
+          <div class="mt-auto d-grid gap-2">
+            <a href="{% url 'billing_checkout' %}?plan=yearly&mode=once" class="btn btn-primary fw-bold">1회 결제</a>
+            <a href="{% url 'billing_checkout' %}?plan=yearly&mode=auto" class="btn btn-outline-primary">매년 자동결제</a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card border-0 shadow-sm rounded-4 mt-4">
+    <div class="card-body p-4">
+      <h5 class="fw-bold mb-3">유료회원 혜택</h5>
+      <ul class="mb-0 text-muted" style="line-height: 1.9;">
+        <li>매물 검색 상단 우선 노출 · 메인 프리미엄 영역 노출</li>
+        <li>끌어올리기(매물 수 × 4회/월) · 매물 등록 한도 확대</li>
+        <li>기종별 전문가 명함 노출 · 다른 매물 모아보기</li>
+        <li>지역별 인근 구매·판매 문의 알림</li>
+      </ul>
+      <p class="small text-muted mt-3 mb-0">자동 정기결제는 마이페이지에서 언제든 해지할 수 있으며, 해지해도 남은 이용기간은 유지됩니다.</p>
+    </div>
+  </div>
+
+  <div class="text-center mt-3">
+    <a href="{% url 'billing_upgrade' %}" class="text-muted small">유료회원 안내 다시 보기</a>
+  </div>
+</div>
+{% endblock %}

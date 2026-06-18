@@ -8,7 +8,7 @@ from django.utils.formats import number_format
 from .models import (
     Product, Order, OrderItem, Payment,
     PremiumPlacement, EquipmentUpgrade, DealerMembership, RevenueDaily,
-    ConversionEvent, ProductType,
+    ConversionEvent, ProductType, BillingKey,
 )
 
 
@@ -201,6 +201,31 @@ class PaymentAdmin(admin.ModelAdmin):
     def amount_display(self, obj):
         return f"{number_format(obj.amount, use_l10n=True)}원" if obj.amount is not None else "-"
     amount_display.short_description = '금액'
+
+
+@admin.register(BillingKey)
+class BillingKeyAdmin(admin.ModelAdmin):
+    list_display = ('id', 'user', 'plan', 'amount_display', 'status', 'card_company',
+                    'card_number_masked', 'next_billing_at', 'last_charged_at', 'fail_count')
+    list_filter = ('status', 'plan')
+    search_fields = ('user__username', 'user__email', 'customer_key')
+    readonly_fields = ('user', 'customer_key', 'billing_key', 'product', 'plan', 'amount',
+                       'card_company', 'card_number_masked', 'last_charged_at', 'created_at', 'updated_at')
+    date_hierarchy = 'next_billing_at'
+    list_per_page = 50
+    actions = ['cancel_billing']
+
+    def amount_display(self, obj):
+        return f"{number_format(obj.amount, use_l10n=True)}원" if obj.amount is not None else "-"
+    amount_display.short_description = '금액'
+
+    @admin.action(description='선택한 자동결제 해지(다음 청구 중단)')
+    def cancel_billing(self, request, queryset):
+        from django.utils import timezone
+        n = queryset.filter(status=BillingKey.STATUS_ACTIVE).update(
+            status=BillingKey.STATUS_CANCELLED, cancelled_at=timezone.now()
+        )
+        self.message_user(request, f"{n}건 자동결제를 해지했습니다.")
 
 
 @admin.register(RevenueDaily)

@@ -54,7 +54,7 @@
                     data-src="{{ image.image.url }}"
                     data-index="{{ forloop.counter0 }}"
                     aria-label="사진 {{ forloop.counter }}">
-              <img loading="lazy" decoding="async" src="{{ image.image.url }}" class="w-100 h-100" style="object-fit: cover;" alt="">
+              <img decoding="async" src="{{ image.image.url }}" class="w-100 h-100 gn-detail-thumb-img" alt="">
             </button>
             {% endfor %}
           </div>
@@ -235,7 +235,7 @@
                 data-lightbox-index="{{ forloop.counter0 }}"
                 data-lightbox-src="{{ image.image.url }}"
                 aria-label="사진 {{ forloop.counter }} 크게 보기">
-          <img loading="lazy" decoding="async" src="{{ image.image.url }}" class="img-fluid w-100" alt="{{ equipment.model_name }} {{ forloop.counter }}" style="cursor: zoom-in;">
+          <img loading="lazy" decoding="async" src="{{ image.image.url }}" class="img-fluid gn-detail-photo-img" alt="{{ equipment.model_name }} {{ forloop.counter }}" style="cursor: zoom-in;">
         </button>
         {% endfor %}
       </div>
@@ -1010,6 +1010,13 @@
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08), 0 1px 2px rgba(0, 0, 0, 0.06) !important;
   }
   .gn-detail-top { margin-bottom: 0.5rem; }
+  /* 플렉스/그리드 자식은 기본 min-width:auto 라 내부 콘텐츠보다 작게 줄지 못해
+     가로 오버플로우를 유발한다. 0 으로 풀어 썸네일 줄·사진이 칸 안에서 스크롤되게 함. */
+  .gn-detail-main-col,
+  .gn-detail-top,
+  .gn-detail-left,
+  .gn-detail-right { min-width: 0; }
+  .gn-detail-thumbs { min-width: 0; max-width: 100%; }
   .gn-detail-desc-section { width: 100%; margin-top: 1.5rem !important; }
   /* 상세: 본문 옆 바깥 레일 — 스크롤 따라오는 명함 */
   .gn-detail-sticky-rail {
@@ -1128,6 +1135,9 @@
     .gn-detail-layout > .gn-detail-main-col--with-right-rail {
       width: 100%;
       max-width: 100%;
+      /* 그리드 1fr 칸이 내부 콘텐츠(썸네일 줄 등)보다 작게 줄어들 수 있게 해
+         사진이 많을 때 본문이 가로로 늘어나 우측 레일이 밀려나는 것을 막는다. */
+      min-width: 0;
     }
     .gn-detail-layout > .gn-detail-outer-rail--balance {
       width: 360px;
@@ -1336,26 +1346,40 @@
   }
 
   .gn-detail-thumbs { white-space: nowrap; -webkit-overflow-scrolling: touch; }
+  /* 썸네일: 메인/사진보기 이미지와 분리. 항상 정사각형 칸을 꽉 채우는 cover 크롭 유지 */
+  .gn-detail-thumb-img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+  }
   #detailMainImg:hover { opacity: 0.98; }
+  /* 메인 이미지 박스: 가로형/세로형 사진 모두 동일한 박스 안에서 일관되게 보이도록 통일.
+     - aspect-ratio 4/3 로 기본 박스 형태를 잡되, max-height 로 세로형 사진에서 박스가
+       과도하게 길어지는 것을 막는다.
+     - object-fit: contain 이므로 사진은 잘리지 않고 박스 안에 비율 유지로 맞춰지며,
+       가로형은 상하 여백, 세로형은 좌우 여백이 생긴다. */
+  /* 메인 이미지 박스: 고정 높이(vh)로 잡아 가로형/세로형 사진 모두 동일한 박스 안에서
+     일관되게 보이도록 통일한다. (aspect-ratio + height:100% 자식 이미지 조합은 세로형에서
+     박스 비율이 무시되는 문제가 있어 고정 높이로 대체) object-fit: contain 이라 사진은
+     잘리지 않고 가로형은 상하 여백, 세로형은 좌우 여백이 생긴다. */
   .gn-detail-main-wrap {
     width: 100%;
-    aspect-ratio: 4 / 3;
+    height: 50vh;
     min-height: 0;
     overflow: hidden;
     background: #eef2f6;
   }
-  /* 데스크톱: 사진 비율과 무관하게 메인 이미지 영역이 첫 화면을 넘지 않도록 높이 상한을 둔다.
-     object-fit: contain 이므로 비율은 유지되고 잘리지 않으며, 좌우/상하 여백만 생긴다. */
-  @media (min-width: 992px) {
-    .gn-detail-main-wrap {
-      max-height: calc(100vh - 200px);
-    }
+  @media (max-width: 991.98px) {
+    .gn-detail-main-wrap { height: 42vh; }
+  }
+  @media (max-width: 575.98px) {
+    .gn-detail-main-wrap { height: 36vh; }
   }
   .gn-detail-main-img {
     width: 100%;
     height: 100%;
-    max-height: none;
-    object-fit: contain;
+    object-fit: cover;
     object-position: center center;
     display: block;
   }
@@ -1841,23 +1865,23 @@
     flex-direction: column;
     gap: 0.9rem;
   }
+  /* 사진 보기 갤러리: 각 사진을 컬럼 너비에 꽉 차게(좌우 흰 여백 없이) 최대로 노출.
+     고정 높이/패딩을 제거하고 width:100% + height:auto 로 원본 비율 그대로 키운다. */
   .gn-detail-photo-item {
     border: 1px solid #D1D5DB;
     background: #F8FAFC;
     box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
-    padding: 0.5rem;
+    padding: 0;
+    display: block;
+    overflow: hidden;
   }
   .gn-detail-photo-item img {
     width: 100%;
-    max-height: 920px;
+    height: auto;
+    max-width: 100%;
     object-fit: contain;
     display: block;
     background: #FFFFFF;
-  }
-  @media (max-width: 767.98px) {
-    .gn-detail-photo-item img {
-      max-height: 620px;
-    }
   }
   .gn-detail-parts-as-kind-card {
     border: 1px solid #e5e7eb;

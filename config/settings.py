@@ -304,6 +304,22 @@ YOUTUBE_API_KEY = _env_str("YOUTUBE_API_KEY")
 # 카카오맵 JS SDK 키 (없으면 카카오 로그인 REST 키를 임시로 사용)
 KAKAO_MAP_JS_KEY = _env_str("KAKAO_MAP_JS_KEY", _env_str("KAKAO_REST_API_KEY"))
 
+# --- 토스페이먼츠 (유료회원 결제: 1회 결제 + 자동 정기결제, 월/연) ---
+# 기본값은 토스 공식 "문서용 테스트 키"(회원가입 없이 결제창 테스트 가능).
+# 실 결제(또는 본인 상점 테스트) 전환 시 .env 에 발급받은 키를 넣으세요.
+#   - 결제창/위젯·자동결제(빌링)는 같은 키 세트를 사용합니다.
+#   - test_*/live_* 키를 섞으면 INVALID_API_KEY 오류가 납니다.
+TOSS_CLIENT_KEY = _env_str("TOSS_CLIENT_KEY", "test_gck_docs_Ovk5rk1EwkEbP0W43n07xlzm")
+TOSS_SECRET_KEY = _env_str("TOSS_SECRET_KEY", "test_gsk_docs_OaPz8L5KdmQXkzRz3y47BMw6")
+TOSS_API_BASE = _env_str("TOSS_API_BASE", "https://api.tosspayments.com")
+# 라이브 여부(클라이언트 키 접두사로 자동 판별) · 위젯키(gck) vs API개별키(ck) 구분
+TOSS_IS_LIVE = TOSS_CLIENT_KEY.startswith(("live_ck", "live_gck"))
+TOSS_IS_WIDGET_KEY = TOSS_CLIENT_KEY.startswith(("test_gck", "live_gck"))
+
+# 프리미엄 요금제 가격(원) — 월/연
+PREMIUM_MONTHLY_PRICE = int(os.getenv("PREMIUM_MONTHLY_PRICE", "40000") or "40000")
+PREMIUM_YEARLY_PRICE = int(os.getenv("PREMIUM_YEARLY_PRICE", "400000") or "400000")
+
 # 판매자 신뢰도·매너점수·거래평가 UI (False=숨김, 코드·DB·API는 유지)
 # 회원 수가 늘면 True 또는 .env TRUST_SYSTEM_ENABLED=true 로 활성화
 TRUST_SYSTEM_ENABLED = os.getenv('TRUST_SYSTEM_ENABLED', 'false').lower() in ('1', 'true', 'yes')

@@ -251,8 +251,8 @@
                         {{ form.description }}
                     </div>
                     <div class="col-12">
-                        <label class="form-label fw-bold">사진 (1장 이상 필수)</label>
-                        <p class="form-text small mb-1 gn-form-notice-strong">허위 매물 방지를 위해 실제 장비 사진을 1장 이상 등록해주세요.</p>
+                        <label class="form-label fw-bold">사진 (1장 이상 필수, 최대 10장)</label>
+                        <p class="form-text small mb-1 gn-form-notice-strong">허위 매물 방지를 위해 실제 장비 사진을 1장 이상 등록해주세요. 사진은 최대 10장까지 첨부할 수 있습니다.</p>
                         <p class="form-text small mb-2 text-muted">대표 사진(금색 테두리)이 목록·상세 썸네일로 사용됩니다. 첨부 후 「대표로」를 눌러 변경할 수 있습니다.</p>
                         <input type="hidden" name="primary_image_token" id="id_primary_image_token" value="{% if mode == 'edit' and equipment.images.first %}id:{{ equipment.images.first.pk }}{% else %}new:0{% endif %}">
                         {% if mode == 'edit' and equipment %}
@@ -1457,9 +1457,27 @@
     });
   });
 
+  var MAX_LISTING_IMAGES = 10;
+
+  function countKeptExistingImages() {
+    // 수정 모드: 삭제 체크되지 않은 기존 사진 수
+    var kept = 0;
+    document.querySelectorAll('.gn-edit-photo-item').forEach(function(item) {
+      var chk = item.querySelector('.gn-delete-photo-check');
+      if (!chk || !chk.checked) kept += 1;
+    });
+    return kept;
+  }
+
   function handleFiles(files) {
     var hadFiles = selectedFiles.length > 0;
-    for (var i = 0; i < files.length; i++) selectedFiles.push(files[i]);
+    var allowed = MAX_LISTING_IMAGES - countKeptExistingImages() - selectedFiles.length;
+    var incoming = Array.prototype.slice.call(files);
+    if (incoming.length > allowed) {
+      incoming = incoming.slice(0, Math.max(0, allowed));
+      alert('사진은 최대 ' + MAX_LISTING_IMAGES + '장까지만 첨부할 수 있습니다. 초과한 사진은 추가되지 않았습니다.');
+    }
+    for (var i = 0; i < incoming.length; i++) selectedFiles.push(incoming[i]);
     updateHiddenInput();
     if (!hadFiles && selectedFiles.length && formMode === 'create') {
       setPrimaryToken('new:0');

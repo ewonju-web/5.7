@@ -1,6 +1,7 @@
 # 유료 회원 노출용: 첫화면 로테이션·우측 배너
 import random
 
+from django.conf import settings
 from django.core.cache import cache
 from django.db import models
 from django.urls import reverse
@@ -199,7 +200,9 @@ def get_monthly_listing_count(user):
 
 FREE_LISTING_LIMIT = 20  # 무료 회원 한 달 매물 20건까지
 PREMIUM_LISTING_LIMIT = 50  # 유료 회원 한 달 매물 50건까지
-PREMIUM_MONTHLY_PRICE = 40000  # 유료 회원 월 이용료 (원)
+# 유료 회원 이용료(원) — settings(.env)에서 조정 가능
+PREMIUM_MONTHLY_PRICE = getattr(settings, "PREMIUM_MONTHLY_PRICE", 40000)  # 월
+PREMIUM_YEARLY_PRICE = getattr(settings, "PREMIUM_YEARLY_PRICE", 400000)   # 연(약 2개월 무료)
 PREMIUM_BID_SWITCH_MEMBER_COUNT = 20  # 이 인원 초과 시 입찰 방식 전환 예정
 BUMP_WEEKS_PER_MONTH = 4  # 매물 1개당 주 1회 × 4주 = 월 한도
 BUMP_LISTING_COOLDOWN_DAYS = 7  # 매물별 끌어올리기 재사용 대기(주 1회)

@@ -1,0 +1,137 @@
+{% extends "base.html" %}
+{% load humanize %}
+{% block content %}
+<div class="container py-4 py-md-5" style="max-width: 640px;">
+  <div class="text-center mb-4">
+    <h2 class="fw-bold mb-1">프리미엄 결제</h2>
+    <p class="text-muted mb-0">
+      {{ order_name }} ·
+      <strong class="text-dark">{{ amount|intcomma }}원</strong>
+      {% if mode == 'auto' %}<span class="badge bg-primary ms-1">자동 정기결제</span>{% else %}<span class="badge bg-secondary ms-1">1회 결제</span>{% endif %}
+    </p>
+  </div>
+
+  <div class="card border-0 shadow-sm rounded-4">
+    <div class="card-body p-3 p-md-4">
+      {# 자동결제(빌링)는 API 개별 연동 키 필요 — 위젯 키로는 불가 #}
+      {% if mode == 'auto' and is_widget_key %}
+      <div class="alert alert-warning mb-0">
+        <p class="fw-bold mb-1">자동 정기결제는 토스 <u>API 개별 연동 키</u> 설정 후 이용할 수 있습니다.</p>
+        <p class="small mb-0 text-muted">현재 위젯 테스트 키로 설정되어 있어요. <code>.env</code>의
+          <code>TOSS_CLIENT_KEY</code>/<code>TOSS_SECRET_KEY</code>를 결제창(API 개별 연동) 키로 바꾸면
+          자동결제가 활성화됩니다. 우선 <a href="{% url 'billing_checkout' %}?plan={{ plan }}&mode=once">1회 결제</a>로 진행해 주세요.</p>
+      </div>
+      {% else %}
+        {% if is_widget_key %}
+        {# ── 결제위젯(one-time) ── #}
+        <div id="payment-method"></div>
+        <div id="agreement" class="mt-2"></div>
+        {% endif %}
+        <button id="pay-button" type="button" class="btn btn-primary w-100 py-3 mt-3 fw-bold" style="border-radius: 12px; font-size:1.05rem;">
+          {% if mode == 'auto' %}카드 등록하고 정기결제 시작{% else %}{{ amount|intcomma }}원 결제하기{% endif %}
+        </button>
+        <p id="pay-error" class="text-danger small mt-2 mb-0 d-none"></p>
+        <p class="text-muted small mt-3 mb-0 text-center">
+          {% if toss_is_live %}실 결제가 진행됩니다.{% else %}테스트 결제 환경입니다. 실제 청구되지 않습니다.{% endif %}
+        </p>
+      {% endif %}
+    </div>
+  </div>
+
+  <div class="text-center mt-3">
+    <a href="{% url 'billing_premium' %}" class="text-muted small">← 요금제 다시 선택</a>
+  </div>
+</div>
+
+{% if not mode == 'auto' or not is_widget_key %}
+<script src="https://js.tosspayments.com/v2/standard"></script>
+<script>
+(function () {
+  var clientKey = "{{ client_key|escapejs }}";
+  var customerKey = "{{ customer_key|escapejs }}";
+  var isWidgetKey = {{ is_widget_key|yesno:"true,false" }};
+  var mode = "{{ mode|escapejs }}";
+  var amount = {{ amount }};
+  var orderId = "{{ order_id|escapejs }}";
+  var orderName = "{{ order_name|escapejs }}";
+  var successUrl = "{{ success_url|escapejs }}";
+  var failUrl = "{{ fail_url|escapejs }}";
+  var customerEmail = "{{ customer_email|escapejs }}";
+  var customerName = "{{ customer_name|escapejs }}";
+
+  var payButton = document.getElementById("pay-button");
+  var errEl = document.getElementById("pay-error");
+
+  function showError(msg) {
+    if (!errEl) return;
+    errEl.textContent = msg || "결제 처리 중 오류가 발생했습니다.";
+    errEl.classList.remove("d-none");
+  }
+
+  var tossPayments = TossPayments(clientKey);
+
+  if (isWidgetKey && mode === "once") {
+    // 결제위젯 (1회 결제)
+    var widgets = tossPayments.widgets({ customerKey: customerKey });
+    (async function () {
+      try {
+        await widgets.setAmount({ currency: "KRW", value: amount });
+        await Promise.all([
+          widgets.renderPaymentMethods({ selector: "#payment-method", variantKey: "DEFAULT" }),
+          widgets.renderAgreement({ selector: "#agreement", variantKey: "AGREEMENT" }),
+        ]);
+      } catch (e) { showError(String(e && e.message || e)); }
+    })();
+    payButton.addEventListener("click", async function () {
+      payButton.disabled = true;
+      try {
+        await widgets.requestPayment({
+          orderId: orderId,
+          orderName: orderName,
+          successUrl: successUrl,
+          failUrl: failUrl,
+          customerEmail: customerEmail || undefined,
+          customerName: customerName || undefined,
+        });
+      } catch (e) {
+        payButton.disabled = false;
+        showError(String(e && e.message || e));
+      }
+    });
+  } else {
+    // API 개별 연동 키 — 결제창(1회) 또는 카드등록(자동결제)
+    var payment = tossPayments.payment({ customerKey: customerKey });
+    payButton.addEventListener("click", async function () {
+      payButton.disabled = true;
+      try {
+        if (mode === "auto") {
+          await payment.requestBillingAuth({
+            method: "CARD",
+            successUrl: successUrl,
+            failUrl: failUrl,
+            customerEmail: customerEmail || undefined,
+            customerName: customerName || undefined,
+          });
+        } else {
+          await payment.requestPayment({
+            method: "CARD",
+            amount: { currency: "KRW", value: amount },
+            orderId: orderId,
+            orderName: orderName,
+            successUrl: successUrl,
+            failUrl: failUrl,
+            customerEmail: customerEmail || undefined,
+            customerName: customerName || undefined,
+            card: { flowMode: "DEFAULT", useEscrow: false, useCardPoint: false, useAppCardOnly: false },
+          });
+        }
+      } catch (e) {
+        payButton.disabled = false;
+        showError(String(e && e.message || e));
+      }
+    });
+  }
+})();
+</script>
+{% endif %}
+{% endblock %}
