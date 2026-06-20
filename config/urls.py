@@ -62,15 +62,33 @@ def _redirect_authenticated_to_mypage(request):
 
 
 def _robots_txt(request):
-    body = "\n".join([
-        "User-agent: *",
-        "Allow: /",
-        "User-agent: Yeti",
-        "Allow: /",
-        "Sitemap: https://www.direct-nara.co.kr/sitemap.xml",
-        "",
-    ])
-    return HttpResponse(body, content_type="text/plain; charset=utf-8")
+    # 색인 불필요(개인정보·결제·관리) 경로는 차단, 공개 콘텐츠(매물·카테고리·정보)는 허용.
+    disallow = [
+        "/admin/",
+        "/login/",
+        "/logout/",
+        "/signup/",
+        "/mypage/",
+        "/accounts/",
+        "/password-reset/",
+        "/password-reset-confirm/",
+        "/billing/checkout/",
+        "/billing/success/",
+        "/billing/fail/",
+        "/chat/",
+    ]
+    lines = ["User-agent: *"]
+    lines += [f"Disallow: {p}" for p in disallow]
+    lines.append("Allow: /")
+    lines.append("")
+    # 네이버 Yeti
+    lines.append("User-agent: Yeti")
+    lines += [f"Disallow: {p}" for p in disallow]
+    lines.append("Allow: /")
+    lines.append("")
+    lines.append("Sitemap: https://www.direct-nara.co.kr/sitemap.xml")
+    lines.append("")
+    return HttpResponse("\n".join(lines), content_type="text/plain; charset=utf-8")
 
 
 def _google_site_verification(request):

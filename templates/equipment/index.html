@@ -1,6 +1,13 @@
 {% extends "equipment/equipment_list.html" %}
 {# 메인 매물 목록: equipment_list와 동일한 화면 (카테고리·검색·카드 표시) #}
 
+{# 카테고리(기종) 선택 시 SEO 메타·canonical을 카테고리에 맞게 분리. 없으면 기본 문구 유지 #}
+{% block title %}{% if category_seo_title %}{{ category_seo_title }}{% else %}{{ block.super }}{% endif %}{% endblock %}
+{% block meta_description %}{% if category_seo_description %}{{ category_seo_description }}{% else %}{{ block.super }}{% endif %}{% endblock %}
+{% block og_title %}{% if category_seo_title %}{{ category_seo_title }}{% else %}{{ block.super }}{% endif %}{% endblock %}
+{% block og_description %}{% if category_seo_description %}{{ category_seo_description }}{% else %}{{ block.super }}{% endif %}{% endblock %}
+{% block canonical_url %}{% if seo_category %}https://{{ request.get_host }}/?category={{ seo_category }}{% else %}{{ block.super }}{% endif %}{% endblock %}
+
 {% block extra_js %}
 {{ block.super }}
 {% endblock %}

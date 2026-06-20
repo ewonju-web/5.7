@@ -78,6 +78,7 @@ from .index_listing import (
     INDEX_FILTER_MAX,
     VALID_CATEGORIES,
 )
+from .seo_meta import category_seo
 
 
 def _image_hash_from_upload(uploaded_file):
@@ -543,6 +544,13 @@ def index(request):
     list_offset = INDEX_INITIAL_COUNT if not hide_advanced_filters else total_count
     has_more_list = (not hide_advanced_filters) and (total_count > INDEX_INITIAL_COUNT)
 
+    # 카테고리(기종) 목록 페이지 SEO 메타.
+    # URL 의 ?category= 파라미터가 명시된 경우에만 적용(세션 기억/기본값 'excavator' 는 제외).
+    # 그래야 맨 홈(/)·검색 페이지는 기존 범용 문구·canonical(/) 을 그대로 유지한다.
+    url_category = (request.GET.get('category') or '').strip().lower()
+    seo_category = url_category if url_category in VALID_CATEGORIES else ''
+    cat_seo = category_seo(seo_category) if seo_category else None
+
     return render(request, 'equipment/index.html', {
         'equipment_list': equipment_list,
         'list_per_page': list_per_page,
@@ -571,6 +579,9 @@ def index(request):
         'premium_only': premium_only,
         'list_back_url': request.get_full_path,
         'equipment_detail_next': quote(build_index_list_back_url(request), safe=''),
+        'category_seo_title': cat_seo[0] if cat_seo else '',
+        'category_seo_description': cat_seo[1] if cat_seo else '',
+        'seo_category': seo_category,
     })
 
 
