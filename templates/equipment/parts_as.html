@@ -281,6 +281,19 @@
       nameKeyword: "",
       selectedUid: null,
     };
+    // 상단 메뉴(부품 A/S 드롭다운)에서 ?type= 으로 진입 시 업체 유형 필터 자동 세팅.
+    // 파라미터가 없으면 기존처럼 "전체 업체"로 동작한다.
+    (function applyInitialTypeFilter() {
+      const typeParam = new URLSearchParams(window.location.search).get("type");
+      let kind = null;
+      if (typeParam === "as_parts") kind = "as_parts";        // AS센터 + 부품점
+      else if (typeParam === "local_rental") kind = "rental"; // 지역중기 + 임대
+      if (!kind) return;
+      state.listKindFilter = kind;
+      document.querySelectorAll(".gn-kind-btn").forEach((btn) => {
+        btn.classList.toggle("active", btn.dataset.kindFilter === kind);
+      });
+    })();
     let map, asClusterer, partsClusterer, rentalCompanyClusterer, rentalUserClusterer, callKakaoClusterer, callDriverClusterer;
     let mapReady = false;
     const markersByUid = new Map();
@@ -348,6 +361,7 @@
       if (state.listKindFilter === "all") return true;
       if (state.listKindFilter === "as") return c.type === "as_center";
       if (state.listKindFilter === "parts") return c.type === "parts";
+      if (state.listKindFilter === "as_parts") return c.type === "as_center" || c.type === "parts";
       if (state.listKindFilter === "rental") return c.type === "rental_company" || c.type === "rental_kakao" || c.type === "regional_heavy" || c.type === "rental_user" || c.type === "call_kakao" || c.type === "call_driver";
       return c.center_type_key === state.listKindFilter;
     }
@@ -380,7 +394,7 @@
       listEl.innerHTML = filtered.map((c) => {
         const isRental = c.type === "rental_company" || c.type === "rental_kakao" || c.type === "regional_heavy" || c.type === "rental_user";
         const isCall = c.type === "call_kakao" || c.type === "call_driver";
-        const ratingHtml = (!isRental && !isCall)
+        const ratingHtml = (!isRental && !isCall && Number(c.review_count || 0) > 0)
           ? `<div class="gn-shop-rating">★ ${Number(c.rating || 0).toFixed(1)} <span class="count">리뷰 ${Number(c.review_count || 0)}개</span></div>`
           : "";
         const rentalHtml = (isRental || isCall)
@@ -480,6 +494,11 @@
       if (callKakaoClusterer) callKakaoClusterer.clear();
       if (callDriverClusterer) callDriverClusterer.clear();
     }
+    // 대한민국 영역(대략 위도 33~38.6, 경도 124.5~131.9) 판정
+    function inKorea(lat, lng) {
+      return typeof lat === "number" && typeof lng === "number"
+        && lat >= 33 && lat <= 38.6 && lng >= 124.5 && lng <= 131.9;
+    }
     function renderMarkers() {
       clearMapObjects();
       const bounds = new kakao.maps.LatLngBounds();
@@ -505,7 +524,9 @@
         else if (kind === "call_driver") callDriverMarkers.push(marker);
         markersByUid.set(c.uid, marker);
         infoByUid.set(c.uid, info);
-        bounds.extend(pos);
+        // 마커는 모두 표시하되, 화면 범위 계산은 대한민국 영역 내 좌표만 사용해
+        // 좌표 이상치 때문에 중국/일본까지 줌아웃되는 것을 방지한다.
+        if (inKorea(c.lat, c.lng)) bounds.extend(pos);
       });
       if (asMarkers.length) asClusterer.addMarkers(asMarkers);
       if (partsMarkers.length) partsClusterer.addMarkers(partsMarkers);
@@ -513,8 +534,13 @@
       if (rentalUserMarkers.length) rentalUserClusterer.addMarkers(rentalUserMarkers);
       if (callKakaoMarkers.length) callKakaoClusterer.addMarkers(callKakaoMarkers);
       if (callDriverMarkers.length) callDriverClusterer.addMarkers(callDriverMarkers);
-      if (asMarkers.length || partsMarkers.length || rentalCompanyMarkers.length || rentalUserMarkers.length || callKakaoMarkers.length || callDriverMarkers.length) {
+      if (!bounds.isEmpty()) {
         map.setBounds(bounds);
+        // 전국 단위로 퍼져 있어도 한반도 영역 위주로 보이도록 줌 상한 적용.
+        if (map.getLevel() > 13) {
+          map.setLevel(13);
+          map.setCenter(new kakao.maps.LatLng(36.5, 127.8));
+        }
       }
     }
     function selectCenter(uid, pan) {
@@ -639,6 +665,8 @@
     const centersPromise = loadCentersData();
     kakao.maps.load(async function () {
       map = new kakao.maps.Map(document.getElementById("partsAsMap"), { center: new kakao.maps.LatLng(36.5, 127.8), level: 13 });
+      // 드래그/줌이 대한민국 영역을 벗어나지 않도록 제한 (공통 유틸)
+      if (window.GNKakaoKorea) GNKakaoKorea.restrictMapToKorea(map, { maxLevel: 13 });
       asClusterer = new kakao.maps.MarkerClusterer({
         map, averageCenter: true, minLevel: 8,
         styles: [{ width:"46px", height:"46px", background:"rgba(37, 99, 235, 0.75)", border:"1px solid rgba(255,255,255,0.95)", borderRadius:"23px", color:"#fff", textAlign:"center", fontWeight:"700", lineHeight:"46px", fontSize:"14px" }],

@@ -3,11 +3,95 @@ from __future__ import annotations
 
 import html
 import json
+import re
 from urllib.parse import parse_qs, urlencode, urlparse
 from urllib.request import Request, urlopen
 
 from django.conf import settings
 from django.core.cache import cache
+
+_ISO8601_DURATION_RE = re.compile(
+    r'^P(?:\d+D)?T(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?$'
+)
+
+
+def format_video_duration(iso_duration: str) -> str:
+    """ISO8601 길이(PT12M34S)를 12:34 / 1:02:03 형식으로 변환."""
+    if not iso_duration:
+        return ''
+    m = _ISO8601_DURATION_RE.match(iso_duration.strip())
+    if not m:
+        return ''
+    hours = int(m.group(1) or 0)
+    minutes = int(m.group(2) or 0)
+    seconds = int(m.group(3) or 0)
+    if hours:
+        return f'{hours}:{minutes:02d}:{seconds:02d}'
+    return f'{minutes}:{seconds:02d}'
+
+
+def format_view_count(value) -> str:
+    """조회수를 한국식 축약(1.2만, 3.4천, 1.1억)으로 변환."""
+    if value in (None, ''):
+        return ''
+    try:
+        n = int(value)
+    except (TypeError, ValueError):
+        return ''
+    if n < 1000:
+        return str(n)
+    if n < 10000:
+        return f'{n / 1000:.1f}'.rstrip('0').rstrip('.') + '천'
+    if n < 100000000:
+        return f'{n / 10000:.1f}'.rstrip('0').rstrip('.') + '만'
+    return f'{n / 100000000:.1f}'.rstrip('0').rstrip('.') + '억'
+
+
+def format_published_date(iso_datetime: str) -> str:
+    """게시일(2026-05-20T12:34:56Z)을 2026.05.20 으로 변환."""
+    if not iso_datetime:
+        return ''
+    return iso_datetime[:10].replace('-', '.')
+
+
+def fetch_youtube_video_details(video_ids: list[str], api_key: str) -> dict:
+    """videos.list(part=contentDetails,statistics)로 영상별 메타데이터 조회.
+
+    실패/쿼터초과 시 빈 dict를 반환해 호출부가 메타데이터 없이도 동작하도록 한다.
+    반환: {video_id: {'duration', 'view_count', 'published_at'}}
+    """
+    ids = [v for v in (video_ids or []) if v]
+    if not ids or not api_key:
+        return {}
+    details = {}
+    # videos.list 는 id를 한 번에 최대 50개까지 받는다.
+    for start in range(0, len(ids), 50):
+        chunk = ids[start:start + 50]
+        params = {
+            'part': 'contentDetails,statistics,snippet',
+            'id': ','.join(chunk),
+            'key': api_key,
+        }
+        req_url = f'https://www.googleapis.com/youtube/v3/videos?{urlencode(params)}'
+        try:
+            req = Request(req_url)
+            with urlopen(req, timeout=7) as resp:
+                payload = json.loads(resp.read().decode('utf-8'))
+        except Exception:
+            continue
+        for row in payload.get('items') or []:
+            vid = (row.get('id') or '').strip()
+            if not vid:
+                continue
+            content_details = row.get('contentDetails') or {}
+            statistics = row.get('statistics') or {}
+            snippet = row.get('snippet') or {}
+            details[vid] = {
+                'duration': format_video_duration(content_details.get('duration')),
+                'view_count': format_view_count(statistics.get('viewCount')),
+                'published_at': format_published_date(snippet.get('publishedAt')),
+            }
+    return details
 
 EXAM_VIDEO_KEYWORD_MAP = {
     '': '굴삭기 지게차 운전기능사 실기 필기 시험',
@@ -115,7 +199,8 @@ def fetch_exam_youtube_videos(equipment_key: str = '') -> list[dict]:
     if not api_key:
         return []
 
-    cache_key = f'youtube_api:exam:v4:{equipment_key or "all"}'
+    # v5: 영상별 메타데이터(업로드일·재생시간·조회수) 포함 버전
+    cache_key = f'youtube_api:exam:v5:{equipment_key or "all"}'
     cached = cache.get(cache_key)
     if cached is not None:
         return cached
@@ -162,6 +247,21 @@ def fetch_exam_youtube_videos(equipment_key: str = '') -> list[dict]:
             'thumbnail_needs_crop': False,
             'youtube_url': f'https://www.youtube.com/watch?v={video_id}',
             'equipment_label': equipment_label,
+            'duration': '',
+            'view_count': '',
+            'published_at': '',
         })
+
+    # 업로드일·재생시간·조회수는 search.list 응답에 없으므로 videos.list 로 보강.
+    # 실패해도(쿼터 초과 등) 메타데이터 없이 기존처럼 정상 노출된다.
+    details = fetch_youtube_video_details([it['video_id'] for it in items], api_key)
+    if details:
+        for it in items:
+            meta = details.get(it['video_id'])
+            if meta:
+                it['duration'] = meta.get('duration', '')
+                it['view_count'] = meta.get('view_count', '')
+                it['published_at'] = meta.get('published_at', '')
+
     cache.set(cache_key, items, timeout=86400)
     return items

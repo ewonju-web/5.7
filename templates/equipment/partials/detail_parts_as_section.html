@@ -10,10 +10,10 @@
     {% if kakao_map_js_key %}
     <div class="gn-detail-parts-as-kind-card mb-2" aria-label="업체 분류">
       <div class="gn-detail-parts-as-kind-grid">
-        <a href="{% url 'parts_as' %}?back={{ parts_as_back }}" target="_blank" rel="noopener noreferrer" class="gn-detail-kind-pill is-active">{{ LANG|tr:"parts_as_filter_all" }} (<span class="gn-parts-as-count-all">…</span>)</a>
-        <a href="{% url 'parts_as' %}?type=as&amp;back={{ parts_as_back }}" target="_blank" rel="noopener noreferrer" class="gn-detail-kind-pill">{{ LANG|tr:"parts_as_filter_as" }} (<span class="gn-parts-as-count-as">…</span>)</a>
-        <a href="{% url 'parts_as' %}?type=parts&amp;back={{ parts_as_back }}" target="_blank" rel="noopener noreferrer" class="gn-detail-kind-pill">{{ LANG|tr:"parts_as_filter_parts" }} (<span class="gn-parts-as-count-parts">…</span>)</a>
-        <a href="{% url 'parts_as' %}?type=rental&amp;back={{ parts_as_back }}" target="_blank" rel="noopener noreferrer" class="gn-detail-kind-pill">{{ LANG|tr:"parts_as_filter_rental" }} (<span class="gn-parts-as-count-rental">…</span>)</a>
+        <a href="{% url 'parts_as' %}?back={{ parts_as_back }}" target="_blank" rel="noopener noreferrer" class="gn-detail-kind-pill" data-kind="all">{{ LANG|tr:"parts_as_filter_all" }} (<span class="gn-parts-as-count-all">…</span>)</a>
+        <a href="{% url 'parts_as' %}?type=as&amp;back={{ parts_as_back }}" target="_blank" rel="noopener noreferrer" class="gn-detail-kind-pill is-active" data-kind="as">{{ LANG|tr:"parts_as_filter_as" }} (<span class="gn-parts-as-count-as">…</span>)</a>
+        <a href="{% url 'parts_as' %}?type=parts&amp;back={{ parts_as_back }}" target="_blank" rel="noopener noreferrer" class="gn-detail-kind-pill" data-kind="parts">{{ LANG|tr:"parts_as_filter_parts" }} (<span class="gn-parts-as-count-parts">…</span>)</a>
+        <a href="{% url 'parts_as' %}?type=rental&amp;back={{ parts_as_back }}" target="_blank" rel="noopener noreferrer" class="gn-detail-kind-pill" data-kind="rental">{{ LANG|tr:"parts_as_filter_rental" }} (<span class="gn-parts-as-count-rental">…</span>)</a>
       </div>
     </div>
     <a href="{% url 'parts_as' %}?back={{ parts_as_back }}" target="_blank" rel="noopener noreferrer" class="gn-detail-parts-as-map-wrap d-block text-decoration-none">

@@ -1947,7 +1947,9 @@
 (function () {
   var KOREA_CENTER = { lat: 36.0, lng: 127.75 };
   var KOREA_LEVEL = 15;
-  var centersCache = null;
+  var centersCacheByType = {};   // 분류(type)별 데이터 캐시 — 탭별 lazy fetch
+  var railWidgets = [];          // 생성된 미니 지도 위젯들
+  var DEFAULT_KIND = "as";       // 위젯 최초 로드 시 기본 탭(AS센터)
 
   function esc(v) {
     return (v || "").replace(/[&<>"']/g, function (c) {
@@ -1971,20 +1973,39 @@
     document.querySelectorAll(".gn-parts-as-count-rental").forEach(function (el) { el.textContent = String(rentalCount); });
   }
 
-  function loadCenters() {
-    if (centersCache) {
-      return Promise.resolve(centersCache);
+  function updateOverlayCountsForType(type, centers) {
+    // 전체를 가져온 경우에만 모든 분류 카운트를 한 번에 갱신.
+    if (type === "all") {
+      updateOverlayCounts(centers);
+      return;
     }
-    return fetch("/api/service-centers/?equipment_type=all&type=all")
+    // 부분(AS센터/부품점/지역중기) 로드 시 해당 분류 카운트만 갱신.
+    var selector = type === "as" ? ".gn-parts-as-count-as"
+      : type === "parts" ? ".gn-parts-as-count-parts"
+      : type === "rental" ? ".gn-parts-as-count-rental"
+      : null;
+    if (!selector) return;
+    document.querySelectorAll(selector).forEach(function (el) {
+      el.textContent = String(centers.length);
+    });
+  }
+
+  function loadCenters(kind) {
+    var type = kind || "all";
+    if (centersCacheByType[type]) {
+      return Promise.resolve(centersCacheByType[type]);
+    }
+    return fetch("/api/service-centers/?equipment_type=all&type=" + encodeURIComponent(type))
       .then(function (res) { return res.json(); })
       .then(function (data) {
-        centersCache = Array.isArray(data.centers) ? data.centers : [];
-        updateOverlayCounts(centersCache);
-        return centersCache;
+        var arr = Array.isArray(data.centers) ? data.centers : [];
+        centersCacheByType[type] = arr;
+        updateOverlayCountsForType(type, arr);
+        return arr;
       })
       .catch(function () {
-        centersCache = [];
-        return centersCache;
+        centersCacheByType[type] = [];
+        return centersCacheByType[type];
       });
   }
 
@@ -2026,8 +2047,8 @@
     }];
   }
 
-  function initRailMap(canvasEl, centers) {
-    if (!canvasEl) return;
+  function createRailWidget(canvasEl) {
+    if (!canvasEl) return null;
     var map = new kakao.maps.Map(canvasEl, {
       center: new kakao.maps.LatLng(KOREA_CENTER.lat, KOREA_CENTER.lng),
       level: KOREA_LEVEL,
@@ -2037,6 +2058,9 @@
       disableDoubleClickZoom: true,
       keyboardShortcuts: false,
     });
+    // 드래그/줌이 대한민국 영역을 벗어나지 않도록 제한 (공통 유틸).
+    // 위젯은 작은 박스라 초기 레벨(KOREA_LEVEL)을 유지하기 위해 maxLevel은 지정하지 않는다.
+    if (window.GNKakaoKorea) GNKakaoKorea.restrictMapToKorea(map);
     var asClusterer = new kakao.maps.MarkerClusterer({
       map: map,
       averageCenter: true,
@@ -2055,27 +2079,31 @@
       minLevel: 8,
       styles: clusterStyle("rgba(22, 163, 74, 0.78)"),
     });
-    var asMarkers = [];
-    var partsMarkers = [];
-    var rentalMarkers = [];
 
-    centers.forEach(function (center) {
-      if (typeof center.lat !== "number" || typeof center.lng !== "number") return;
-      var pos = new kakao.maps.LatLng(center.lat, center.lng);
-      var kind = markerKind(center);
-      var marker = new kakao.maps.Marker({
-        position: pos,
-        title: center.name || "",
-        image: markerImage(kind),
+    function setMarkers(centers) {
+      asClusterer.clear();
+      partsClusterer.clear();
+      rentalClusterer.clear();
+      var asMarkers = [];
+      var partsMarkers = [];
+      var rentalMarkers = [];
+      centers.forEach(function (center) {
+        if (typeof center.lat !== "number" || typeof center.lng !== "number") return;
+        var pos = new kakao.maps.LatLng(center.lat, center.lng);
+        var kind = markerKind(center);
+        var marker = new kakao.maps.Marker({
+          position: pos,
+          title: center.name || "",
+          image: markerImage(kind),
+        });
+        if (kind === "as") asMarkers.push(marker);
+        else if (kind === "rental") rentalMarkers.push(marker);
+        else partsMarkers.push(marker);
       });
-      if (kind === "as") asMarkers.push(marker);
-      else if (kind === "rental") rentalMarkers.push(marker);
-      else partsMarkers.push(marker);
-    });
-
-    if (asMarkers.length) asClusterer.addMarkers(asMarkers);
-    if (partsMarkers.length) partsClusterer.addMarkers(partsMarkers);
-    if (rentalMarkers.length) rentalClusterer.addMarkers(rentalMarkers);
+      if (asMarkers.length) asClusterer.addMarkers(asMarkers);
+      if (partsMarkers.length) partsClusterer.addMarkers(partsMarkers);
+      if (rentalMarkers.length) rentalClusterer.addMarkers(rentalMarkers);
+    }
 
     function fitView() {
       map.relayout();
@@ -2087,14 +2115,38 @@
     window.addEventListener("resize", function () {
       if (canvasEl.offsetParent) fitView();
     });
+
+    return { setMarkers: setMarkers };
+  }
+
+  function selectKind(kind) {
+    // 모든 위젯의 pill 활성 상태 동기화
+    document.querySelectorAll(".gn-detail-kind-pill").forEach(function (pill) {
+      pill.classList.toggle("is-active", pill.getAttribute("data-kind") === kind);
+    });
+    loadCenters(kind).then(function (centers) {
+      railWidgets.forEach(function (w) { if (w) w.setMarkers(centers); });
+    });
+  }
+
+  function bindKindTabs() {
+    // pill 클릭 시 메인 페이지 이동(기본 링크) 대신 위젯 내에서 lazy 전환.
+    document.querySelectorAll(".gn-detail-kind-pill").forEach(function (pill) {
+      pill.addEventListener("click", function (e) {
+        var kind = pill.getAttribute("data-kind");
+        if (!kind) return;
+        e.preventDefault();
+        selectKind(kind);
+      });
+    });
   }
 
   kakao.maps.load(function () {
-    loadCenters().then(function (centers) {
-      document.querySelectorAll(".gn-detail-parts-as-map").forEach(function (el) {
-        initRailMap(el, centers);
-      });
+    document.querySelectorAll(".gn-detail-parts-as-map").forEach(function (el) {
+      railWidgets.push(createRailWidget(el));
     });
+    bindKindTabs();
+    selectKind(DEFAULT_KIND);  // 최초 로드 시 AS센터만 요청해 초기 데이터량 절감
   });
 })();
 </script>

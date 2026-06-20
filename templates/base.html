@@ -186,6 +186,72 @@
         .soil-nav-mobile:hover, .soil-nav-mobile:focus {
             color: var(--gn-text) !important;
         }
+        /* 구인구직 PC hover 드롭다운 (자격증 시험 등 하위 메뉴) */
+        .navbar-gn .gn-jobs-dropdown {
+            position: relative;
+        }
+        .navbar-gn .gn-jobs-dropdown .gn-jobs-dropdown-menu {
+            display: block;
+            margin: 0;
+            /* navbar 하단 패딩(0.6rem)만큼 내려 남색 바 끝에 딱 붙임 */
+            top: calc(100% + 0.6rem);
+            left: 0;
+            min-width: 200px;
+            opacity: 0;
+            visibility: hidden;
+            pointer-events: none;
+            transform: none;
+            transition: opacity .12s ease, visibility .12s ease;
+            background-color: #ffffff;
+            color: var(--gn-text);
+            border: 0.5px solid #d8d6cf;
+            border-radius: 8px;
+            padding: 6px;
+            box-shadow: 0 6px 16px rgba(0,0,0,0.14);
+        }
+        /* 버튼 하단부터 드롭다운까지 hover 영역 연속 보장용 투명 브릿지 */
+        .navbar-gn .gn-jobs-dropdown .gn-jobs-dropdown-menu::before {
+            content: "";
+            position: absolute;
+            top: calc(-0.6rem - 1px);
+            left: 0;
+            right: 0;
+            height: calc(0.6rem + 1px);
+        }
+        .navbar-gn .gn-jobs-dropdown:hover .gn-jobs-dropdown-menu,
+        .navbar-gn .gn-jobs-dropdown:focus-within .gn-jobs-dropdown-menu {
+            opacity: 1;
+            visibility: visible;
+            pointer-events: auto;
+            transform: translateY(0);
+        }
+        .navbar-gn .gn-jobs-dropdown .gn-jobs-dropdown-menu .dropdown-item {
+            border-radius: 8px;
+            padding: .55rem .85rem;
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+            color: var(--gn-nav);
+        }
+        .navbar-gn .gn-jobs-dropdown .gn-jobs-dropdown-menu .dropdown-item i {
+            color: var(--gn-nav);
+        }
+        .navbar-gn .gn-jobs-dropdown .gn-jobs-dropdown-menu .dropdown-item:hover,
+        .navbar-gn .gn-jobs-dropdown .gn-jobs-dropdown-menu .dropdown-item:focus {
+            background: #2d3142;
+            color: #f4a623;
+        }
+        .navbar-gn .gn-jobs-dropdown .gn-jobs-dropdown-menu .dropdown-item:hover i,
+        .navbar-gn .gn-jobs-dropdown .gn-jobs-dropdown-menu .dropdown-item:focus i {
+            color: #f4a623;
+        }
+        .navbar-gn .gn-jobs-dropdown .gn-jobs-dropdown-menu .dropdown-item.active {
+            background: #2d3142;
+            color: #f4a623;
+        }
+        .navbar-gn .gn-jobs-dropdown .gn-jobs-dropdown-menu .dropdown-item.active i {
+            color: #f4a623;
+        }
         .navbar-gn .btn-outline-light {
             border-color: rgba(255,255,255,.4);
             color: #fff;
@@ -990,10 +1056,23 @@
                 <ul class="navbar-nav me-auto">
                     <li class="nav-item"><a class="nav-link {% if request.resolver_match.url_name == 'index' %}active{% endif %}" href="{% url 'index' %}?category=excavator">{{ LANG|tr:"nav_market_view" }}</a></li>
                     <li class="nav-item"><a class="nav-link {% if request.resolver_match.url_name == 'equipment_create' %}active{% endif %}" href="{% if user.is_authenticated %}{% url 'equipment_create' %}{% else %}{% url 'login' %}?next={% url 'equipment_create' %}{% endif %}">{{ LANG|tr:"nav_register" }}</a></li>
-                    <li class="nav-item"><a class="nav-link {% if request.resolver_match.url_name == 'job_list' or request.resolver_match.url_name == 'job_create' or request.resolver_match.url_name == 'job_detail' or request.resolver_match.url_name == 'job_edit' or request.resolver_match.url_name == 'exam_list' or request.resolver_match.url_name == 'exam_video_list' or request.resolver_match.url_name == 'exam_create' or request.resolver_match.url_name == 'exam_detail' %}active{% endif %}" href="{% url 'job_list' %}">{{ LANG|tr:"nav_jobs" }}</a></li>
                     <li class="nav-item"><a class="nav-link {% if request.resolver_match.url_name == 'finance' %}active{% endif %}" href="{% url 'finance' %}">{{ LANG|tr:"nav_attachment" }}</a></li>
+                    <li class="nav-item dropdown gn-jobs-dropdown">
+                        <a class="nav-link dropdown-toggle gn-jobs-dropdown-toggle {% if request.resolver_match.url_name == 'job_list' or request.resolver_match.url_name == 'job_create' or request.resolver_match.url_name == 'job_detail' or request.resolver_match.url_name == 'job_edit' or request.resolver_match.url_name == 'exam_list' or request.resolver_match.url_name == 'exam_video_list' or request.resolver_match.url_name == 'exam_create' or request.resolver_match.url_name == 'exam_detail' %}active{% endif %}" href="{% url 'job_list' %}" role="button" aria-haspopup="true" aria-expanded="false">{{ LANG|tr:"nav_jobs" }}</a>
+                        <ul class="dropdown-menu gn-jobs-dropdown-menu">
+                            <li><a class="dropdown-item" href="{% url 'job_list' %}?type=HIRING"><i class="bi bi-person-fill me-2" aria-hidden="true"></i>{{ LANG|tr:"nav_job_hiring" }}</a></li>
+                            <li><a class="dropdown-item" href="{% url 'job_list' %}?type=SEEKING"><i class="bi bi-briefcase-fill me-2" aria-hidden="true"></i>{{ LANG|tr:"nav_job_seeking" }}</a></li>
+                            <li><a class="dropdown-item {% if request.resolver_match.url_name == 'exam_list' or request.resolver_match.url_name == 'exam_video_list' or request.resolver_match.url_name == 'exam_create' or request.resolver_match.url_name == 'exam_detail' %}active{% endif %}" href="{% url 'exam_video_list' %}?equipment=excavator"><i class="bi bi-mortarboard-fill me-2" aria-hidden="true"></i>{{ LANG|tr:"nav_exam" }}</a></li>
+                        </ul>
+                    </li>
                     <li class="nav-item"><a class="nav-link {% if request.resolver_match.url_name == 'excavator_info' %}active{% endif %}" href="{% url 'excavator_info' %}">{{ LANG|tr:"nav_youtube" }}</a></li>
-                    <li class="nav-item"><a class="nav-link {% if request.resolver_match.url_name == 'parts_as' or request.resolver_match.url_name == 'parts_as_register' %}active{% endif %}" href="{% url 'parts_as' %}">{{ LANG|tr:"nav_parts_as" }}</a></li>
+                    <li class="nav-item dropdown gn-jobs-dropdown">
+                        <a class="nav-link dropdown-toggle gn-jobs-dropdown-toggle {% if request.resolver_match.url_name == 'parts_as' or request.resolver_match.url_name == 'parts_as_register' %}active{% endif %}" href="{% url 'parts_as' %}" role="button" aria-haspopup="true" aria-expanded="false">{{ LANG|tr:"nav_parts_as" }}</a>
+                        <ul class="dropdown-menu gn-jobs-dropdown-menu">
+                            <li><a class="dropdown-item" href="{% url 'parts_as' %}?type=as_parts"><i class="bi bi-tools me-2" aria-hidden="true"></i>{{ LANG|tr:"nav_parts_as" }}</a></li>
+                            <li><a class="dropdown-item" href="{% url 'parts_as' %}?type=local_rental"><i class="bi bi-truck me-2" aria-hidden="true"></i>{{ LANG|tr:"nav_local_rental" }}</a></li>
+                        </ul>
+                    </li>
                     <li class="nav-item"><a class="nav-link soil-nav {% if request.resolver_match.url_name == 'soil_list' or request.resolver_match.url_name == 'soil_create' or request.resolver_match.url_name == 'soil_detail' or request.resolver_match.url_name == 'soil_edit' %}active{% endif %}" href="{% url 'soil_list' %}">{{ LANG|tr:"nav_soil" }}</a></li>
                 </ul>
                 <div class="d-flex align-items-center gap-2 gn-nav-actions">
@@ -1075,13 +1154,21 @@
                     <div class="gn-service-item-icon"><i class="bi bi-youtube"></i></div>
                     <div><div class="gn-service-item-title">{{ LANG|tr:"nav_youtube" }}</div></div>
                 </a>
-                <a href="{% url 'parts_as' %}" class="gn-service-item gn-service-offcanvas-link">
-                    <div class="gn-service-item-icon"><i class="bi bi-gear"></i></div>
-                    <div><div class="gn-service-item-title">{{ LANG|tr:"service_parts_as_shop" }}</div></div>
+                <a href="{% url 'parts_as' %}?type=as_parts" class="gn-service-item gn-service-offcanvas-link">
+                    <div class="gn-service-item-icon"><i class="bi bi-tools"></i></div>
+                    <div><div class="gn-service-item-title">{{ LANG|tr:"nav_parts_as" }}</div></div>
+                </a>
+                <a href="{% url 'parts_as' %}?type=local_rental" class="gn-service-item gn-service-offcanvas-link">
+                    <div class="gn-service-item-icon"><i class="bi bi-truck"></i></div>
+                    <div><div class="gn-service-item-title">{{ LANG|tr:"nav_local_rental" }}</div></div>
                 </a>
                 <a href="{% url 'soil_list' %}" class="gn-service-item soil-nav-mobile gn-service-offcanvas-link">
                     <div class="gn-service-item-icon"><i class="bi bi-droplet-half"></i></div>
                     <div><div class="gn-service-item-title">{{ LANG|tr:"nav_soil" }}</div></div>
+                </a>
+                <a href="{% url 'exam_video_list' %}?equipment=excavator" class="gn-service-item gn-service-offcanvas-link">
+                    <div class="gn-service-item-icon"><i class="bi bi-mortarboard"></i></div>
+                    <div><div class="gn-service-item-title">{{ LANG|tr:"nav_exam" }}</div></div>
                 </a>
             </div>
             <div class="px-3 mt-2 gn-service-account-block">
@@ -1213,6 +1300,7 @@
     </a>
 
     <script src="{% static 'vendor/bootstrap/js/bootstrap.bundle.min.js' %}?v=20260616"></script>
+    <script src="{% static 'js/gn_kakao_korea.js' %}?v=20260620"></script>
     {{ I18N_PAGE|json_script:"gn-i18n-page" }}
     <script>
       (function () {

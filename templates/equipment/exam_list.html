@@ -175,6 +175,7 @@
                         <img src="https://img.youtube.com/vi/0/mqdefault.jpg" class="exam-video-thumb" alt="{{ item.title }}" loading="lazy">
                         {% endif %}
                         <span class="exam-video-play" aria-hidden="true">▶</span>
+                        {% if item.duration %}<span class="exam-video-duration">{{ item.duration }}</span>{% endif %}
                     </span>
                 </button>
                 <div class="exam-video-body">
@@ -184,6 +185,12 @@
                         <h3 class="exam-video-title">{{ item.title }}</h3>
                     </button>
                     <div class="exam-video-channel">{{ item.channel_title|default:"YouTube" }}</div>
+                    {% if item.view_count or item.published_at %}
+                    <div class="exam-video-stats">
+                        {% if item.view_count %}<span class="exam-video-stat"><i class="bi bi-eye" aria-hidden="true"></i>조회수 {{ item.view_count }}</span>{% endif %}
+                        {% if item.published_at %}<span class="exam-video-stat"><i class="bi bi-calendar3" aria-hidden="true"></i>{{ item.published_at }}</span>{% endif %}
+                    </div>
+                    {% endif %}
                     <div class="exam-video-meta">
                         <span class="exam-video-badge exam-video-badge-equipment">{{ item.equipment_label }}</span>
                         <span class="exam-video-badge exam-video-badge-type">시험동영상</span>
