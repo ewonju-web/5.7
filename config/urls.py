@@ -1,5 +1,6 @@
 from django.contrib import admin
-from django.urls import path, include
+from django.urls import path, include, re_path
+from django.views.generic import RedirectView
 from django.conf import settings
 from django.conf.urls.static import static
 from django.contrib.auth import views as auth_views
@@ -109,6 +110,23 @@ urlpatterns = [
     # 소셜 콜백 별칭: 개발자센터 등록 URL을 /auth/... 로 써도 동작하게 함
     path('auth/kakao/callback', lambda request: _social_callback_alias(request, 'kakao')),
     path('auth/naver/callback', lambda request: _social_callback_alias(request, 'naver')),
+    # ── 레거시 모바일 사이트(/m/*) → 신버전 301 영구 리다이렉트 ──
+    # 구체 패턴을 먼저 매칭하고, 마지막 catch-all 로 나머지 /m/* 는 홈으로 보낸다.
+    path('m/main/main.html', RedirectView.as_view(url='/', permanent=True)),
+    # 개별 매물 상세는 구/신 ID 가 1:1 대응되지 않으므로 굴삭기 카테고리 목록으로 보낸다.
+    # (uid 등 쿼리 파라미터 유무와 무관하게 경로만으로 매칭됨)
+    path('m/viewsale/viewsale_010100.html', RedirectView.as_view(url='/?category=excavator', permanent=True)),
+    path('m/offering/offering_010100.html', RedirectView.as_view(url='/equipment/create/', permanent=True)),
+    path('m/job/job_010100.html', RedirectView.as_view(url='/jobs/', permanent=True)),
+    path('m/attachment/attachment_010100.html', RedirectView.as_view(url='/parts-as/', permanent=True)),
+    path('m/community/community.html', RedirectView.as_view(url='/info/', permanent=True)),
+    path('m/etc/about.html', RedirectView.as_view(url='/company/', permanent=True)),
+    path('m/etc/terms.html', RedirectView.as_view(url='/terms/', permanent=True)),
+    path('m/etc/privacy.html', RedirectView.as_view(url='/privacy/', permanent=True)),
+    path('m/ad/ad_010100.html', RedirectView.as_view(url='/billing/upgrade/', permanent=True)),
+    path('m/member/login.html', RedirectView.as_view(url='/login/', permanent=True)),
+    # catch-all: 위에서 매칭되지 않은 모든 /m/* → 홈 (반드시 마지막)
+    re_path(r'^m/.*$', RedirectView.as_view(url='/', permanent=True)),
     path('chat/', include('chat.urls')),
     path('soil/', include('soil.urls')),
     path('rental/', include('rental.urls')),
