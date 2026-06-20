@@ -211,15 +211,6 @@
           </select>
         </div>
         <div class="col-12 col-md-6">
-          <label class="small text-muted mb-1 d-block">업체 유형</label>
-          <select id="centerTypeInput" class="form-select">
-            <option value="all">전체 업체</option>
-            <option value="as" {% if selected_shop_kind == "as" %}selected{% endif %}>AS센터</option>
-            <option value="parts" {% if selected_shop_kind == "parts" %}selected{% endif %}>부품점</option>
-            <option value="rental" {% if selected_shop_kind == "rental" %}selected{% endif %}>지역중기</option>
-          </select>
-        </div>
-        <div class="col-12">
           <label class="small text-muted mb-1 d-block">업체명 검색</label>
           <input type="text" id="nameSearchInput" class="form-control" placeholder="업체명을 입력하세요" autocomplete="off">
         </div>
@@ -240,8 +231,7 @@
           <div class="small text-muted"><strong id="resultCount">…</strong>개 업체</div>
           <div class="gn-kind-tabs">
             <button class="gn-kind-btn active" data-kind-filter="all">전체 (<span id="countAll">…</span>)</button>
-            <button class="gn-kind-btn" data-kind-filter="as">AS센터 (<span id="countAs">…</span>)</button>
-            <button class="gn-kind-btn" data-kind-filter="parts">부품점 (<span id="countParts">…</span>)</button>
+            <button class="gn-kind-btn" data-kind-filter="as_parts">부품 A·S (<span id="countAsParts">…</span>)</button>
             <button class="gn-kind-btn" data-kind-filter="rental">지역중기 (<span id="countRental">…</span>)</button>
           </div>
         </div>
@@ -274,21 +264,31 @@
     const state = {
       equipmentType: "{{ selected_equipment_type|default:'all' }}",
       region: document.getElementById("regionInput").value || "",
-      centerType: document.getElementById("centerTypeInput").value || "all",
+      // 업체 유형 필터는 하단 탭(listKindFilter)이 단일 소스. API 는 항상 전체를 받아 클라에서 필터링.
+      centerType: "all",
       manufacturers: new Set(),
       repairTypes: new Set(),
       listKindFilter: "all",
       nameKeyword: "",
       selectedUid: null,
     };
-    // 상단 메뉴(부품 A/S 드롭다운)에서 ?type= 으로 진입 시 업체 유형 필터 자동 세팅.
-    // 파라미터가 없으면 기존처럼 "전체 업체"로 동작한다.
+    // 업체 유형 단일 소스 = 하단 탭(.gn-kind-btn).
+    // URL ?type= 으로 진입(상단 메뉴/외부 링크)하면 해당 탭이 선택되도록 동기화한다.
+    // 파라미터가 없거나 all 이면 기본 "전체" 탭 상태를 유지한다.
     (function applyInitialTypeFilter() {
-      const typeParam = new URLSearchParams(window.location.search).get("type");
-      let kind = null;
-      if (typeParam === "as_parts") kind = "as_parts";        // AS센터 + 부품점
-      else if (typeParam === "local_rental") kind = "rental"; // 지역중기 + 임대
-      if (!kind) return;
+      const typeParam = (new URLSearchParams(window.location.search).get("type") || "").toLowerCase();
+      const typeToKind = {
+        // AS센터/부품점 계열은 모두 통합 "부품 A·S" 탭으로
+        as: "as_parts",
+        as_center: "as_parts",
+        parts: "as_parts",
+        as_parts: "as_parts",     // AS센터 + 부품점
+        rental: "rental",
+        local_rental: "rental",   // 지역중기 + 임대
+        all: "all",
+      };
+      const kind = typeToKind[typeParam];
+      if (!kind || kind === "all") return;
       state.listKindFilter = kind;
       document.querySelectorAll(".gn-kind-btn").forEach((btn) => {
         btn.classList.toggle("active", btn.dataset.kindFilter === kind);
@@ -304,8 +304,7 @@
     const listEl = document.getElementById("shopList");
     const resultCountEl = document.getElementById("resultCount");
     const countAllEl = document.getElementById("countAll");
-    const countAsEl = document.getElementById("countAs");
-    const countPartsEl = document.getElementById("countParts");
+    const countAsPartsEl = document.getElementById("countAsParts");
     const countRentalEl = document.getElementById("countRental");
     const excavatorBox = document.getElementById("excavatorDetailBox");
 
@@ -314,8 +313,7 @@
       if (loading) {
         resultCountEl.textContent = "…";
         countAllEl.textContent = "…";
-        countAsEl.textContent = "…";
-        countPartsEl.textContent = "…";
+        countAsPartsEl.textContent = "…";
         countRentalEl.textContent = "…";
         if (!centers.length) {
           listEl.innerHTML = '<div class="gn-empty gn-loading-state">업체 정보를 불러오는 중...</div>';
@@ -376,13 +374,12 @@
     }
     function updateCounts() {
       const all = centers.length;
-      const asCount = centers.filter((x) => x.type === "as_center").length;
-      const partsCount = centers.filter((x) => x.type === "parts").length;
+      // "부품 A·S" 탭 = AS센터 + 부품점 합산
+      const asPartsCount = centers.filter((x) => x.type === "as_center" || x.type === "parts").length;
       const rentalCount = centers.filter((x) => x.type === "rental_company" || x.type === "rental_kakao" || x.type === "regional_heavy" || x.type === "rental_user" || x.type === "call_kakao" || x.type === "call_driver").length;
       resultCountEl.textContent = String(all);
       countAllEl.textContent = String(all);
-      countAsEl.textContent = String(asCount);
-      countPartsEl.textContent = String(partsCount);
+      countAsPartsEl.textContent = String(asPartsCount);
       countRentalEl.textContent = String(rentalCount);
     }
     function renderList() {
@@ -604,10 +601,6 @@
         state.region = this.value || "";
         await fetchCenters();
       });
-      document.getElementById("centerTypeInput").addEventListener("change", async function () {
-        state.centerType = this.value || "all";
-        await fetchCenters();
-      });
       document.getElementById("nameSearchInput").addEventListener("input", function () {
         state.nameKeyword = this.value || "";
         resetSelection();
@@ -652,7 +645,6 @@
         state.nameKeyword = "";
         state.manufacturers.clear(); state.repairTypes.clear();
         document.getElementById("regionInput").value = "";
-        document.getElementById("centerTypeInput").value = "all";
         document.getElementById("nameSearchInput").value = "";
         document.querySelectorAll(".gn-pill-btn").forEach((x) => x.classList.toggle("active", x.dataset.equipmentType === "all"));
         document.querySelectorAll(".gn-kind-btn").forEach((x) => x.classList.toggle("active", x.dataset.kindFilter === "all"));

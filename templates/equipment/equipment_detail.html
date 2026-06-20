@@ -1121,6 +1121,15 @@
       align-self: flex-start;
       height: fit-content;
     }
+    /* 사이드바 비례 스크롤(JS 활성 시): wrapper 는 뷰포트 높이로 고정 + 클리핑,
+       inner(rail-shell) 를 transform 으로 좌측 스크롤 비율만큼 이동시킨다. */
+    .gn-detail-outer-rail.gn-rail-proportional {
+      height: calc(100vh - 4.9rem);
+      overflow: hidden;
+    }
+    .gn-detail-outer-rail.gn-rail-proportional .gn-detail-rail-shell {
+      will-change: transform;
+    }
     .gn-detail-sticky-rail {
       position: static;
       top: auto;
@@ -2151,4 +2160,80 @@
 })();
 </script>
 {% endif %}
+<script>
+(function () {
+  // 우측 사이드바 비례 스크롤: 좌측 콘텐츠 스크롤 진행률에 맞춰 사이드바 inner(rail-shell)를 translateY.
+  // - PC(>=992px) 2열 그리드에서만 동작. 모바일/태블릿(사이드바가 본문 아래로 흐르거나 숨김)에선 비활성.
+  // - inner 콘텐츠 높이는 ResizeObserver 로 동적 추적(광고 추가·비동기 로딩·폰트 변화 자동 대응).
+  var wrapper = document.querySelector('.gn-detail-outer-rail');
+  var inner = wrapper ? wrapper.querySelector('.gn-detail-rail-shell') : null;
+  var layout = document.querySelector('.gn-detail-layout');
+  if (!wrapper || !inner || !layout) return;
+
+  var mq = window.matchMedia('(min-width: 992px)');
+  var active = false;
+  var ticking = false;
+  var maxOffset = 0;      // inner 콘텐츠 높이 − wrapper(sticky 영역) 높이. 음수면 0(이동 안 함)
+  var pinnedTravel = 0;   // 좌측(layout 트랙)이 핀 상태로 스크롤되는 총 거리
+  var startScroll = 0;    // wrapper 가 sticky 위치에 닿는 시점의 scrollY
+  var headerOffsetPx = 0; // sticky top(헤더 높이) — CSS 값을 단일 소스로 사용
+
+  function measure() {
+    var topVal = parseFloat(window.getComputedStyle(wrapper).top);
+    headerOffsetPx = isNaN(topVal) ? 0 : topVal;
+    var wrapperH = wrapper.clientHeight;            // = calc(100vh - top)
+    var innerH = inner.scrollHeight;                // 실제 콘텐츠 전체 높이
+    maxOffset = Math.max(0, innerH - wrapperH);
+    pinnedTravel = Math.max(0, layout.offsetHeight - wrapperH);
+    startScroll = layout.getBoundingClientRect().top + window.scrollY - headerOffsetPx;
+  }
+
+  function update() {
+    ticking = false;
+    if (!active) return;
+    if (maxOffset <= 0 || pinnedTravel <= 0) { inner.style.transform = ''; return; }
+    var progress = (window.scrollY - startScroll) / pinnedTravel;
+    progress = Math.min(1, Math.max(0, progress));   // 0~1 clamp
+    inner.style.transform = 'translateY(' + (-(progress * maxOffset)) + 'px)';
+  }
+
+  function onScroll() {
+    if (active && !ticking) { ticking = true; window.requestAnimationFrame(update); }
+  }
+
+  function remeasure() { if (active) { measure(); update(); } }
+
+  function activate() {
+    if (active) return;
+    active = true;
+    wrapper.classList.add('gn-rail-proportional');
+    measure();
+    update();
+    window.addEventListener('scroll', onScroll, { passive: true });
+  }
+
+  function deactivate() {
+    if (!active) return;
+    active = false;
+    window.removeEventListener('scroll', onScroll);
+    wrapper.classList.remove('gn-rail-proportional');
+    inner.style.transform = '';
+  }
+
+  function applyMode() { if (mq.matches) activate(); else deactivate(); }
+
+  // inner 콘텐츠 높이 변화(광고 추가/비동기 로딩/폰트) 자동 추적 → sidebarMaxOffset 재계산
+  if (window.ResizeObserver) {
+    new ResizeObserver(function () { remeasure(); }).observe(inner);
+  }
+  // 윈도우 리사이즈 시 wrapper 높이·기준값 재계산 + 모드 전환
+  window.addEventListener('resize', function () { applyMode(); remeasure(); });
+  // 늦게 로드되는 이미지 등으로 높이가 바뀌는 경우 대비
+  window.addEventListener('load', remeasure);
+  if (mq.addEventListener) mq.addEventListener('change', applyMode);
+  else if (mq.addListener) mq.addListener(applyMode);
+
+  applyMode();
+})();
+</script>
 {% endblock %}
