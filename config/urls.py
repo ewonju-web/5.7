@@ -86,6 +86,13 @@ def _robots_txt(request):
     lines += [f"Disallow: {p}" for p in disallow]
     lines.append("Allow: /")
     lines.append("")
+    # 과도한 트래픽을 유발하는 AI/SEO 분석 크롤러 전체 차단.
+    # (정상 검색엔진 Googlebot·Bingbot·Yandex·Yeti 는 차단하지 않음)
+    blocked_bots = ["GPTBot", "SemrushBot", "AhrefsBot", "MJ12bot", "DotBot"]
+    for bot in blocked_bots:
+        lines.append(f"User-agent: {bot}")
+        lines.append("Disallow: /")
+        lines.append("")
     lines.append("Sitemap: https://www.direct-nara.co.kr/sitemap.xml")
     lines.append("")
     return HttpResponse("\n".join(lines), content_type="text/plain; charset=utf-8")
