@@ -1872,10 +1872,6 @@ def _exam_list_queryset(request):
     category = (request.GET.get('category') or '').strip()
     equipment = (request.GET.get('equipment') or '').strip()
 
-    # 기출문제: 기종은 항상 전체(모든 기종의 기출 표시)
-    if category == 'question':
-        equipment = ''
-
     if category == 'video':
         pass
     elif category in _EXAM_CATEGORY_KEYS:
@@ -1916,13 +1912,6 @@ def exam_video_list(request):
 def exam_list(request):
     category = (request.GET.get('category') or '').strip()
     equipment = (request.GET.get('equipment') or '').strip()
-    if category == 'question' and equipment:
-        params = request.GET.copy()
-        del params['equipment']
-        url = reverse('exam_list')
-        if params:
-            url = f'{url}?{params.urlencode()}'
-        return redirect(url)
     if category == 'video':
         params = request.GET.copy()
         if 'category' in params:

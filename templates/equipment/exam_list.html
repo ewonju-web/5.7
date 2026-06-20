@@ -129,7 +129,7 @@
                 <a href="{% url 'exam_video_list' %}{% if val %}?equipment={{ val|urlencode }}{% endif %}"
                    class="exam-filter-tab {% if filter_equipment == val %}active{% endif %}">{{ label }}</a>
                 {% else %}
-                <a href="{% if filter_category == 'question' %}{% url 'exam_list' %}?category=question{% else %}{% url 'exam_list' %}{% if val or filter_category %}?{% endif %}{% if val %}equipment={{ val|urlencode }}{% endif %}{% if filter_category %}{% if val %}&amp;{% endif %}category={{ filter_category|urlencode }}{% endif %}{% endif %}"
+                <a href="{% url 'exam_list' %}{% if val or filter_category %}?{% endif %}{% if val %}equipment={{ val|urlencode }}{% endif %}{% if filter_category %}{% if val %}&amp;{% endif %}category={{ filter_category|urlencode }}{% endif %}"
                    class="exam-filter-tab {% if filter_equipment == val %}active{% endif %}">{{ label }}</a>
                 {% endif %}
                 {% endfor %}
@@ -141,9 +141,6 @@
                 {% if val == 'video' %}
                 <a href="{% url 'exam_video_list' %}{% if filter_equipment %}?equipment={{ filter_equipment|urlencode }}{% endif %}"
                    class="exam-filter-tab {% if show_youtube_videos %}active{% endif %}">{{ label }}</a>
-                {% elif val == 'question' %}
-                <a href="{% url 'exam_list' %}?category=question"
-                   class="exam-filter-tab {% if not show_youtube_videos and filter_category == val %}active{% endif %}">{{ label }}</a>
                 {% else %}
                 <a href="{% url 'exam_list' %}{% if filter_equipment or val %}?{% endif %}{% if filter_equipment %}equipment={{ filter_equipment|urlencode }}{% endif %}{% if val %}{% if filter_equipment %}&amp;{% endif %}category={{ val|urlencode }}{% endif %}"
                    class="exam-filter-tab {% if not show_youtube_videos and filter_category == val %}active{% endif %}">{{ label }}</a>
@@ -226,13 +223,13 @@
             <ul class="pagination pagination-sm mb-0">
                 {% if page_obj.has_previous %}
                 <li class="page-item">
-                    <a class="page-link" href="?page={{ page_obj.previous_page_number }}{% if filter_equipment and filter_category != 'question' %}&amp;equipment={{ filter_equipment|urlencode }}{% endif %}{% if filter_category %}&amp;category={{ filter_category|urlencode }}{% endif %}">이전</a>
+                    <a class="page-link" href="?page={{ page_obj.previous_page_number }}{% if filter_equipment %}&amp;equipment={{ filter_equipment|urlencode }}{% endif %}{% if filter_category %}&amp;category={{ filter_category|urlencode }}{% endif %}">이전</a>
                 </li>
                 {% endif %}
                 <li class="page-item disabled"><span class="page-link">{{ page_obj.number }} / {{ page_obj.paginator.num_pages }}</span></li>
                 {% if page_obj.has_next %}
                 <li class="page-item">
-                    <a class="page-link" href="?page={{ page_obj.next_page_number }}{% if filter_equipment and filter_category != 'question' %}&amp;equipment={{ filter_equipment|urlencode }}{% endif %}{% if filter_category %}&amp;category={{ filter_category|urlencode }}{% endif %}">다음</a>
+                    <a class="page-link" href="?page={{ page_obj.next_page_number }}{% if filter_equipment %}&amp;equipment={{ filter_equipment|urlencode }}{% endif %}{% if filter_category %}&amp;category={{ filter_category|urlencode }}{% endif %}">다음</a>
                 </li>
                 {% endif %}
             </ul>
