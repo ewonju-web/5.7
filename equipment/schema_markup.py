@@ -11,6 +11,8 @@ SCHEMA_ORG = "https://schema.org"
 USED_CONDITION = f"{SCHEMA_ORG}/UsedCondition"
 IN_STOCK = f"{SCHEMA_ORG}/InStock"
 OUT_OF_STOCK = f"{SCHEMA_ORG}/OutOfStock"
+# 반품 불가(중고 중장비 직거래 특성상 반품 정책 없음)
+MERCHANT_RETURN_NOT_PERMITTED = f"{SCHEMA_ORG}/MerchantReturnNotPermitted"
 SITE_HOME = "https://www.direct-nara.co.kr/"
 
 
@@ -143,6 +145,25 @@ def build_equipment_schema_graph(
             "@type": "Organization",
             "name": "굴삭기나라",
             "url": SITE_HOME,
+        },
+        # 운송은 판매자·구매자 직접 협의(플랫폼 별도 배송비 없음). 구조화 데이터 필수 필드 충족용 최소값.
+        "shippingDetails": {
+            "@type": "OfferShippingDetails",
+            "shippingDestination": {
+                "@type": "DefinedRegion",
+                "addressCountry": "KR",
+            },
+            "shippingRate": {
+                "@type": "MonetaryAmount",
+                "value": "0",
+                "currency": "KRW",
+            },
+        },
+        # 중고 중장비 직거래 특성상 반품 정책 없음(반품 불가).
+        "hasMerchantReturnPolicy": {
+            "@type": "MerchantReturnPolicy",
+            "applicableCountry": "KR",
+            "returnPolicyCategory": MERCHANT_RETURN_NOT_PERMITTED,
         },
     }
     price_krw = _price_krw(equipment.listing_price)

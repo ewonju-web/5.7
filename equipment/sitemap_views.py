@@ -38,11 +38,12 @@ CATEGORY_PATHS = tuple(
 
 def sitemap_base_url() -> str:
     domain = (getattr(settings, "SITE_DOMAIN", "") or "").strip().lower()
+    # 정규(canonical) 호스트는 www 없는 버전으로 통일한다.
     if domain in ("direct-nara.co.kr", "www.direct-nara.co.kr"):
-        return "https://www.direct-nara.co.kr"
+        return "https://direct-nara.co.kr"
     if domain and not domain.startswith("http"):
         return f"https://{domain}"
-    return "https://www.direct-nara.co.kr"
+    return "https://direct-nara.co.kr"
 
 
 def _format_lastmod(dt) -> str:
@@ -106,7 +107,12 @@ def build_sitemap_xml() -> str:
         .iterator(chunk_size=500)
     )
     for item in equipment_qs:
-        lastmod_dt = item.last_bumped_at or item.created_at
+        # 갱신일 우선(추후 updated_at 추가 대비), 끌어올리기 시각, 마지막으로 등록일.
+        lastmod_dt = (
+            getattr(item, "updated_at", None)
+            or item.last_bumped_at
+            or item.created_at
+        )
         _append_url(
             urlset,
             base,

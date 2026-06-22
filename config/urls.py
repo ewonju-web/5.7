@@ -6,7 +6,14 @@ from django.conf.urls.static import static
 from django.contrib.auth import views as auth_views
 from django.contrib.auth import logout
 from django.http import HttpResponse, HttpResponseRedirect
-from equipment.views import user_login, user_logout, signup, check_username, find_username
+from equipment.views import (
+    user_login,
+    user_logout,
+    signup,
+    check_username,
+    find_username,
+    legacy_redirect_viewsale_list,
+)
 from equipment.forms import MigratedPasswordResetForm
 from equipment.sitemap_views import sitemap_xml
 
@@ -113,6 +120,38 @@ def _naver_site_verification_www(request):
     return HttpResponse(body, content_type="text/plain; charset=utf-8")
 
 
+# ── 레거시(구버전) 사이트 URL → 신버전 301 영구 리다이렉트 매핑 ──
+# 구 사이트가 모바일(/m/…) 과 PC(/…) 경로 양쪽으로 색인되어 있어 두 접두사를 모두 처리한다.
+# (개별 매물 viewsale_010100.html?uid= 는 DB 매핑이 필요해 별도 뷰로 처리)
+_LEGACY_HTML_REDIRECTS = {
+    'main/main.html': '/',
+    'offering/offering_010100.html': '/equipment/create/',
+    'job/job_010100.html': '/jobs/',
+    'attachment/attachment_010100.html': '/?category=attachment',
+    'community/community.html': '/',
+    'etc/about.html': '/company/',
+    'etc/terms.html': '/terms/',
+    'etc/privacy.html': '/privacy/',
+    'ad/ad_010100.html': '/billing/upgrade/',
+    'member/login.html': '/login/',
+}
+
+
+def _build_legacy_redirects():
+    patterns = []
+    for prefix in ('m/', ''):
+        patterns.append(
+            path(prefix + 'viewsale/viewsale_010100.html', legacy_redirect_viewsale_list)
+        )
+        for old_path, new_url in _LEGACY_HTML_REDIRECTS.items():
+            patterns.append(
+                path(prefix + old_path, RedirectView.as_view(url=new_url, permanent=True))
+            )
+    # 위에서 못 잡은 나머지 /m/* 모바일 경로는 홈으로 (반드시 마지막)
+    patterns.append(re_path(r'^m/.*$', RedirectView.as_view(url='/', permanent=True)))
+    return patterns
+
+
 admin.site.site_url = "/admin/view-site/"
 
 urlpatterns = [
@@ -135,23 +174,8 @@ urlpatterns = [
     # 소셜 콜백 별칭: 개발자센터 등록 URL을 /auth/... 로 써도 동작하게 함
     path('auth/kakao/callback', lambda request: _social_callback_alias(request, 'kakao')),
     path('auth/naver/callback', lambda request: _social_callback_alias(request, 'naver')),
-    # ── 레거시 모바일 사이트(/m/*) → 신버전 301 영구 리다이렉트 ──
-    # 구체 패턴을 먼저 매칭하고, 마지막 catch-all 로 나머지 /m/* 는 홈으로 보낸다.
-    path('m/main/main.html', RedirectView.as_view(url='/', permanent=True)),
-    # 개별 매물 상세는 구/신 ID 가 1:1 대응되지 않으므로 굴삭기 카테고리 목록으로 보낸다.
-    # (uid 등 쿼리 파라미터 유무와 무관하게 경로만으로 매칭됨)
-    path('m/viewsale/viewsale_010100.html', RedirectView.as_view(url='/?category=excavator', permanent=True)),
-    path('m/offering/offering_010100.html', RedirectView.as_view(url='/equipment/create/', permanent=True)),
-    path('m/job/job_010100.html', RedirectView.as_view(url='/jobs/', permanent=True)),
-    path('m/attachment/attachment_010100.html', RedirectView.as_view(url='/parts-as/', permanent=True)),
-    path('m/community/community.html', RedirectView.as_view(url='/info/', permanent=True)),
-    path('m/etc/about.html', RedirectView.as_view(url='/company/', permanent=True)),
-    path('m/etc/terms.html', RedirectView.as_view(url='/terms/', permanent=True)),
-    path('m/etc/privacy.html', RedirectView.as_view(url='/privacy/', permanent=True)),
-    path('m/ad/ad_010100.html', RedirectView.as_view(url='/billing/upgrade/', permanent=True)),
-    path('m/member/login.html', RedirectView.as_view(url='/login/', permanent=True)),
-    # catch-all: 위에서 매칭되지 않은 모든 /m/* → 홈 (반드시 마지막)
-    re_path(r'^m/.*$', RedirectView.as_view(url='/', permanent=True)),
+    # ── 레거시 사이트 URL → 신버전 301 (모바일 /m/… + PC /… 양쪽) ──
+    *_build_legacy_redirects(),
     path('chat/', include('chat.urls')),
     path('soil/', include('soil.urls')),
     path('rental/', include('rental.urls')),

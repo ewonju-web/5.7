@@ -347,6 +347,20 @@ def legacy_redirect_job_uid(request, uid):
     raise Http404()
 
 
+def legacy_redirect_viewsale_list(request):
+    """구형 매물 목록 URL(viewsale_010100.html) → 신버전 301.
+
+    ?uid=<숫자> 가 신버전 매물(legacy_listing_id)로 매핑되면 해당 상세로 보내고,
+    매핑이 불가능하면 굴삭기 카테고리 목록(/?category=excavator)으로 보낸다.
+    """
+    uid = (request.GET.get('uid') or '').strip()
+    if uid.isdigit():
+        eq = Equipment.objects.filter(legacy_listing_id=int(uid)).first()
+        if eq:
+            return redirect("equipment_detail", pk=eq.pk, permanent=True)
+    return redirect("/?category=excavator", permanent=True)
+
+
 def legacy_redirect_community_to_board(request, uid):
     """구형 /community/{uid}/ → /board/{uid}/ (301)."""
     try:
@@ -551,7 +565,7 @@ def index(request):
     seo_category = url_category if url_category in VALID_CATEGORIES else ''
     cat_seo = category_seo(seo_category) if seo_category else None
 
-    return render(request, 'equipment/index.html', {
+    response = render(request, 'equipment/index.html', {
         'equipment_list': equipment_list,
         'list_per_page': list_per_page,
         'list_offset': list_offset,
@@ -583,6 +597,11 @@ def index(request):
         'category_seo_description': cat_seo[1] if cat_seo else '',
         'seo_category': seo_category,
     })
+    # "오늘 방문자" 등 실시간 위젯이 브라우저에 캐시돼 옛 숫자가 보이는 것을 방지.
+    response['Cache-Control'] = 'no-cache, no-store, must-revalidate'
+    response['Pragma'] = 'no-cache'
+    response['Expires'] = '0'
+    return response
 
 
 def premium_experts_test_view(request):
