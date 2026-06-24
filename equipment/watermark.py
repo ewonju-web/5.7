@@ -10,7 +10,7 @@ import logging
 import os
 
 from django.conf import settings
-from PIL import Image, ImageDraw, ImageFont, PngImagePlugin
+from PIL import Image, ImageDraw, ImageFont, ImageOps, PngImagePlugin
 
 logger = logging.getLogger(__name__)
 
@@ -74,6 +74,10 @@ def apply_watermark(path):
             fmt = (img.format or "").upper()
             if img.info.get(_MARKER_KEY) == _MARKER_VALUE:
                 return True  # 이미 적용됨 → 중복 적용 안 함
+
+            # 폰 카메라 EXIF 회전정보를 픽셀에 먼저 반영(이후 저장 시 EXIF가 사라져도
+            # 사진이 눕지 않도록). EXIF가 없으면 원본 그대로 반환된다.
+            img = ImageOps.exif_transpose(img)
 
             base = img.convert("RGBA")
             width, height = base.size

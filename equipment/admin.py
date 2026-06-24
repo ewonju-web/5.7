@@ -1,4 +1,4 @@
-from django.contrib import admin
+from django.contrib import admin, messages
 from django import forms
 from django.contrib.auth.admin import UserAdmin as DjangoUserAdmin
 from django.contrib.auth.models import User
@@ -7,9 +7,12 @@ from django.utils.formats import number_format
 from django.db.models import Count, Q, Prefetch
 from django.utils import timezone
 from django.conf import settings
+from django.http import HttpResponseRedirect
+from django.urls import reverse, path
 import json
+import os
+from PIL import Image, ImageOps
 from urllib.parse import urlencode
-from django.urls import reverse
 from urllib.request import urlopen, Request
 from .models import (
     Equipment, EquipmentImage, Profile, JobPost, ExamPost, ExamComment,
@@ -88,6 +91,52 @@ class EquipmentOwnerFilter(admin.SimpleListFilter):
         return queryset
 
 
+# 이미지 회전: 시계방향 90 / 반시계방향 90 / 180
+_ROTATE_TRANSPOSE = {
+    'cw': Image.ROTATE_270,   # 시계방향 90도
+    'ccw': Image.ROTATE_90,   # 반시계방향 90도
+    '180': Image.ROTATE_180,
+}
+
+
+def rotate_equipment_image_file(obj, direction):
+    """EquipmentImage의 실제 파일을 회전해 같은 경로에 저장한다.
+    EXIF 회전정보를 먼저 반영(baking)한 뒤 회전하므로 보이는 그대로 돌아간다."""
+    transpose = _ROTATE_TRANSPOSE.get(direction)
+    if transpose is None:
+        return False
+    file_path = obj.image.path
+    fmt = (os.path.splitext(file_path)[1].lstrip('.') or 'JPEG').upper()
+    if fmt == 'JPG':
+        fmt = 'JPEG'
+    with Image.open(file_path) as im:
+        im = ImageOps.exif_transpose(im)  # EXIF 방향 먼저 반영
+        rotated = im.transpose(transpose)
+        save_kwargs = {}
+        if fmt == 'JPEG':
+            rotated = rotated.convert('RGB')
+            save_kwargs = {'quality': 95, 'optimize': True}
+        rotated.save(file_path, format=fmt, **save_kwargs)
+    return True
+
+
+def _rotate_buttons_html(obj, next_url):
+    """이미지 옆에 붙일 회전 버튼 HTML (반시계/시계)."""
+    base = reverse('admin:equipment_equipmentimage_rotate', args=[obj.pk, 'DIR'])
+    q = '?' + urlencode({'next': next_url}) if next_url else ''
+    ccw = base.replace('DIR', 'ccw') + q
+    cw = base.replace('DIR', 'cw') + q
+    return format_html(
+        '<span style="display:inline-flex;flex-direction:column;gap:3px;">'
+        '<a class="button" href="{}" title="반시계방향 90도" '
+        'style="padding:1px 7px;font-size:13px;line-height:1.4;">↺</a>'
+        '<a class="button" href="{}" title="시계방향 90도" '
+        'style="padding:1px 7px;font-size:13px;line-height:1.4;">↻</a>'
+        '</span>',
+        ccw, cw,
+    )
+
+
 # 1. 매물 관리
 class EquipmentImageInline(admin.TabularInline):
     model = EquipmentImage
@@ -100,13 +149,17 @@ class EquipmentImageInline(admin.TabularInline):
         if not obj or not getattr(obj, 'pk', None) or not getattr(obj, 'image', None):
             return "-"
         try:
+            next_url = reverse('admin:equipment_equipment_change', args=[obj.equipment_id])
             return format_html(
-                '<img src="{}" style="width:72px;height:54px;object-fit:cover;border-radius:6px;border:1px solid #ddd;" alt="preview">',
+                '<span style="display:inline-flex;align-items:center;gap:8px;">'
+                '<img src="{}" style="width:72px;height:54px;object-fit:cover;'
+                'border-radius:6px;border:1px solid #ddd;" alt="preview">{}</span>',
                 obj.image.url,
+                _rotate_buttons_html(obj, next_url),
             )
         except Exception:
             return "-"
-    image_preview.short_description = '미리보기'
+    image_preview.short_description = '미리보기(↺/↻ 회전)'
 
 
 @admin.register(EquipmentImage)
@@ -115,18 +168,78 @@ class EquipmentImageAdmin(admin.ModelAdmin):
     search_fields = ('equipment__model_name', 'equipment__author__username')
     list_select_related = ('equipment',)
     list_per_page = 100
+    actions = ['action_rotate_cw', 'action_rotate_ccw', 'action_rotate_180']
+
+    def get_urls(self):
+        custom = [
+            path(
+                '<int:image_id>/rotate/<str:direction>/',
+                self.admin_site.admin_view(self.rotate_view),
+                name='equipment_equipmentimage_rotate',
+            ),
+        ]
+        return custom + super().get_urls()
+
+    def rotate_view(self, request, image_id, direction):
+        next_url = request.GET.get('next') or reverse('admin:equipment_equipmentimage_changelist')
+        obj = self.get_object(request, image_id)
+        if obj is None:
+            messages.error(request, '이미지를 찾을 수 없습니다.')
+            return HttpResponseRedirect(next_url)
+        if not self.has_change_permission(request, obj):
+            messages.error(request, '권한이 없습니다.')
+            return HttpResponseRedirect(next_url)
+        try:
+            if rotate_equipment_image_file(obj, direction):
+                messages.success(request, f'이미지 #{obj.pk} 회전 완료. (강력 새로고침 Ctrl+Shift+R 로 확인)')
+            else:
+                messages.error(request, '회전 방향이 올바르지 않습니다.')
+        except Exception as e:
+            messages.error(request, f'회전 실패: {e}')
+        return HttpResponseRedirect(next_url)
+
+    def _bulk_rotate(self, request, queryset, direction):
+        done = failed = 0
+        for obj in queryset:
+            try:
+                if rotate_equipment_image_file(obj, direction):
+                    done += 1
+                else:
+                    failed += 1
+            except Exception:
+                failed += 1
+        msg = f'{done}장 회전 완료'
+        if failed:
+            msg += f', {failed}장 실패'
+        messages.success(request, msg + ' (강력 새로고침으로 확인)')
+
+    @admin.action(description='↻ 선택 이미지 시계방향 90도 회전')
+    def action_rotate_cw(self, request, queryset):
+        self._bulk_rotate(request, queryset, 'cw')
+
+    @admin.action(description='↺ 선택 이미지 반시계방향 90도 회전')
+    def action_rotate_ccw(self, request, queryset):
+        self._bulk_rotate(request, queryset, 'ccw')
+
+    @admin.action(description='⟳ 선택 이미지 180도 회전')
+    def action_rotate_180(self, request, queryset):
+        self._bulk_rotate(request, queryset, '180')
 
     def image_preview(self, obj):
         if not obj or not getattr(obj, 'image', None):
             return "-"
         try:
+            next_url = reverse('admin:equipment_equipmentimage_changelist')
             return format_html(
-                '<img src="{}" style="width:84px;height:63px;object-fit:cover;border-radius:6px;border:1px solid #ddd;" alt="thumb">',
+                '<span style="display:inline-flex;align-items:center;gap:8px;">'
+                '<img src="{}" style="width:84px;height:63px;object-fit:cover;'
+                'border-radius:6px;border:1px solid #ddd;" alt="thumb">{}</span>',
                 obj.image.url,
+                _rotate_buttons_html(obj, next_url),
             )
         except Exception:
             return "-"
-    image_preview.short_description = '미리보기'
+    image_preview.short_description = '미리보기(↺/↻ 회전)'
 
 
 @admin.register(Equipment)
