@@ -191,7 +191,7 @@ class EquipmentImageInline(admin.TabularInline):
             return "-"
         try:
             next_url = reverse('admin:equipment_equipment_change', args=[obj.equipment_id])
-            return _image_cell_html(obj, next_url, 72, 54)
+            return _image_cell_html(obj, next_url, 108, 81)
         except Exception:
             return "-"
     image_preview.short_description = '미리보기(↺/↻ 회전)'
@@ -280,7 +280,7 @@ class EquipmentImageAdmin(admin.ModelAdmin):
             return "-"
         try:
             next_url = reverse('admin:equipment_equipmentimage_changelist')
-            return _image_cell_html(obj, next_url, 84, 63)
+            return _image_cell_html(obj, next_url, 126, 95)
         except Exception:
             return "-"
     image_preview.short_description = '미리보기(↺/↻ 회전)'
@@ -340,7 +340,7 @@ class EquipmentAdmin(admin.ModelAdmin):
             return "-"
         try:
             return format_html(
-                '<img src="{}" style="width:72px;height:54px;object-fit:cover;border-radius:6px;border:1px solid #ddd;" alt="대표">',
+                '<img src="{}" style="width:108px;height:81px;object-fit:cover;border-radius:6px;border:1px solid #ddd;" alt="대표">',
                 first.image.url,
             )
         except Exception:
