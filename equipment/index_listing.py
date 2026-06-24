@@ -7,6 +7,7 @@ from django.db.models import Q, F, Case, When, IntegerField, Value
 from django.db.models.functions import Coalesce
 from django.http import QueryDict
 from django.urls import reverse
+from django.utils import timezone
 from django.utils.http import url_has_allowed_host_and_scheme
 
 from .models import Equipment
@@ -235,9 +236,11 @@ def parse_index_params(request):
     if 'category' in request.GET and not (request.GET.get('category') or '').strip():
         request.session.pop('last_equipment_category', None)
     elif 'category' not in request.GET:
-        last_category = (request.session.get('last_equipment_category') or '').strip().lower()
-        if last_category in VALID_CATEGORIES:
-            filter_category = last_category
+        # 첫 화면(카테고리 미지정)은 1시간 단위로 번갈아 노출:
+        #  - 짝수 시: 전체 기종 + 최신순
+        #  - 홀수 시: 굴삭기 기종 + 프리미엄(유료 광고) 우선
+        if timezone.localtime().hour % 2 == 0:
+            filter_category = ''
         else:
             filter_category = 'excavator'
     elif not filter_category and query:
@@ -450,7 +453,13 @@ def build_index_equipment_queryset(request, params: dict):
         equipment_list = equipment_list.annotate(
             effective_order=Coalesce(F('last_bumped_at'), F('created_at'))
         )
-        if not hide_advanced_filters and not query and premium_author_ids:
+        if (
+            not hide_advanced_filters
+            and not query
+            and filter_category in VALID_CATEGORIES
+            and premium_author_ids
+        ):
+            # 특정 기종 선택 화면: 프리미엄(유료 광고) 매물 우선 노출 후 최신순
             equipment_list = equipment_list.annotate(
                 premium_rank=Case(
                     When(author_id__in=premium_author_ids, then=Value(0)),
@@ -459,6 +468,7 @@ def build_index_equipment_queryset(request, params: dict):
                 )
             ).order_by('premium_rank', '-effective_order')
         else:
+            # 전체 기종(또는 검색·상세필터) 화면: 순수 최신순
             equipment_list = equipment_list.order_by('-effective_order')
 
     return equipment_list.select_related('author__profile').prefetch_related('images')

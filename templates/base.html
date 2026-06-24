@@ -975,7 +975,7 @@
     <style id="gn-critical-boot">html,body{background:#fff;color:#111827;visibility:visible}</style>
     <!-- 모바일 전용 상단바 (당근 스타일) -->
     <div class="gn-mobile-header">
-        <a href="{% url 'index' %}?category=excavator" class="gn-mobile-brand text-white text-decoration-none fw-bold">
+        <a href="{% url 'index' %}" class="gn-mobile-brand text-white text-decoration-none fw-bold">
             <img src="{% static 'img/logo-navbar-ko.png' %}" alt="굴삭기나라" class="gn-brand-logo">
         </a>
         <div class="d-flex align-items-center gap-2">
@@ -1046,7 +1046,7 @@
 
     <nav class="navbar navbar-expand-lg navbar-dark sticky-top navbar-gn d-none d-md-flex">
         <div class="container">
-            <a class="navbar-brand" href="{% url 'index' %}?category=excavator">
+            <a class="navbar-brand" href="{% url 'index' %}">
                 <img src="{% static 'img/logo-navbar-ko.png' %}" alt="굴삭기나라" class="gn-brand-logo">
             </a>
             <button class="navbar-toggler border-0" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="메뉴">
@@ -1054,7 +1054,7 @@
             </button>
             <div class="collapse navbar-collapse" id="navbarNav">
                 <ul class="navbar-nav me-auto">
-                    <li class="nav-item"><a class="nav-link {% if request.resolver_match.url_name == 'index' %}active{% endif %}" href="{% url 'index' %}?category=excavator">{{ LANG|tr:"nav_market_view" }}</a></li>
+                    <li class="nav-item"><a class="nav-link {% if request.resolver_match.url_name == 'index' %}active{% endif %}" href="{% url 'index' %}">{{ LANG|tr:"nav_market_view" }}</a></li>
                     <li class="nav-item"><a class="nav-link {% if request.resolver_match.url_name == 'equipment_create' %}active{% endif %}" href="{% if user.is_authenticated %}{% url 'equipment_create' %}{% else %}{% url 'login' %}?next={% url 'equipment_create' %}{% endif %}">{{ LANG|tr:"nav_register" }}</a></li>
                     <li class="nav-item"><a class="nav-link {% if request.resolver_match.url_name == 'finance' %}active{% endif %}" href="{% url 'finance' %}">{{ LANG|tr:"nav_attachment" }}</a></li>
                     <li class="nav-item dropdown gn-jobs-dropdown">
@@ -1112,7 +1112,7 @@
     <div class="offcanvas offcanvas-end" tabindex="-1" id="gnServiceMenu" aria-labelledby="gnServiceMenuLabel" style="background: var(--gn-card); color: var(--gn-text);">
         <div class="offcanvas-header border-bottom">
             <span id="gnServiceMenuLabel" class="visually-hidden">굴삭기나라</span>
-            <a href="{% url 'index' %}?category=excavator" class="gn-service-menu-brand gn-service-offcanvas-link" aria-label="굴삭기나라 홈">
+            <a href="{% url 'index' %}" class="gn-service-menu-brand gn-service-offcanvas-link" aria-label="굴삭기나라 홈">
                 <img src="{% static 'img/logo-navbar-ko.png' %}" alt="굴삭기나라" class="gn-service-menu-logo">
             </a>
             <div class="gn-service-menu-actions">
@@ -1134,7 +1134,7 @@
         <div class="offcanvas-body px-0 pt-2 pb-3">
             {% url 'equipment_create' as gn_equipment_create_url %}
             <div class="gn-service-grid gn-service-nav-grid">
-                <a href="{% url 'index' %}?category=excavator" class="gn-service-item gn-service-offcanvas-link">
+                <a href="{% url 'index' %}" class="gn-service-item gn-service-offcanvas-link">
                     <div class="gn-service-item-icon gn-service-item-icon--nav-main"><i class="bi bi-grid"></i></div>
                     <div><div class="gn-service-item-title">{{ LANG|tr:"nav_market_view" }}</div></div>
                 </a>
