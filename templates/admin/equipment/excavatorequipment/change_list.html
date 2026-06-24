@@ -56,7 +56,150 @@
     color: #1a237e;
     margin-top: 8px;
   }
+  .gn-pp-bar, .gn-more-bar {
+    display: flex; align-items: center; flex-wrap: wrap; gap: 8px;
+    margin: 10px 0; padding: 8px 10px;
+    background: #f5f5f5; border: 1px solid #e0e0e0; border-radius: 8px;
+  }
+  .gn-more-bar { justify-content: center; margin-top: 14px; }
+  .gn-pp-label { font-size: 0.85rem; color: #555; font-weight: 600; }
+  .gn-pp-btn, .gn-more-btn {
+    padding: 6px 14px; border: 1px solid #c8c8c8; border-radius: 6px;
+    background: #fff; cursor: pointer; font-size: 0.85rem; font-weight: 600; color: #333;
+  }
+  .gn-pp-btn:hover, .gn-more-btn:hover { background: #fff8e1; border-color: #f9a825; }
+  .gn-more-btn { background: #fbc02d; border-color: #f9a825; padding: 8px 20px; }
+  .gn-more-btn:hover { background: #f9a825; }
+  .gn-more-btn:disabled { background: #e0e0e0; border-color: #ccc; color: #999; cursor: default; }
+  .gn-pp-count { font-size: 0.82rem; color: #1a237e; margin-left: auto; }
+  .gn-more-status { font-size: 0.82rem; color: #555; }
 </style>
+{% endblock %}
+
+{% block result_list %}
+<div id="gn-pp-data"
+     data-total="{{ cl.result_count }}"
+     data-perpage="{{ excavator_pp }}"
+     data-pagenum="{{ cl.page_num }}"
+     data-default="{{ excavator_pp_default }}"></div>
+<div class="gn-pp-bar">
+  <span class="gn-pp-label">한 화면에:</span>
+  <button type="button" class="gn-pp-btn" data-pp="50">50개</button>
+  <button type="button" class="gn-pp-btn" data-pp="100">100개</button>
+  <button type="button" class="gn-pp-btn" data-pp="200">200개</button>
+  <button type="button" class="gn-pp-btn" data-pp="500">500개</button>
+  <span class="gn-pp-count"></span>
+</div>
+{{ block.super }}
+<div class="gn-more-bar">
+  <button type="button" class="gn-more-btn" data-add="50">+50 더 보기</button>
+  <button type="button" class="gn-more-btn" data-add="100">+100 더 보기</button>
+  <button type="button" class="gn-more-btn" data-add="200">+200 더 보기</button>
+  <span class="gn-more-status"></span>
+</div>
+<script>
+(function(){
+  var dataEl = document.getElementById('gn-pp-data');
+  var table = document.getElementById('result_list');
+  if(!dataEl || !table || !table.tBodies.length) return;
+  var tbody = table.tBodies[0];
+  var totalCount = parseInt(dataEl.dataset.total, 10) || 0;
+  var perPage = parseInt(dataEl.dataset.perpage, 10) || 50;
+  var pageNum = parseInt(dataEl.dataset.pagenum, 10) || 1;
+  var loaded = tbody.rows.length;
+  var busy = false;
+
+  var ppCount = document.querySelector('.gn-pp-count');
+  var moreStatus = document.querySelector('.gn-more-status');
+  var moreBar = document.querySelector('.gn-more-bar');
+  // 누적 더보기는 1페이지 기준에서만 정합성 보장(인라인 저장). 그 외 페이지는 안내만.
+  var accumulateOk = (pageNum === 1);
+
+  function buildUrl(pp){
+    var params = new URLSearchParams(window.location.search || '');
+    params.set('pp', String(pp));
+    params.set('p', '1');
+    return window.location.pathname + '?' + params.toString();
+  }
+
+  function updateUi(){
+    if(ppCount){
+      ppCount.textContent = '현재 ' + loaded.toLocaleString() + ' / 전체 ' + totalCount.toLocaleString() + '건';
+    }
+    var remaining = Math.max(0, totalCount - loaded);
+    document.querySelectorAll('.gn-more-btn').forEach(function(b){
+      b.disabled = busy || remaining <= 0;
+    });
+    if(moreStatus){
+      moreStatus.textContent = remaining <= 0
+        ? '전체 ' + totalCount.toLocaleString() + '건을 모두 불러왔습니다.'
+        : (busy ? '불러오는 중…' : '남은 ' + remaining.toLocaleString() + '건');
+    }
+  }
+
+  function copyMgmt(doc, id){
+    var src = doc.getElementById(id);
+    var dst = document.getElementById(id);
+    if(src && dst) dst.value = src.value;
+  }
+
+  function loadTo(target){
+    target = Math.min(target, totalCount);
+    if(!accumulateOk){
+      // 1페이지가 아니면 단순 이동(정합성 보호)
+      window.location = buildUrl(target);
+      return;
+    }
+    if(target <= loaded){
+      if(target < loaded) window.location = buildUrl(target);
+      return;
+    }
+    if(busy) return;
+    busy = true; updateUi();
+    fetch(buildUrl(target), {headers:{'X-Requested-With':'XMLHttpRequest'}, credentials:'same-origin'})
+      .then(function(r){ return r.text(); })
+      .then(function(html){
+        var doc = new DOMParser().parseFromString(html, 'text/html');
+        var nt = doc.querySelector('#result_list tbody');
+        if(!nt){ throw new Error('no-rows'); }
+        var rows = nt.rows;
+        for(var i=loaded; i<rows.length; i++){
+          tbody.appendChild(document.importNode(rows[i], true));
+        }
+        copyMgmt(doc, 'id_form-TOTAL_FORMS');
+        copyMgmt(doc, 'id_form-INITIAL_FORMS');
+        loaded = tbody.rows.length;
+        try { history.replaceState(null, '', buildUrl(loaded)); } catch(e){}
+      })
+      .catch(function(){ alert('목록을 더 불러오지 못했습니다. 새로고침 후 다시 시도해 주세요.'); })
+      .finally(function(){ busy = false; updateUi(); });
+  }
+
+  document.querySelectorAll('.gn-pp-btn').forEach(function(btn){
+    btn.addEventListener('click', function(){ loadTo(parseInt(this.dataset.pp,10)); });
+  });
+  document.querySelectorAll('.gn-more-btn').forEach(function(btn){
+    btn.addEventListener('click', function(){ loadTo(loaded + parseInt(this.dataset.add,10)); });
+  });
+
+  // 페이지 번호 클릭 → 그 페이지까지 한 화면에 이어붙이기(위로 안 올라가게)
+  if(accumulateOk){
+    document.querySelectorAll('.paginator a').forEach(function(a){
+      var u;
+      try { u = new URL(a.href, window.location.origin); } catch(e){ return; }
+      var p = parseInt(u.searchParams.get('p') || '1', 10);
+      if(p > 1){
+        a.addEventListener('click', function(e){
+          e.preventDefault();
+          loadTo(p * perPage);
+        });
+      }
+    });
+  }
+
+  updateUi();
+})();
+</script>
 {% endblock %}
 
 {% block search %}

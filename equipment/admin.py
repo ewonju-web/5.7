@@ -41,7 +41,19 @@ class ExcavatorAdminChangeList(ChangeList):
     굴삭기 어드민은 모델 필드명 충돌을 피하려 xsf_* GET 키를 쓰고, ChangeList 검증
     오류를 막기 위해 이를 request.GET에서 제거한다. 그 결과 기본 get_query_string이
     만드는 링크에서 상세검색 조건이 빠져 2페이지 이동 시 필터가 리셋되던 문제를 해결.
+
+    또한 ?pp= (page size) 로 한 화면에 보이는 매물 수를 조절(50/100/200/…)할 수 있다.
+    request._gn_admin_pp 에 보관된 값을 list_per_page 로 주입한다.
     """
+
+    def __init__(self, request, *args, **kwargs):
+        pp = getattr(request, '_gn_admin_pp', None)
+        if pp:
+            args = list(args)
+            if len(args) >= 8:  # args[7] == list_per_page (위치 인자)
+                args[7] = pp
+            args = tuple(args)
+        super().__init__(request, *args, **kwargs)
 
     def get_query_string(self, new_params=None, remove=None):
         base = super().get_query_string(new_params, remove)
@@ -458,13 +470,40 @@ class ExcavatorEquipmentAdmin(EquipmentTypeProxyAdmin):
         # request.GET이 strip되기 전 파싱해 둔 상세검색값으로 링크용 xsf_* 항목 생성.
         params = self._excavator_admin_filter_params(request)
         cl = super().get_changelist_instance(request)
-        cl.gn_excavator_link_params = excavator_admin_filter_query_items(params)
+        link_params = list(excavator_admin_filter_query_items(params))
+        pp = getattr(request, '_gn_admin_pp', None)
+        if pp:
+            link_params.append(('pp', pp))
+        cl.gn_excavator_link_params = link_params
         return cl
+
+    # 한 화면 매물 수(page size) 허용값 — 더보기/버튼에서 사용.
+    EXCAVATOR_PP_DEFAULT = 50
+    EXCAVATOR_PP_MAX = 2000
+
+    def _extract_admin_pp(self, request):
+        """?pp= (한 화면 표시 개수)를 파싱·검증하고 GET에서 제거(필터 검증 오류 방지)."""
+        raw = request.GET.get('pp')
+        if raw is None:
+            request._gn_admin_pp = None
+            return None
+        try:
+            pp = int(raw)
+        except (TypeError, ValueError):
+            pp = None
+        if pp is not None:
+            pp = max(1, min(pp, self.EXCAVATOR_PP_MAX))
+        g = request.GET.copy()
+        g.pop('pp', None)
+        request.GET = g
+        request._gn_admin_pp = pp
+        return pp
 
     def changelist_view(self, request, extra_context=None):
         extra_context = extra_context or {}
         params = parse_excavator_admin_filters(request)
         request = self._strip_excavator_admin_query_params(request)
+        pp = self._extract_admin_pp(request)
         preserved = excavator_admin_preserved_params(request)
         clear_url = reverse("admin:equipment_excavatorequipment_changelist")
         if preserved:
@@ -478,6 +517,8 @@ class ExcavatorEquipmentAdmin(EquipmentTypeProxyAdmin):
             "excavator_filter_clear_url": clear_url,
             "excavator_sub_type_labels": _EXCAVATOR_SUB_TYPE_LABELS,
             "excavator_weight_class_labels": _EXCAVATOR_WEIGHT_CLASS_LABELS,
+            "excavator_pp": pp or self.EXCAVATOR_PP_DEFAULT,
+            "excavator_pp_default": self.EXCAVATOR_PP_DEFAULT,
         })
         return super().changelist_view(request, extra_context=extra_context)
 
