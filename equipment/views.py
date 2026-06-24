@@ -499,13 +499,19 @@ def index_load_more(request):
     card_ctx = _index_list_card_context(request, params, chunk, premium_author_ids, favorited_ids)
     new_offset = offset + len(chunk)
     if mode == 'row':
+        # PC는 한줄형(row), 모바일은 기존 카드형 유지.
         html_row = ''.join(
             render_to_string('equipment/partials/index_row.html', {**card_ctx, 'equipment': eq}, request=request)
+            for eq in chunk
+        )
+        html_mobile = ''.join(
+            render_to_string('equipment/partials/index_card_mobile.html', {**card_ctx, 'equipment': eq}, request=request)
             for eq in chunk
         )
         return JsonResponse({
             'mode': 'row',
             'html_row': html_row,
+            'html_mobile': html_mobile,
             'offset': new_offset,
             'has_more': new_offset < total_count,
             'total_count': total_count,

@@ -2369,13 +2369,14 @@
         .then(function(data) {
           if (data.error) throw new Error(data.error);
           if (data.mode === 'row') {
-            if (mobileRows && data.html_row) {
-              mobileRows.insertAdjacentHTML('beforeend', data.html_row);
+            // 모바일은 기존 카드형 유지, PC만 한줄형(row).
+            if (mobileGrid && data.html_mobile) {
+              mobileGrid.insertAdjacentHTML('beforeend', data.html_mobile);
             }
             if (pcRows && data.html_row) {
               pcRows.insertAdjacentHTML('beforeend', data.html_row);
             }
-            // 한줄형 단계: 보기 개수(40/80) 선택은 더 이상 영향 없으므로 숨김.
+            // 한줄형(PC) 단계: 보기 개수(40/80) 선택은 더 이상 영향 없으므로 숨김.
             document.querySelectorAll('.gn-more-per-page').forEach(function(sel) {
               var lbl = sel.closest('label');
               if (lbl) lbl.classList.add('d-none');
