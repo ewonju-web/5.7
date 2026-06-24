@@ -1,0 +1,41 @@
+{% load humanize i18n_extras %}
+<div class="gn-index-row position-relative" data-equipment-id="{{ equipment.pk }}">
+    <a href="{% url 'equipment_detail' equipment.pk %}?next={{ equipment_detail_next_q }}" class="gn-index-row-thumb text-decoration-none">
+        {% if equipment.images.all %}
+        <img src="{{ equipment.images.first.image.url }}" alt="{% if equipment.model_name %}{{ equipment.model_name }}{% else %}모름{% endif %}" loading="lazy" decoding="async">
+        {% else %}
+        <span class="gn-index-row-noimg">이미지 준비중</span>
+        {% endif %}
+        <span class="gn-index-row-badge{% if equipment.is_sold %} gn-index-row-badge-sold{% endif %}">{% if equipment.is_sold %}판매완료{% else %}팝니다{% endif %}</span>
+    </a>
+    <div class="gn-index-row-body">
+        <div class="gn-index-row-title">
+            <span class="gn-index-row-model">{% if equipment.model_name %}{{ equipment.model_name }}{% else %}모름{% endif %}</span>
+            {% include "equipment/partials/premium_title_badge.html" %}
+            {% if equipment.vehicle_number %}<span class="badge badge-verified">번호등록</span>{% endif %}
+        </div>
+        <div class="gn-index-row-meta">
+            <span>{% if equipment.manufacturer %}{{ equipment.manufacturer }}{% else %}모름{% endif %}</span>
+            <span class="gn-index-row-dot">·</span>
+            <span>{% if equipment.year_manufactured %}{{ equipment.year_manufactured }}년{% else %}연식모름{% endif %}</span>
+            <span class="gn-index-row-dot">·</span>
+            <span>{{ equipment|equipment_location_sido }}</span>
+            {% if equipment.equipment_type == 'excavator' or equipment.equipment_type == 'forklift' %}{% if equipment.operating_hours %}<span class="gn-index-row-dot">·</span><span>{{ equipment.operating_hours|intcomma }} hr</span>{% endif %}{% endif %}
+        </div>
+    </div>
+    <div class="gn-index-row-side">
+        <span class="gn-index-row-price">
+            {% if equipment.listing_price is not None %}
+            <span class="gn-index-row-price-num">{{ equipment.listing_price|floatformat:0|intcomma }}</span><span class="gn-index-row-price-unit">만원</span>
+            {% else %}
+            문의
+            {% endif %}
+        </span>
+        {% if user.is_authenticated %}
+        <a href="{% url 'toggle_equipment_favorite' equipment.pk %}?next={{ request.get_full_path|urlencode }}" class="gn-index-row-fav text-decoration-none" onclick="event.stopPropagation();" title="{% if equipment.pk in favorited_equipment_ids %}찜 해제{% else %}찜하기{% endif %}">
+            <i class="bi bi-heart{% if equipment.pk in favorited_equipment_ids %}-fill text-danger{% else %} text-secondary{% endif %}"></i>
+        </a>
+        {% endif %}
+    </div>
+    <a href="{% url 'equipment_detail' equipment.pk %}?next={{ equipment_detail_next_q }}" class="stretched-link"></a>
+</div>

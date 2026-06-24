@@ -7,8 +7,9 @@ from django.utils.formats import number_format
 from django.db.models import Count, Q, Prefetch
 from django.utils import timezone
 from django.conf import settings
-from django.http import HttpResponseRedirect
+from django.http import HttpResponseRedirect, JsonResponse
 from django.urls import reverse, path
+from django.utils.safestring import mark_safe
 import json
 import os
 from PIL import Image, ImageOps
@@ -23,14 +24,32 @@ from .models import (
     CraneEquipment, AttachmentEquipment, OtherEquipment,
     VisitSession, VisitPageLog, VisitorLog,
 )
-from django.contrib.admin.views.main import ERROR_FLAG
+from django.contrib.admin.views.main import ERROR_FLAG, ChangeList
 from .index_listing import (
     EXCAVATOR_ADMIN_QUERY_KEYS,
     apply_excavator_detail_filters,
     excavator_admin_filters_active,
+    excavator_admin_filter_query_items,
     excavator_admin_preserved_params,
     parse_excavator_admin_filters,
 )
+
+
+class ExcavatorAdminChangeList(ChangeList):
+    """페이지네이션·정렬·필터 링크에 커스텀 상세검색(xsf_*) 파라미터를 유지한다.
+
+    굴삭기 어드민은 모델 필드명 충돌을 피하려 xsf_* GET 키를 쓰고, ChangeList 검증
+    오류를 막기 위해 이를 request.GET에서 제거한다. 그 결과 기본 get_query_string이
+    만드는 링크에서 상세검색 조건이 빠져 2페이지 이동 시 필터가 리셋되던 문제를 해결.
+    """
+
+    def get_query_string(self, new_params=None, remove=None):
+        base = super().get_query_string(new_params, remove)
+        extra = getattr(self, 'gn_excavator_link_params', None)
+        if not extra:
+            return base
+        sep = '&' if '?' in base else '?'
+        return base + sep + urlencode(extra, doseq=True)
 
 
 # 굴삭기 어드민: 세부 유형·중량 코드 → 사용자 화면과 동일한 한글 라벨
@@ -120,21 +139,43 @@ def rotate_equipment_image_file(obj, direction):
     return True
 
 
-def _rotate_buttons_html(obj, next_url):
-    """이미지 옆에 붙일 회전 버튼 HTML (반시계/시계)."""
+# 회전 버튼 클릭 시 페이지 이동 없이(그 자리에서) AJAX로 회전하고
+# 이미지 src에 캐시버스터(?t=)를 붙여 즉시 갱신한다. JS 비활성 시 링크로 폴백.
+_ROTATE_JS = mark_safe(
+    "<script>if(!window.gnRotate){window.gnRotate=function(el){"
+    "var u=el.getAttribute('data-url');el.style.opacity='0.4';el.style.pointerEvents='none';"
+    "fetch(u,{headers:{'X-Requested-With':'XMLHttpRequest'}})"
+    ".then(function(r){return r.json();})"
+    ".then(function(d){el.style.opacity='';el.style.pointerEvents='';"
+    "if(d.ok){var w=el.closest('.gn-rot');var img=w?w.querySelector('img'):null;"
+    "if(img){var b=d.url.split('?')[0];img.src=b+'?t='+Date.now();}}"
+    "else{alert(d.error||'\\ud68c\\uc804 \\uc2e4\\ud328');}})"
+    ".catch(function(){el.style.opacity='';el.style.pointerEvents='';"
+    "alert('\\ud68c\\uc804 \\uc694\\uccad \\uc2e4\\ud328');});return false;};}</script>"
+)
+
+
+def _image_cell_html(obj, next_url, w, h):
+    """미리보기 이미지 + 회전 버튼(↺/↻) 셀. AJAX 회전 + 캐시버스터."""
     base = reverse('admin:equipment_equipmentimage_rotate', args=[obj.pk, 'DIR'])
-    q = '?' + urlencode({'next': next_url}) if next_url else ''
-    ccw = base.replace('DIR', 'ccw') + q
-    cw = base.replace('DIR', 'cw') + q
-    return format_html(
+    fallback_q = ('?' + urlencode({'next': next_url})) if next_url else ''
+    ccw_href = base.replace('DIR', 'ccw') + fallback_q
+    cw_href = base.replace('DIR', 'cw') + fallback_q
+    ccw_ajax = base.replace('DIR', 'ccw') + '?ajax=1'
+    cw_ajax = base.replace('DIR', 'cw') + '?ajax=1'
+    cell = format_html(
+        '<span class="gn-rot" style="display:inline-flex;align-items:center;gap:8px;">'
+        '<img src="{}" style="width:{}px;height:{}px;object-fit:cover;'
+        'border-radius:6px;border:1px solid #ddd;" alt="preview">'
         '<span style="display:inline-flex;flex-direction:column;gap:3px;">'
-        '<a class="button" href="{}" title="반시계방향 90도" '
-        'style="padding:1px 7px;font-size:13px;line-height:1.4;">↺</a>'
-        '<a class="button" href="{}" title="시계방향 90도" '
-        'style="padding:1px 7px;font-size:13px;line-height:1.4;">↻</a>'
-        '</span>',
-        ccw, cw,
+        '<a class="button" href="{}" data-url="{}" onclick="return gnRotate(this)" '
+        'title="반시계방향 90도" style="padding:1px 7px;font-size:13px;line-height:1.4;">↺</a>'
+        '<a class="button" href="{}" data-url="{}" onclick="return gnRotate(this)" '
+        'title="시계방향 90도" style="padding:1px 7px;font-size:13px;line-height:1.4;">↻</a>'
+        '</span></span>',
+        obj.image.url, w, h, ccw_href, ccw_ajax, cw_href, cw_ajax,
     )
+    return mark_safe(_ROTATE_JS + cell)
 
 
 # 1. 매물 관리
@@ -150,13 +191,7 @@ class EquipmentImageInline(admin.TabularInline):
             return "-"
         try:
             next_url = reverse('admin:equipment_equipment_change', args=[obj.equipment_id])
-            return format_html(
-                '<span style="display:inline-flex;align-items:center;gap:8px;">'
-                '<img src="{}" style="width:72px;height:54px;object-fit:cover;'
-                'border-radius:6px;border:1px solid #ddd;" alt="preview">{}</span>',
-                obj.image.url,
-                _rotate_buttons_html(obj, next_url),
-            )
+            return _image_cell_html(obj, next_url, 72, 54)
         except Exception:
             return "-"
     image_preview.short_description = '미리보기(↺/↻ 회전)'
@@ -181,22 +216,37 @@ class EquipmentImageAdmin(admin.ModelAdmin):
         return custom + super().get_urls()
 
     def rotate_view(self, request, image_id, direction):
+        is_ajax = (
+            request.GET.get('ajax') == '1'
+            or request.headers.get('x-requested-with') == 'XMLHttpRequest'
+        )
         next_url = request.GET.get('next') or reverse('admin:equipment_equipmentimage_changelist')
+
+        def respond(ok, msg, level='success'):
+            if is_ajax:
+                payload = {'ok': ok}
+                if ok:
+                    payload['url'] = obj.image.url
+                else:
+                    payload['error'] = msg
+                return JsonResponse(payload)
+            getattr(messages, level)(request, msg)
+            return HttpResponseRedirect(next_url)
+
         obj = self.get_object(request, image_id)
         if obj is None:
+            if is_ajax:
+                return JsonResponse({'ok': False, 'error': '이미지를 찾을 수 없습니다.'})
             messages.error(request, '이미지를 찾을 수 없습니다.')
             return HttpResponseRedirect(next_url)
         if not self.has_change_permission(request, obj):
-            messages.error(request, '권한이 없습니다.')
-            return HttpResponseRedirect(next_url)
+            return respond(False, '권한이 없습니다.', 'error')
         try:
             if rotate_equipment_image_file(obj, direction):
-                messages.success(request, f'이미지 #{obj.pk} 회전 완료. (강력 새로고침 Ctrl+Shift+R 로 확인)')
-            else:
-                messages.error(request, '회전 방향이 올바르지 않습니다.')
+                return respond(True, f'이미지 #{obj.pk} 회전 완료.')
+            return respond(False, '회전 방향이 올바르지 않습니다.', 'error')
         except Exception as e:
-            messages.error(request, f'회전 실패: {e}')
-        return HttpResponseRedirect(next_url)
+            return respond(False, f'회전 실패: {e}', 'error')
 
     def _bulk_rotate(self, request, queryset, direction):
         done = failed = 0
@@ -226,17 +276,11 @@ class EquipmentImageAdmin(admin.ModelAdmin):
         self._bulk_rotate(request, queryset, '180')
 
     def image_preview(self, obj):
-        if not obj or not getattr(obj, 'image', None):
+        if not obj or not getattr(obj, 'pk', None) or not getattr(obj, 'image', None):
             return "-"
         try:
             next_url = reverse('admin:equipment_equipmentimage_changelist')
-            return format_html(
-                '<span style="display:inline-flex;align-items:center;gap:8px;">'
-                '<img src="{}" style="width:84px;height:63px;object-fit:cover;'
-                'border-radius:6px;border:1px solid #ddd;" alt="thumb">{}</span>',
-                obj.image.url,
-                _rotate_buttons_html(obj, next_url),
-            )
+            return _image_cell_html(obj, next_url, 84, 63)
         except Exception:
             return "-"
     image_preview.short_description = '미리보기(↺/↻ 회전)'
@@ -309,6 +353,11 @@ class EquipmentAdmin(admin.ModelAdmin):
         return qs.prefetch_related(
             Prefetch('images', queryset=EquipmentImage.objects.order_by('id'))
         )
+
+    def save_model(self, request, obj, form, change):
+        # 관리자 저장은 매너점수 이용제한(blocked) 판매자라도 차단하지 않는다.
+        obj._skip_seller_block_check = True
+        super().save_model(request, obj, form, change)
 
     def get_search_results(self, request, queryset, search_term):
         """
@@ -401,6 +450,16 @@ class ExcavatorEquipmentAdmin(EquipmentTypeProxyAdmin):
         if excavator_admin_filters_active(params):
             qs = apply_excavator_detail_filters(qs, **params)
         return qs
+
+    def get_changelist(self, request, **kwargs):
+        return ExcavatorAdminChangeList
+
+    def get_changelist_instance(self, request):
+        # request.GET이 strip되기 전 파싱해 둔 상세검색값으로 링크용 xsf_* 항목 생성.
+        params = self._excavator_admin_filter_params(request)
+        cl = super().get_changelist_instance(request)
+        cl.gn_excavator_link_params = excavator_admin_filter_query_items(params)
+        return cl
 
     def changelist_view(self, request, extra_context=None):
         extra_context = extra_context or {}

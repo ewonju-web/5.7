@@ -89,6 +89,8 @@ def filter_similar_equipment_listings(queryset, equipment):
 VALID_CATEGORIES = ('excavator', 'forklift', 'dump', 'loader', 'crane', 'attachment', 'other')
 INDEX_INITIAL_COUNT = 20
 INDEX_FILTER_MAX = 120  # 상세필터 시 한 번에 로드 상한
+INDEX_ROW_MODE_START = 100  # 누적 이 개수를 넘어가면 더보기를 카드 대신 한줄형(row)으로
+INDEX_ROW_CHUNK = 50  # 한줄형 단계에서 더보기 한 번당 로드 개수
 
 # 어드민 changelist는 모델 필드명과 같은 GET(sub_type 등)을 거부하므로 xsf_ 접두사 사용.
 EXCAVATOR_ADMIN_QUERY_KEYS = frozenset({

@@ -772,6 +772,11 @@ def equipment_row_contact(equipment):
         un = (getattr(equipment.author, "username", None) or "").strip()
         return un if un else "-"
 
+    # 작성자 미연결 매물: 저장된 연락처(unclaimed_phone_norm) 우선 사용
+    own_phone = (getattr(equipment, "unclaimed_phone_norm", "") or "").strip()
+    if own_phone and any(ch.isdigit() for ch in own_phone):
+        return format_phone(own_phone)
+
     sibling_qs = (
         Equipment.objects.visible()
         .select_related("author__profile")

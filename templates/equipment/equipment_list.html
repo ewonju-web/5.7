@@ -808,6 +808,7 @@
         {% if has_more_list %}
         <div class="gn-more-list-wrap gn-more-list-wrap-mobile">
         <div class="row row-cols-2 g-2 mb-0 gn-index-more-mobile" id="gnMoreListMobile"></div>
+        <div class="gn-index-more-rows" id="gnMoreRowsMobile"></div>
         <div class="d-flex flex-wrap align-items-center justify-content-center gap-2 my-3 gn-more-controls"
              data-more-for="mobile"
              data-offset="{{ list_offset }}"
@@ -939,6 +940,7 @@
         {% if has_more_list %}
         <div class="gn-more-list-wrap gn-more-list-wrap-pc">
         <div class="row g-3 g-lg-4 mb-0 gn-index-more-pc" id="gnMoreListPc"></div>
+        <div class="gn-index-more-rows" id="gnMoreRowsPc"></div>
         <div class="d-flex flex-wrap align-items-center justify-content-center gap-2 my-3 gn-more-controls d-none d-md-flex"
              data-more-for="pc"
              data-offset="{{ list_offset }}"
@@ -1107,6 +1109,65 @@
   }
   .category-tabs::-webkit-scrollbar { display: none; }
   .category-tabs .gn-cat-pill { flex: 0 0 auto; margin-right: 0; white-space: nowrap; }
+
+  /* 100건 초과 더보기: 사진이 잘 보이는 한줄형(row) 목록 */
+  .gn-index-more-rows { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+  .gn-index-more-rows:empty { display: none; }
+  .gn-index-row {
+    display: flex;
+    align-items: stretch;
+    gap: 14px;
+    padding: 10px;
+    background: #fff;
+    border: 1px solid #e5e7eb;
+    border-radius: 10px;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.04);
+    transition: box-shadow .15s ease, border-color .15s ease;
+  }
+  .gn-index-row:hover { box-shadow: 0 4px 12px rgba(0,0,0,0.08); border-color: #cbd5e1; }
+  .gn-index-row-thumb {
+    position: relative;
+    flex: 0 0 180px;
+    width: 180px;
+    height: 130px;
+    border-radius: 8px;
+    overflow: hidden;
+    background: #e2e8f0;
+    display: block;
+    z-index: 2;
+  }
+  .gn-index-row-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .gn-index-row-noimg {
+    position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+    color: #94a3b8; font-size: 0.78rem;
+  }
+  .gn-index-row-badge {
+    position: absolute; top: 6px; left: 6px;
+    background: #c00; color: #fff; font-weight: 700;
+    font-size: 0.75rem; padding: 1px 6px; border-radius: 4px;
+  }
+  .gn-index-row-badge-sold { background: #475569; }
+  .gn-index-row-body { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; justify-content: center; gap: 6px; }
+  .gn-index-row-title { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; }
+  .gn-index-row-model { font-weight: 700; font-size: 1.05rem; color: #111827; }
+  .gn-index-row-meta { color: #6b7280; font-size: 0.9rem; display: flex; flex-wrap: wrap; align-items: center; gap: 5px; }
+  .gn-index-row-dot { color: #cbd5e1; }
+  .gn-index-row-side {
+    flex: 0 0 auto; display: flex; flex-direction: column; align-items: flex-end;
+    justify-content: center; gap: 8px; padding-left: 6px;
+  }
+  .gn-index-row-price { font-weight: 700; color: #c00; white-space: nowrap; }
+  .gn-index-row-price-num { font-size: 1.15rem; }
+  .gn-index-row-price-unit { font-size: 0.85rem; margin-left: 1px; }
+  .gn-index-row-fav { position: relative; z-index: 6; font-size: 1.3rem; line-height: 1; }
+  @media (max-width: 767.98px) {
+    .gn-index-more-rows { grid-template-columns: 1fr; }
+    .gn-index-row { gap: 10px; padding: 8px; }
+    .gn-index-row-thumb { flex-basis: 120px; width: 120px; height: 96px; }
+    .gn-index-row-model { font-size: 0.96rem; }
+    .gn-index-row-meta { font-size: 0.82rem; gap: 4px; }
+    .gn-index-row-price-num { font-size: 1.02rem; }
+  }
   @media (max-width: 767.98px) {
     .gn-index-mobile { width: 100%; max-width: 100%; overflow-x: hidden; }
     .gn-index-mobile .gn-index-initial-grid,
@@ -2199,6 +2260,8 @@
   (function gnIndexLoadMore() {
     var mobileGrid = document.getElementById('gnMoreListMobile');
     var pcGrid = document.getElementById('gnMoreListPc');
+    var mobileRows = document.getElementById('gnMoreRowsMobile');
+    var pcRows = document.getElementById('gnMoreRowsPc');
     if (!mobileGrid && !pcGrid) return;
 
     var controlsList = document.querySelectorAll('.gn-more-controls[data-offset]');
@@ -2266,7 +2329,9 @@
         if (!grid || !container) return;
         var wrap = grid.closest('.gn-more-list-wrap') || grid.parentElement;
         if (!wrap) return;
+        var rows = target === 'pc' ? pcRows : mobileRows;
         wrap.appendChild(grid);
+        if (rows) wrap.appendChild(rows);
         wrap.appendChild(container);
         var statusEl = wrap.querySelector('.gn-more-status');
         if (statusEl) wrap.appendChild(statusEl);
@@ -2303,11 +2368,25 @@
         .then(function(res) { return res.json(); })
         .then(function(data) {
           if (data.error) throw new Error(data.error);
-          if (mobileGrid && data.html_mobile) {
-            mobileGrid.insertAdjacentHTML('beforeend', data.html_mobile);
-          }
-          if (pcGrid && data.html_pc) {
-            pcGrid.insertAdjacentHTML('beforeend', data.html_pc);
+          if (data.mode === 'row') {
+            if (mobileRows && data.html_row) {
+              mobileRows.insertAdjacentHTML('beforeend', data.html_row);
+            }
+            if (pcRows && data.html_row) {
+              pcRows.insertAdjacentHTML('beforeend', data.html_row);
+            }
+            // 한줄형 단계: 보기 개수(40/80) 선택은 더 이상 영향 없으므로 숨김.
+            document.querySelectorAll('.gn-more-per-page').forEach(function(sel) {
+              var lbl = sel.closest('label');
+              if (lbl) lbl.classList.add('d-none');
+            });
+          } else {
+            if (mobileGrid && data.html_mobile) {
+              mobileGrid.insertAdjacentHTML('beforeend', data.html_mobile);
+            }
+            if (pcGrid && data.html_pc) {
+              pcGrid.insertAdjacentHTML('beforeend', data.html_pc);
+            }
           }
           setOffset(data.offset);
           if (data.total_count) {

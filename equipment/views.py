@@ -76,6 +76,8 @@ from .index_listing import (
     filter_similar_equipment_listings,
     INDEX_INITIAL_COUNT,
     INDEX_FILTER_MAX,
+    INDEX_ROW_MODE_START,
+    INDEX_ROW_CHUNK,
     VALID_CATEGORIES,
 )
 from .seo_meta import category_seo
@@ -474,9 +476,18 @@ def index_load_more(request):
         offset = INDEX_INITIAL_COUNT
 
     per_page = params['list_per_page']
+    # 누적 100건까지는 카드형, 그 이후는 한줄형(row)으로 50건씩.
+    if offset >= INDEX_ROW_MODE_START:
+        mode = 'row'
+        fetch_count = INDEX_ROW_CHUNK
+    else:
+        mode = 'card'
+        # 카드 단계가 정확히 100건에서 끝나도록 청크를 클램프 → 다음 더보기부터 한줄형.
+        fetch_count = min(per_page, INDEX_ROW_MODE_START - offset)
+
     qs = build_index_equipment_queryset(request, params)
     total_count = qs.count()
-    chunk = list(qs[offset:offset + per_page])
+    chunk = list(qs[offset:offset + fetch_count])
 
     premium_author_ids = list(get_premium_user_ids())
     favorited_ids = set()
@@ -486,6 +497,21 @@ def index_load_more(request):
         )
 
     card_ctx = _index_list_card_context(request, params, chunk, premium_author_ids, favorited_ids)
+    new_offset = offset + len(chunk)
+    if mode == 'row':
+        html_row = ''.join(
+            render_to_string('equipment/partials/index_row.html', {**card_ctx, 'equipment': eq}, request=request)
+            for eq in chunk
+        )
+        return JsonResponse({
+            'mode': 'row',
+            'html_row': html_row,
+            'offset': new_offset,
+            'has_more': new_offset < total_count,
+            'total_count': total_count,
+            'loaded_count': len(chunk),
+        })
+
     html_mobile = ''.join(
         render_to_string('equipment/partials/index_card_mobile.html', {**card_ctx, 'equipment': eq}, request=request)
         for eq in chunk
@@ -494,8 +520,8 @@ def index_load_more(request):
         render_to_string('equipment/partials/index_card_pc.html', {**card_ctx, 'equipment': eq}, request=request)
         for eq in chunk
     )
-    new_offset = offset + len(chunk)
     return JsonResponse({
+        'mode': 'card',
         'html_mobile': html_mobile,
         'html_pc': html_pc,
         'offset': new_offset,
@@ -3016,8 +3042,11 @@ def equipment_detail(request, pk):
         Equipment.objects.select_related("author__profile").prefetch_related("images"),
         pk=pk,
     )
-    if equipment.author_id is None and not (
-        request.user.is_authenticated and request.user.is_staff
+    # 작성자 미연결 매물은 연락처가 있을 때만 공개(없으면 스태프만 열람 가능)
+    if (
+        equipment.author_id is None
+        and not (equipment.unclaimed_phone_norm or "").strip()
+        and not (request.user.is_authenticated and request.user.is_staff)
     ):
         raise Http404()
     is_favorited = False
@@ -3126,6 +3155,12 @@ def equipment_detail(request, pk):
                         or sibling.author_id in premium_ids
                     )
                 break
+
+    # 그래도 연락처가 없으면 미연결 매물 자체의 저장된 연락처(unclaimed_phone_norm) 사용
+    if not author_phone:
+        unclaimed_phone = (getattr(equipment, 'unclaimed_phone_norm', '') or '').strip()
+        if unclaimed_phone and any(ch.isdigit() for ch in unclaimed_phone):
+            author_phone = unclaimed_phone
 
     # 상세 사진 (prefetch 활용, 디스크 exists 체크 제거로 응답 속도 개선)
     # 최대 MAX_LISTING_IMAGES 장까지만 노출 — 사진이 많을 때 썸네일 줄이 가로로

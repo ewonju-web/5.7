@@ -82,8 +82,11 @@ class EquipmentQuerySet(models.QuerySet):
     """목록/검색용: NORMAL만 노출. 상세 URL 직접 접근은 별도 허용."""
 
     def visible(self):
-        # 작성자 없는 미연결 매물은 목록/검색에 나오지 않음(소유권 연결 전)
-        return self.filter(listing_status=ListingStatus.NORMAL).exclude(author__isnull=True)
+        # 노출 조건: 정상 상태 + (작성자 연결됨 OR 미연결이라도 연락처 보유)
+        # 연락처가 있으면 작성자 미연결 매물도 노출하고, '내 매물 찾기'로 연결 가능.
+        return self.filter(listing_status=ListingStatus.NORMAL).filter(
+            models.Q(author__isnull=False) | ~models.Q(unclaimed_phone_norm='')
+        )
 
 
 class Equipment(models.Model):
@@ -191,7 +194,14 @@ class Equipment(models.Model):
         verbose_name_plural = "2. 중고 굴삭기 관리"
 
     def save(self, *args, **kwargs):
-        if self.author_id:
+        # 매너점수 이용제한(blocked) 판매자 차단은 '신규 등록' 시점에만 적용한다.
+        # 기존 매물 수정·상태변경(관리자/시스템 포함)까지 막으면 어드민 저장이 500이 난다.
+        # 관리자 저장은 _skip_seller_block_check 플래그로 우회한다(차단 판매자도 편집 가능).
+        if (
+            self.author_id
+            and self._state.adding
+            and not getattr(self, '_skip_seller_block_check', False)
+        ):
             from trust.services import assert_seller_can_list
 
             assert_seller_can_list(self.author)
