@@ -227,6 +227,9 @@ STATICFILES_DIRS = [BASE_DIR / "static"] if (BASE_DIR / "static").exists() else 
 MEDIA_URL = '/media/'
 MEDIA_ROOT = BASE_DIR / 'media'
 
+# 매물 이미지 워터마크에 사용할 한글 지원 폰트(없으면 기본 폰트로 대체)
+WATERMARK_FONT_PATH = str(BASE_DIR / "assets" / "fonts" / "NanumGothic-Regular.ttf")
+
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 REST_FRAMEWORK = {
@@ -246,6 +249,11 @@ CACHES = {
         "LOCATION": str(BASE_DIR / ".django_cache"),
     }
 }
+
+# django-ratelimit: 대량 크롤링 방지(요청 횟수 제한). 위 공유 캐시(default)를 사용한다.
+# (IP 추출은 프록시 환경을 고려해 equipment/ratelimit_utils.py 에서 직접 처리)
+RATELIMIT_USE_CACHE = "default"
+RATELIMIT_ENABLE = True
 
 USE_X_FORWARDED_HOST = True
 # 프록시가 X-Forwarded-Proto: https 일 때만 SSL로 간주. 두 번째 값이 "http"이면 http 요청이 secure로 오인되어 OAuth redirect_uri가 https://로 잘못 생성됨.

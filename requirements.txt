@@ -1,6 +1,7 @@
 asgiref==3.11.0
 Django==5.2.9
 django-filter==25.2
+django-ratelimit==4.1.0
 django-rest-framework==0.1.0
 djangorestframework==3.16.1
 gunicorn==23.0.0

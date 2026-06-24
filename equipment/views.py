@@ -79,6 +79,7 @@ from .index_listing import (
     VALID_CATEGORIES,
 )
 from .seo_meta import category_seo
+from .ratelimit_utils import listing_ratelimit
 
 
 def _image_hash_from_upload(uploaded_file):
@@ -460,6 +461,7 @@ def _index_list_card_context(request, params, equipment_chunk, premium_author_id
     }
 
 
+@listing_ratelimit
 def index_load_more(request):
     """더보기: offset부터 per_page개 카드 HTML(JSON) 반환."""
     params = parse_index_params(request)
@@ -504,6 +506,7 @@ def index_load_more(request):
 
 
 # [1] 메인 페이지 (키워드 + 정렬만)
+@listing_ratelimit
 def index(request):
     repaired = _redirect_repaired_index_query(request)
     if repaired is not None:
@@ -3007,6 +3010,7 @@ def _bump_equipment_view_count(request, equipment_pk):
     return True
 
 @never_cache
+@listing_ratelimit
 def equipment_detail(request, pk):
     equipment = get_object_or_404(
         Equipment.objects.select_related("author__profile").prefetch_related("images"),

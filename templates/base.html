@@ -1451,5 +1451,34 @@
       })();
     </script>
     {% block extra_js %}{% endblock %}
+
+    <!-- 콘텐츠 복제 방지(우클릭/드래그/텍스트선택 차단). 입력 요소는 예외 처리.
+         주의: 개발자도구 등 기술적 우회는 막을 수 없으며, 일반적인 복제만 어렵게 한다. -->
+    <style id="gn-copy-guard-css">
+      body { -webkit-user-select: none; -moz-user-select: none; -ms-user-select: none; user-select: none; }
+      input, textarea, select, [contenteditable="true"], [contenteditable=""] {
+        -webkit-user-select: text; -moz-user-select: text; -ms-user-select: text; user-select: text;
+      }
+      img { -webkit-user-drag: none; user-drag: none; }
+    </style>
+    <script id="gn-copy-guard-js">
+      (function () {
+        function isEditable(el) {
+          if (!el) return false;
+          var tag = (el.tagName || '').toUpperCase();
+          if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return true;
+          return !!(el.closest && el.closest('input, textarea, select, [contenteditable="true"], [contenteditable=""]'));
+        }
+        document.addEventListener('contextmenu', function (e) {
+          if (!isEditable(e.target)) e.preventDefault();
+        });
+        document.addEventListener('selectstart', function (e) {
+          if (!isEditable(e.target)) e.preventDefault();
+        });
+        document.addEventListener('dragstart', function (e) {
+          if (!isEditable(e.target)) e.preventDefault();
+        });
+      })();
+    </script>
 </body>
 </html>

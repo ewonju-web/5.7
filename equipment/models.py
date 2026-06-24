@@ -254,11 +254,26 @@ class EquipmentImage(models.Model):
     equipment = models.ForeignKey(Equipment, related_name='images', on_delete=models.CASCADE, verbose_name="해당 장비")
     image = models.ImageField(upload_to='equipment_images/', verbose_name="장비 사진")
     sort_order = models.PositiveIntegerField(default=0, verbose_name="정렬 순서")
+    watermarked = models.BooleanField(default=False, verbose_name="워터마크 적용됨")
 
     class Meta:
         verbose_name = "장비 사진"
         verbose_name_plural = "3. 장비 사진 관리"
         ordering = ['sort_order', 'id']
+
+    def save(self, *args, **kwargs):
+        super().save(*args, **kwargs)
+        # 업로드 직후 워터마크를 1회 삽입(원본 덮어쓰기). 중복 적용은 플래그로 방지.
+        if self.image and not self.watermarked:
+            try:
+                path = self.image.path
+            except (NotImplementedError, ValueError):
+                path = None
+            if path:
+                from .watermark import apply_watermark
+                if apply_watermark(path):
+                    EquipmentImage.objects.filter(pk=self.pk).update(watermarked=True)
+                    self.watermarked = True
 
 
 class DeletedListingLog(models.Model):
