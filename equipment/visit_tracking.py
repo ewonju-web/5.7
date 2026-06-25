@@ -8,6 +8,9 @@ SKIP_PREFIXES = (
     "/media/",
     "/index/load-more/",
     "/favicon",
+    # 언어 전환 등 즉시 리다이렉트되는 동작용 URL은 방문으로 집계하지 않는다
+    # (표준 분석 도구도 페이지뷰로 세지 않음). 봇이 언어 링크를 긁어 카운트가 부풀던 문제 제거.
+    "/chat/setlang",
 )
 SKIP_EXACT = {"/robots.txt", "/sitemap.xml", "/health", "/health/"}
 
