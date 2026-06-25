@@ -280,10 +280,17 @@ class EquipmentImage(models.Model):
             except (NotImplementedError, ValueError):
                 path = None
             if path:
-                from .watermark import apply_watermark
-                if apply_watermark(path):
-                    EquipmentImage.objects.filter(pk=self.pk).update(watermarked=True)
-                    self.watermarked = True
+                # 워터마크 처리 실패가 저장 자체(관리자 500 등)를 막지 않도록 방어.
+                try:
+                    from .watermark import apply_watermark
+                    if apply_watermark(path):
+                        EquipmentImage.objects.filter(pk=self.pk).update(watermarked=True)
+                        self.watermarked = True
+                except Exception:
+                    import logging
+                    logging.getLogger(__name__).exception(
+                        "워터마크 처리 실패 (EquipmentImage pk=%s)", self.pk
+                    )
 
 
 class DeletedListingLog(models.Model):

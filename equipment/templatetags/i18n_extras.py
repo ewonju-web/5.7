@@ -872,3 +872,28 @@ def hide_code_text(value):
         return ""
     return text
 
+
+@register.filter
+def cache_bust(image_field):
+    """
+    이미지 URL 뒤에 파일 수정시각(?v=mtime)을 붙여 캐시 무력화.
+
+    nginx 가 /media 를 30일 캐시하기 때문에, 관리자에서 사진을 회전(파일 재저장)해도
+    브라우저/CDN 이 옛 이미지를 그대로 보여주는 문제가 있다. 파일이 바뀌면 mtime 이
+    바뀌므로 URL 도 바뀌어 새 이미지를 즉시 받아오게 된다.
+    """
+    import os
+
+    if not image_field:
+        return ""
+    try:
+        url = image_field.url
+    except Exception:
+        return ""
+    try:
+        mtime = int(os.path.getmtime(image_field.path))
+    except Exception:
+        return url
+    sep = "&" if "?" in url else "?"
+    return f"{url}{sep}v={mtime}"
+

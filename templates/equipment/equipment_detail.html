@@ -7,7 +7,7 @@
 {% block og_description %}{% equipment_seo_description equipment %}{% endblock %}
 {% block meta_extra %}
 {% if detail_images %}
-<meta property="og:image" content="https://{{ request.get_host }}{{ detail_images.0.image.url }}">
+<meta property="og:image" content="https://{{ request.get_host }}{{ detail_images.0.image|cache_bust }}">
 <meta name="twitter:card" content="summary_large_image">
 {% endif %}
 {% equipment_schema_ld_json equipment request detail_images %}
@@ -31,12 +31,12 @@
         {% if detail_images %}
           <div class="position-relative bg-dark bg-opacity-10 gn-detail-main-wrap">
             <img loading="lazy" decoding="async" id="detailMainImg"
-                 src="{{ detail_images.0.image.url }}"
+                 src="{{ detail_images.0.image|cache_bust }}"
                  class="w-100 h-100 cursor-pointer gn-detail-main-img"
                  style="cursor: zoom-in;"
                  data-bs-toggle="modal" data-bs-target="#lightboxModal"
                  data-lightbox-index="0"
-                 data-lightbox-src="{{ detail_images.0.image.url }}"
+                 data-lightbox-src="{{ detail_images.0.image|cache_bust }}"
                  alt="{{ equipment.model_name }}">
             {% if detail_images|length > 1 %}
             <button type="button" class="gn-detail-main-nav gn-detail-main-prev d-md-none" id="detailMainPrev" aria-label="이전 사진"><i class="bi bi-chevron-left"></i></button>
@@ -52,10 +52,10 @@
             <button type="button"
                     class="p-0 border rounded flex-shrink-0 detail-thumb {% if forloop.first %}border-primary{% endif %}"
                     style="width: 90px; height: 90px; overflow: hidden; {% if forloop.first %}border-width: 2px !important;{% endif %}"
-                    data-src="{{ image.image.url }}"
+                    data-src="{{ image.image|cache_bust }}"
                     data-index="{{ forloop.counter0 }}"
                     aria-label="사진 {{ forloop.counter }}">
-              <img decoding="async" src="{{ image.image.url }}" class="w-100 h-100 gn-detail-thumb-img" alt="">
+              <img decoding="async" src="{{ image.image|cache_bust }}" class="w-100 h-100 gn-detail-thumb-img" alt="">
             </button>
             {% endfor %}
           </div>
@@ -166,7 +166,7 @@
             <a href="{% url 'equipment_detail' eq.pk %}" class="d-block text-decoration-none rounded overflow-hidden border" style="background: #f8fafc;">
               <div class="position-relative" style="height: 56px;">
                 {% if eq.images.first %}
-                <img loading="lazy" decoding="async" src="{{ eq.images.first.image.url }}" class="w-100 h-100" style="object-fit: cover;" alt="">
+                <img loading="lazy" decoding="async" src="{{ eq.images.first.image|cache_bust }}" class="w-100 h-100" style="object-fit: cover;" alt="">
                 {% else %}
                 <div class="w-100 h-100 d-flex align-items-center justify-content-center text-muted small">이미지 없음</div>
                 {% endif %}
@@ -234,9 +234,9 @@
                 class="d-block w-100 text-start p-0 border-0 bg-transparent gn-detail-photo-item gn-detail-photo-stack-open gn-card-sharp rounded overflow-hidden"
                 data-bs-toggle="modal" data-bs-target="#lightboxModal"
                 data-lightbox-index="{{ forloop.counter0 }}"
-                data-lightbox-src="{{ image.image.url }}"
+                data-lightbox-src="{{ image.image|cache_bust }}"
                 aria-label="사진 {{ forloop.counter }} 크게 보기">
-          <img loading="lazy" decoding="async" src="{{ image.image.url }}" class="img-fluid gn-detail-photo-img" alt="{{ equipment.model_name }} {{ forloop.counter }}" style="cursor: zoom-in;">
+          <img loading="lazy" decoding="async" src="{{ image.image|cache_bust }}" class="img-fluid gn-detail-photo-img" alt="{{ equipment.model_name }} {{ forloop.counter }}" style="cursor: zoom-in;">
         </button>
         {% endfor %}
       </div>
@@ -287,7 +287,7 @@
                 <div class="card border h-100 gn-similar-item-card">
                   <div style="height: 100px; background: #e2e8f0;">
                     {% if other.images.all %}
-                    <img loading="lazy" decoding="async" src="{{ other.images.first.image.url }}" class="w-100 h-100" style="object-fit: cover;" alt="">
+                    <img loading="lazy" decoding="async" src="{{ other.images.first.image|cache_bust }}" class="w-100 h-100" style="object-fit: cover;" alt="">
                     {% else %}
                     <div class="w-100 h-100 d-flex align-items-center justify-content-center text-muted small">이미지 없음</div>
                     {% endif %}
@@ -387,7 +387,7 @@
               <div class="d-flex gap-3 align-items-start gn-premium-expert-card-inner">
                 <div class="flex-shrink-0 gn-rail-ad-thumb gn-premium-expert-thumb">
                   {% if eq.images.first %}
-                  <img src="{{ eq.images.first.image.url }}" alt="" width="76" height="76" loading="lazy" decoding="async">
+                  <img src="{{ eq.images.first.image|cache_bust }}" alt="" width="76" height="76" loading="lazy" decoding="async">
                   {% else %}
                   <div class="gn-rail-thumb-fallback d-flex align-items-center justify-content-center text-muted"><i class="bi bi-tools"></i></div>
                   {% endif %}
@@ -491,7 +491,7 @@
 {% if detail_images %}
 <script>
 (function() {
-  var images = [{% for image in detail_images %}'{{ image.image.url|escapejs }}'{% if not forloop.last %}, {% endif %}{% endfor %}];
+  var images = [{% for image in detail_images %}'{{ image.image|cache_bust|escapejs }}'{% if not forloop.last %}, {% endif %}{% endfor %}];
   var total = images.length;
   if (total === 0) return;
 

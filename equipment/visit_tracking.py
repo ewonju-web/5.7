@@ -1,4 +1,4 @@
-﻿"""방문 추적 미들웨어 공통 유틸."""
+"""방문 추적 미들웨어 공통 유틸."""
 
 import re
 
@@ -15,7 +15,7 @@ SKIP_PREFIXES = (
 SKIP_EXACT = {"/robots.txt", "/sitemap.xml", "/health", "/health/"}
 
 _BOT_UA_RE = re.compile(
-    r"bot|crawler|spider|crawling|slurp|gptbot|chatgpt|bytespider|semrush|ahrefs|"
+    r"bot|crawl|spider|slurp|gptbot|chatgpt|bytespider|semrush|ahrefs|"
     r"dotbot|petalbot|mj12bot|facebookexternalhit|linkedinbot|twitterbot|"
     r"whatsapp|telegrambot|applebot|yandex|baiduspider|headlesschrome",
     re.I,

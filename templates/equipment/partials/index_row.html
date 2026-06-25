@@ -2,7 +2,7 @@
 <div class="gn-index-row position-relative" data-equipment-id="{{ equipment.pk }}">
     <a href="{% url 'equipment_detail' equipment.pk %}?next={{ equipment_detail_next_q }}" class="gn-index-row-thumb text-decoration-none">
         {% if equipment.images.all %}
-        <img src="{{ equipment.images.first.image.url }}" alt="{% if equipment.model_name %}{{ equipment.model_name }}{% else %}모름{% endif %}" loading="lazy" decoding="async">
+        <img src="{{ equipment.images.first.image|cache_bust }}" alt="{% if equipment.model_name %}{{ equipment.model_name }}{% else %}모름{% endif %}" loading="lazy" decoding="async">
         {% else %}
         <span class="gn-index-row-noimg">이미지 준비중</span>
         {% endif %}

@@ -167,6 +167,21 @@ _ROTATE_JS = mark_safe(
 )
 
 
+def _versioned_image_url(image_field):
+    """이미지 URL 뒤에 파일 수정시각(?v=mtime)을 붙여 캐시(브라우저/nginx 30일)를 무력화."""
+    import os
+    try:
+        url = image_field.url
+    except Exception:
+        return ''
+    try:
+        mtime = int(os.path.getmtime(image_field.path))
+    except Exception:
+        return url
+    sep = '&' if '?' in url else '?'
+    return f'{url}{sep}v={mtime}'
+
+
 def _image_cell_html(obj, next_url, w, h):
     """미리보기 이미지 + 회전 버튼(↺/↻) 셀. AJAX 회전 + 캐시버스터."""
     base = reverse('admin:equipment_equipmentimage_rotate', args=[obj.pk, 'DIR'])
@@ -185,7 +200,7 @@ def _image_cell_html(obj, next_url, w, h):
         '<a class="button" href="{}" data-url="{}" onclick="return gnRotate(this)" '
         'title="시계방향 90도" style="padding:1px 7px;font-size:13px;line-height:1.4;">↻</a>'
         '</span></span>',
-        obj.image.url, w, h, ccw_href, ccw_ajax, cw_href, cw_ajax,
+        _versioned_image_url(obj.image), w, h, ccw_href, ccw_ajax, cw_href, cw_ajax,
     )
     return mark_safe(_ROTATE_JS + cell)
 
@@ -316,8 +331,6 @@ class EquipmentAdmin(admin.ModelAdmin):
         'author__username',
         'author__first_name',
         'author__last_name',
-        'author__profile__phone',
-        'unclaimed_phone_norm',
     )
     date_hierarchy = 'created_at'
     list_per_page = 50
@@ -353,7 +366,7 @@ class EquipmentAdmin(admin.ModelAdmin):
         try:
             return format_html(
                 '<img src="{}" style="width:108px;height:81px;object-fit:cover;border-radius:6px;border:1px solid #ddd;" alt="대표">',
-                first.image.url,
+                _versioned_image_url(first.image),
             )
         except Exception:
             return "-"
@@ -374,18 +387,28 @@ class EquipmentAdmin(admin.ModelAdmin):
     def get_search_results(self, request, queryset, search_term):
         """
         기본 search_fields 결과 + 숫자 검색 보강.
-        - 매물번호(id), 이관번호(legacy_listing_id)
-        - 작성자 전화번호(author__profile__phone, 하이픈/공백 제거 후)
+        - 매물번호(id), 이관번호(legacy_listing_id): 정확히 일치
+        - 작성자 전화번호: 7자리 이상 숫자일 때만 부분일치(짧은 매물번호가 남의
+          전화번호 일부와 우연히 매칭되어 엉뚱한 매물이 나오는 것을 방지)
+        - 보강 검색은 반드시 현재 화면(굴삭기 등 장비종류)으로 한정한다.
+          (예전에는 self.model.objects 전체를 대상으로 해서 굴삭기 화면에
+           로더가 섞여 나오는 버그가 있었음)
         """
         queryset, use_distinct = super().get_search_results(request, queryset, search_term)
         term = (search_term or "").strip()
         digits = "".join(ch for ch in term if ch.isdigit())
         if digits:
-            digit_qs = self.model.objects.filter(
-                Q(id=int(digits)) |
-                Q(legacy_listing_id=int(digits)) |
-                Q(author__profile__phone__icontains=digits)
-            )
+            num = int(digits)
+            cond = Q(id=num) | Q(legacy_listing_id=num)
+            # 4자리 연도(예: "2023", "2023년식")는 연식으로도 검색.
+            if len(digits) == 4 and 1980 <= num <= 2100:
+                cond |= Q(year_manufactured=num)
+            if len(digits) >= 7:
+                cond |= (
+                    Q(author__profile__phone__icontains=digits)
+                    | Q(unclaimed_phone_norm__icontains=digits)
+                )
+            digit_qs = self.get_queryset(request).filter(cond)
             queryset = queryset | digit_qs
         return queryset, use_distinct
 

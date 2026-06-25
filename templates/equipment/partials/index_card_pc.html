@@ -35,7 +35,7 @@
         </div>
         <a href="{% url 'equipment_detail' equipment.pk %}?next={{ equipment_detail_next_q }}" class="position-relative order-2 order-md-1 equip-card-img d-block text-decoration-none" style="background: #e2e8f0; overflow: hidden; cursor: pointer; z-index: 2;">
             {% if equipment.images.all %}
-            <img src="{{ equipment.images.first.image.url }}" class="w-100 h-100" style="object-fit: cover; pointer-events: none; display: block;" alt="{% if equipment.model_name %}{{ equipment.model_name }}{% else %}모름{% endif %}" loading="lazy" decoding="async">
+            <img src="{{ equipment.images.first.image|cache_bust }}" class="w-100 h-100" style="object-fit: cover; pointer-events: none; display: block;" alt="{% if equipment.model_name %}{{ equipment.model_name }}{% else %}모름{% endif %}" loading="lazy" decoding="async">
             {% else %}
             <div class="w-100 h-100 d-flex align-items-center justify-content-center text-secondary" style="font-size: 0.7rem;">이미지 준비중</div>
             {% endif %}

@@ -117,6 +117,17 @@ DATABASES = {
     "default": {
         "ENGINE": "django.db.backends.sqlite3",
         "NAME": BASE_DIR / "db.sqlite3",
+        # WAL: 읽기/쓰기 동시성 향상으로 "database is locked" 최소화.
+        # timeout: 잠금 시 최대 30초 대기(동시 쓰기 몰릴 때 안전망).
+        # synchronous=NORMAL: WAL에서 안전하면서 fsync 비용↓ → 쓰기 잠금 구간 단축.
+        "OPTIONS": {
+            "timeout": 30,
+            "init_command": (
+                "PRAGMA journal_mode=WAL;"
+                "PRAGMA synchronous=NORMAL;"
+                "PRAGMA busy_timeout=30000;"
+            ),
+        },
     },
     # direct-nara(php) 백업 DB: legacy 테이블을 읽어오기 위한 연결
     "legacy": {
@@ -355,3 +366,44 @@ if _email_host:
 else:
     EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
     DEFAULT_FROM_EMAIL = os.getenv('DEFAULT_FROM_EMAIL', 'noreply@gulsakgi-nara.local')
+
+
+# ── 로깅: 500 등 서버 오류의 전체 트레이스백을 콘솔(gunicorn→journal)과 파일에 기록 ──
+_LOG_DIR = BASE_DIR / 'logs'
+try:
+    _LOG_DIR.mkdir(exist_ok=True)
+except Exception:
+    pass
+
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'formatters': {
+        'verbose': {
+            'format': '[{asctime}] {levelname} {name}: {message}',
+            'style': '{',
+        },
+    },
+    'handlers': {
+        'console': {
+            'class': 'logging.StreamHandler',
+            'formatter': 'verbose',
+        },
+        'error_file': {
+            'class': 'logging.handlers.RotatingFileHandler',
+            'filename': str(_LOG_DIR / 'django_errors.log'),
+            'maxBytes': 5 * 1024 * 1024,
+            'backupCount': 5,
+            'formatter': 'verbose',
+            'level': 'ERROR',
+            'encoding': 'utf-8',
+        },
+    },
+    'loggers': {
+        'django.request': {
+            'handlers': ['console', 'error_file'],
+            'level': 'ERROR',
+            'propagate': False,
+        },
+    },
+}

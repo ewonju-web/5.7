@@ -4,7 +4,7 @@
         <div class="position-relative gn-list-card-img" style="z-index: 2;">
             <a href="{% url 'equipment_detail' equipment.pk %}?next={{ equipment_detail_next_q }}" class="d-block text-decoration-none h-100" style="cursor: pointer;">
                 {% if equipment.images.all %}
-                <img src="{{ equipment.images.first.image.url }}" class="w-100 h-100" style="object-fit: cover; pointer-events: none; display: block;" alt="{% if equipment.model_name %}{{ equipment.model_name }}{% else %}모름{% endif %}" loading="lazy" decoding="async">
+                <img src="{{ equipment.images.first.image|cache_bust }}" class="w-100 h-100" style="object-fit: cover; pointer-events: none; display: block;" alt="{% if equipment.model_name %}{{ equipment.model_name }}{% else %}모름{% endif %}" loading="lazy" decoding="async">
                 {% else %}
                 <div class="w-100 h-100 d-flex align-items-center justify-content-center text-muted small" style="background: #e9ecef;">이미지 없음</div>
                 {% endif %}

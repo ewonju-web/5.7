@@ -23,6 +23,9 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="굴삭기나라">
+    <meta name="copyright" content="굴삭기나라® © 2020">
+    <meta name="author" content="굴삭기나라">
+    <meta name="trademark" content="출원번호 제40-2020-0164917호">
     <link rel="manifest" href="{% static 'manifest.webmanifest' %}?v=20260611">
     <link rel="icon" type="image/png" sizes="192x192" href="{% static 'img/icon-192.png' %}?v=20260611">
     <link rel="apple-touch-icon" sizes="180x180" href="{% static 'img/apple-touch-icon.png' %}?v=20260611">
@@ -1097,6 +1100,8 @@
         </div>
     </nav>
 
+    {# 봇 트래픽으로 인한 수치 부풀림 때문에 방문자 표시를 임시로 숨김. 복구 시 주석 해제. #}
+    {% comment %}
     <div class="gn-visitor-subbar d-none d-md-block" aria-label="{{ LANG|tr:'오늘 방문자' }}">
         <div class="container">
             <span class="gn-visitor-subbar-inner" title="{{ LANG|tr:'오늘 방문자' }}">
@@ -1107,6 +1112,7 @@
             </span>
         </div>
     </div>
+    {% endcomment %}
 
     <!-- 햄버거 메뉴: 전체 서비스 (모바일, 다크) -->
     <div class="offcanvas offcanvas-end" tabindex="-1" id="gnServiceMenu" aria-labelledby="gnServiceMenuLabel" style="background: var(--gn-card); color: var(--gn-text);">
@@ -1273,6 +1279,8 @@
                 <span>E-mail. <a href="mailto:ewonju@naver.com">ewonju@naver.com</a></span>
             </div>
             <div class="row align-items-center flex-wrap justify-content-center justify-content-md-between gap-2 footer-visitor-row">
+                {# 봇 트래픽 부풀림으로 방문자 표시 임시 숨김(모바일 푸터). 복구 시 주석 해제. #}
+                {% comment %}
                 <div class="col-auto text-center text-md-start d-md-none">
                     <span class="d-inline-flex align-items-center gap-1 flex-wrap justify-content-center justify-content-md-start">
                         <i class="bi bi-people"></i>
@@ -1280,8 +1288,10 @@
                         <span class="opacity-75">(어제 {{ VISITOR_YESTERDAY|default:0 }})</span>
                     </span>
                 </div>
+                {% endcomment %}
                 <div class="col-auto text-center text-md-end ms-md-auto">
-                    <span>Copyright ⓒ 굴삭기나라. All rights reserved.</span>
+                    <span>Copyright ⓒ 굴삭기나라®. All rights reserved.</span>
+                    <span class="d-block">굴삭기나라는 등록상표입니다. (출원번호 제40-2020-0164917호)</span>
                 </div>
             </div>
         </div>

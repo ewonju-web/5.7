@@ -1,8 +1,12 @@
-from django.db import IntegrityError, transaction
+import logging
+
+from django.db import DatabaseError, transaction
 from django.utils.timezone import localdate
 
 from ..models import VisitorLog
 from ..visit_tracking import client_ip, is_bot_request, should_skip_path
+
+logger = logging.getLogger(__name__)
 
 
 class VisitorCounterMiddleware:
@@ -22,6 +26,8 @@ class VisitorCounterMiddleware:
         today = localdate()
         referer = request.META.get("HTTP_REFERER") or "직접 접속"
 
+        # 방문자 기록은 부가 기능 — DB 잠금(SQLite database is locked) 등으로
+        # 절대 페이지/저장 요청을 500으로 떨어뜨리지 않도록 모든 예외를 흡수한다.
         try:
             with transaction.atomic():
                 VisitorLog.objects.get_or_create(
@@ -29,7 +35,9 @@ class VisitorCounterMiddleware:
                     visit_date=today,
                     defaults={"referer": referer},
                 )
-        except IntegrityError:
+        except DatabaseError:
             pass
+        except Exception:
+            logger.warning("VisitorLog 기록 실패", exc_info=True)
 
         return self.get_response(request)
