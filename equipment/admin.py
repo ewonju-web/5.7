@@ -22,7 +22,7 @@ from .models import (
     FinanceConsultation,
     ExcavatorEquipment, ForkliftEquipment, DumpEquipment, LoaderEquipment,
     CraneEquipment, AttachmentEquipment, OtherEquipment,
-    VisitSession, VisitPageLog, VisitorLog,
+    VisitSession, VisitPageLog, VisitorLog, BotLog,
 )
 from django.contrib.admin.views.main import ERROR_FLAG, ChangeList
 from .index_listing import (
@@ -1308,6 +1308,20 @@ class VisitorLogAdmin(admin.ModelAdmin):
     def referer_short(self, obj):
         ref = (obj.referer or "").strip()
         return ref if len(ref) <= 80 else ref[:77] + "…"
+
+
+@admin.register(BotLog)
+class BotLogAdmin(admin.ModelAdmin):
+    list_display = ("accessed_at", "ip_address", "path", "user_agent_short")
+    list_filter = ("accessed_at",)
+    search_fields = ("ip_address", "path", "user_agent")
+    readonly_fields = ("ip_address", "path", "user_agent", "accessed_at")
+    date_hierarchy = "accessed_at"
+
+    @admin.display(description="User-Agent")
+    def user_agent_short(self, obj):
+        ua = (obj.user_agent or "").strip()
+        return ua if len(ua) <= 80 else ua[:77] + "…"
 
 
 try:

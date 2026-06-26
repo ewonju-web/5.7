@@ -349,6 +349,26 @@ class VisitorLog(models.Model):
         verbose_name_plural = "5. 방문 상세 로그"
 
 
+class BotLog(models.Model):
+    """봇으로 판단되어 방문자 집계(VisitorLog)에서 제외된 요청 — 추후 분석용 기록."""
+    ip_address = models.GenericIPAddressField(verbose_name="아이피 주소")
+    path = models.CharField(max_length=500, blank=True, verbose_name="요청 경로")
+    user_agent = models.CharField(max_length=300, blank=True, verbose_name="User-Agent")
+    accessed_at = models.DateTimeField(auto_now_add=True, db_index=True, verbose_name="접속 시각")
+
+    class Meta:
+        verbose_name = "봇 차단 로그"
+        verbose_name_plural = "9. 봇 차단 로그"
+        ordering = ["-accessed_at"]
+        indexes = [
+            models.Index(fields=["-accessed_at"]),
+            models.Index(fields=["ip_address", "-accessed_at"]),
+        ]
+
+    def __str__(self):
+        return f"{self.ip_address} · {self.path}"
+
+
 class VisitSession(models.Model):
     """사이트 방문 세션 — 어드민에서 유입·경로·체류 시간 확인용."""
     django_session_key = models.CharField(max_length=40, db_index=True, verbose_name="세션 키")

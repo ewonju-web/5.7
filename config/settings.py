@@ -57,6 +57,10 @@ MIDDLEWARE = [
 
     'django.middleware.locale.LocaleMiddleware',
 
+    # 봇 집계 제외: 반드시 VisitorCounterMiddleware '바로 위(앞)'에 위치해야 함
+    # (카운터보다 먼저 실행되어 _skip_visitor_log 플래그를 세팅)
+    'equipment.middleware.bot_analytics_exclusion.BotAnalyticsExclusionMiddleware',
+
     # 👇 여기다 넣으세요 (정답 위치)
     'equipment.middleware.visitor_middleware.VisitorCounterMiddleware',
 

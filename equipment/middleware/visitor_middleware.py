@@ -16,6 +16,10 @@ class VisitorCounterMiddleware:
         self.get_response = get_response
 
     def __call__(self, request):
+        # 봇 집계 제외 미들웨어(BotAnalyticsExclusionMiddleware)가 표시한 요청은 기록하지 않는다.
+        # (기존 기록 로직 자체는 변경하지 않는 추가 가드)
+        if getattr(request, "_skip_visitor_log", False):
+            return self.get_response(request)
         if should_skip_path(request) or is_bot_request(request):
             return self.get_response(request)
 
