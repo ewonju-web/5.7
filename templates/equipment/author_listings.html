@@ -128,6 +128,10 @@
             {% else %}
             <div class="gn-author-img-empty">이미지 없음</div>
             {% endif %}
+            {% if equipment.is_sold %}
+            <span class="badge position-absolute top-0 start-0 m-2 bg-secondary">판매완료</span>
+            {% endif %}
+            {% comment %} 상/중/하(가동시간 기준 등급) 배지는 숨김 처리. 복구 시 이 블록 주석 해제.
             <span class="badge position-absolute top-0 start-0 m-2
               {% if equipment.is_sold %}bg-secondary
               {% elif equipment.operating_hours <= 4000 %}bg-success
@@ -138,6 +142,7 @@
               {% elif equipment.operating_hours <= 8000 %}중
               {% else %}하{% endif %}
             </span>
+            {% endcomment %}
           </div>
           <div class="card-body">
             <div class="fw-bold text-dark mb-1 text-truncate">{{ equipment.model_name|default:"모름" }}</div>
