@@ -6,6 +6,8 @@
 {% block meta_description %}{% if category_seo_description %}{{ category_seo_description }}{% else %}{{ block.super }}{% endif %}{% endblock %}
 {% block og_title %}{% if category_seo_title %}{{ category_seo_title }}{% else %}{{ block.super }}{% endif %}{% endblock %}
 {% block og_description %}{% if category_seo_description %}{{ category_seo_description }}{% else %}{{ block.super }}{% endif %}{% endblock %}
+{% block twitter_title %}{% if category_seo_title %}{{ category_seo_title }}{% else %}{{ block.super }}{% endif %}{% endblock %}
+{% block twitter_description %}{% if category_seo_description %}{{ category_seo_description }}{% else %}{{ block.super }}{% endif %}{% endblock %}
 {% block canonical_url %}{% if seo_category %}https://{{ request.get_host }}/?category={{ seo_category }}{% else %}{{ block.super }}{% endif %}{% endblock %}
 
 {% block extra_js %}

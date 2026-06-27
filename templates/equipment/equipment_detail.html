@@ -1,14 +1,20 @@
 {% extends "base.html" %}
-{% load humanize i18n_extras seo_tags %}
+{% load humanize i18n_extras seo_tags static %}
 
 {% block title %}{% equipment_seo_title equipment %}{% endblock %}
 {% block meta_description %}{% equipment_seo_description equipment %}{% endblock %}
 {% block og_title %}{% equipment_seo_title equipment %}{% endblock %}
 {% block og_description %}{% equipment_seo_description equipment %}{% endblock %}
+{% block twitter_title %}{% equipment_seo_title equipment %}{% endblock %}
+{% block twitter_description %}{% equipment_seo_description equipment %}{% endblock %}
+{% block twitter_card %}{% if detail_images %}summary_large_image{% else %}summary{% endif %}{% endblock %}
 {% block meta_extra %}
 {% if detail_images %}
 <meta property="og:image" content="https://{{ request.get_host }}{{ detail_images.0.image|cache_bust }}">
-<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:image" content="https://{{ request.get_host }}{{ detail_images.0.image|cache_bust }}">
+{% else %}
+<meta property="og:image" content="https://{{ request.get_host }}{% static 'img/icon-512.png' %}">
+<meta name="twitter:image" content="https://{{ request.get_host }}{% static 'img/icon-512.png' %}">
 {% endif %}
 {% equipment_schema_ld_json equipment request detail_images %}
 {% endblock %}

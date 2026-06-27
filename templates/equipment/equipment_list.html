@@ -1444,7 +1444,7 @@
       -webkit-overflow-scrolling: touch;
       touch-action: pan-x;
       overscroll-behavior-x: contain;
-      padding: 0.5rem 1.25rem 0.35rem 0.35rem !important;
+      padding: 0.5rem 1.25rem 6px 0.35rem !important;
       margin: 0 !important;
       scrollbar-width: none;
     }
@@ -1454,9 +1454,9 @@
       flex-shrink: 0 !important;
       touch-action: pan-x;
       white-space: nowrap;
-      font-size: 0.82rem !important;
+      font-size: 0.86rem !important;
       font-weight: 700 !important;
-      padding: 0.5rem 1.02rem !important;
+      padding: 9px 1.02rem !important;
       gap: 0.38rem !important;
       min-height: 2.2rem;
       align-items: center;
@@ -1474,7 +1474,7 @@
     }
     .gn-category-scroll-indicator {
       padding: 0 0.5rem;
-      margin: 0.1rem 0 0.45rem;
+      margin: 0.1rem 0 10px;
     }
     .gn-category-scroll-track {
       position: relative;
@@ -1502,8 +1502,8 @@
     .gn-category-scroll-track.is-dragging .gn-category-scroll-thumb {
       cursor: grabbing;
     }
-    .gn-mobile-result-toolbar { margin-top: 0 !important; margin-bottom: 0.85rem !important; }
-    .gn-mobile-result-toolbar > div:first-child { margin-bottom: 0.7rem !important; }
+    .gn-mobile-result-toolbar { margin-top: 0 !important; margin-bottom: 0 !important; padding-top: 4px !important; }
+    .gn-mobile-result-toolbar > div:first-child { margin-bottom: 0 !important; padding-bottom: 10px !important; }
     .gn-index-mobile .gn-mobile-adv-card > .card-body { padding-top: 0.55rem !important; }
     .gn-index-mobile .form-label-sm { font-size: 1rem; }
     .gn-index-mobile .form-select-sm,
@@ -2240,18 +2240,24 @@
     }
     if (pcCategory) edgeHoverAutoScroll(pcCategory);
 
-    // PC 카테고리: 모바일과 동일하게 active pill을 자동으로 스크롤해 가운데로 보이게 함
+    // active pill을 가로 중앙으로 — scrollIntoView 는 인앱 브라우저에서 페이지(세로)까지
+    // 끌어올려 목록 스크롤 복원을 방해할 수 있어, 컨테이너 가로 스크롤만 직접 조정한다.
+    function centerPillHoriz(container, pill) {
+      if (!container || !pill) return;
+      var target = pill.offsetLeft - (container.clientWidth - pill.offsetWidth) / 2;
+      var max = Math.max(0, container.scrollWidth - container.clientWidth);
+      container.scrollLeft = Math.max(0, Math.min(max, target));
+    }
+
     if (pcCategory) {
       var activePc = pcCategory.querySelector('.gn-cat-pill-pc.active') || pcCategory.querySelector('.gn-cat-pill.active');
-      if (activePc && activePc.scrollIntoView) {
-        activePc.scrollIntoView({ behavior: 'auto', block: 'nearest', inline: 'center' });
-      }
+      centerPillHoriz(pcCategory, activePc);
     }
 
     if (mobileCategory) {
       var activeMo = mobileCategory.querySelector('.gn-cat-pill.active');
-      if (activeMo && activeMo.scrollIntoView) {
-        activeMo.scrollIntoView({ behavior: 'auto', block: 'nearest', inline: 'center' });
+      if (activeMo) {
+        centerPillHoriz(mobileCategory, activeMo);
         syncCategoryScrollIndicator();
       }
     }

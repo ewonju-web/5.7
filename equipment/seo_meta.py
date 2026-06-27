@@ -57,70 +57,78 @@ def _equipment_type_label(equipment) -> str:
     return equipment.get_equipment_type_display() or "중장비"
 
 
-def equipment_seo_title(equipment) -> str:
-    """예: 구보다 U17저가동 굴삭기 매물 - 1,400만원 | 굴삭기나라"""
-    manufacturer = (equipment.manufacturer or "").strip()
-    model = (equipment.model_name or "").strip()
-    type_label = _equipment_type_label(equipment)
-    price = _format_price_manwon(equipment.listing_price)
-
-    name_parts = [p for p in (manufacturer, model) if p]
-    if name_parts:
-        name = " ".join(name_parts)
-        if type_label and type_label not in name:
-            headline = f"{name} {type_label} 매물 - {price}"
-        else:
-            headline = f"{name} 매물 - {price}"
-    else:
-        headline = f"{type_label} 매물 - {price}"
-
-    return f"{headline} | 굴삭기나라"
+def _equipment_year_label(equipment) -> str:
+    """연식 표기: '2023년식' (월은 데이터상 기본값 비중이 커 연도만 사용)."""
+    if not equipment.year_manufactured:
+        return ""
+    return f"{equipment.year_manufactured}년식"
 
 
-def equipment_seo_description(equipment) -> str:
-    type_label = _equipment_type_label(equipment)
-    manufacturer = (equipment.manufacturer or "").strip()
-    model = (equipment.model_name or "").strip()
-    price = _format_price_manwon(equipment.listing_price)
-
-    name_parts = [p for p in (manufacturer, model) if p]
-    if name_parts:
-        lead = " ".join(name_parts)
-    else:
-        lead = type_label
-
-    details: list[str] = [f"{lead} 중고 {type_label} 매물", price]
-
-    if equipment.year_manufactured:
-        year_text = f"{equipment.year_manufactured}년"
-        month = equipment.month_manufactured
-        if month and 1 <= int(month) <= 12:
-            year_text = f"{equipment.year_manufactured}년 {int(month)}월"
-        details.append(f"{year_text}식")
-
-    hours = equipment.operating_hours
-    if hours:
-        try:
-            details.append(f"가동 {int(hours):,}시간")
-        except (TypeError, ValueError):
-            pass
-
+def _equipment_location_label(equipment) -> str:
     location = (equipment.current_location or "").strip()
     if not location and equipment.region_sido:
         location = equipment.region_sido.strip()
         if equipment.region_sigungu:
             location = f"{location} {equipment.region_sigungu}".strip()
-    if location:
-        details.append(location)
+    return location
 
-    short_desc = (equipment.description or "").strip()
-    if short_desc:
-        details.append(short_desc)
+
+def equipment_seo_title(equipment) -> str:
+    """예: 두산 DX55 중고 굴삭기 매매 | 2023년식 | 굴삭기나라
+    (제조사·모델명·장비종류·연식 활용, 없는 정보는 자연스럽게 생략)"""
+    manufacturer = (equipment.manufacturer or "").strip()
+    model = (equipment.model_name or "").strip()
+    type_label = _equipment_type_label(equipment)
+    name = " ".join(p for p in (manufacturer, model) if p)
+
+    if name and type_label and type_label not in name:
+        core = f"{name} 중고 {type_label} 매매"
+    elif name:
+        core = f"{name} 중고 매매"
+    else:
+        core = f"중고 {type_label} 매매"
+
+    parts = [core]
+    year_text = _equipment_year_label(equipment)
+    if year_text:
+        parts.append(year_text)
+    parts.append("굴삭기나라")
+    return " | ".join(parts)
+
+
+def equipment_seo_description(equipment) -> str:
+    """예: 두산 DX55 중고 굴삭기 매물입니다. 2023년식, 판매가격 및 상세사진을 확인하고
+    판매자에게 직접 문의하세요. 굴삭기나라에서 다양한 중고 굴삭기 매물을 만나보세요."""
+    type_label = _equipment_type_label(equipment)
+    manufacturer = (equipment.manufacturer or "").strip()
+    model = (equipment.model_name or "").strip()
+    name = " ".join(p for p in (manufacturer, model) if p)
+
+    lead = f"{name} 중고 {type_label} 매물입니다." if name else f"중고 {type_label} 매물입니다."
+
+    # 연식·가동시간·지역을 자연스러운 한 구절로 묶는다.
+    specs: list[str] = []
+    year_text = _equipment_year_label(equipment)
+    if year_text:
+        specs.append(year_text)
+    hours = equipment.operating_hours
+    if hours:
+        try:
+            specs.append(f"가동시간 {int(hours):,}시간")
+        except (TypeError, ValueError):
+            pass
+    location = _equipment_location_label(equipment)
+    if location:
+        specs.append(location)
+    spec_prefix = (", ".join(specs) + " 매물로, ") if specs else ""
 
     if equipment.is_sold:
-        details.append("판매완료")
+        mid = f"{spec_prefix}현재 판매가 완료된 매물입니다."
+    else:
+        mid = f"{spec_prefix}판매가격과 상세사진을 확인하고 판매자에게 직접 문의하세요."
 
-    text = ". ".join(details) + ". 굴삭기나라에서 사진·시세·연락처를 확인하세요."
+    tail = f"굴삭기나라에서 다양한 중고 {type_label} 매물을 만나보세요."
+    text = f"{lead} {mid} {tail}"
     if len(text) > 160:
         text = text[:157].rstrip(" .,·") + "…"
     return text

@@ -79,9 +79,20 @@
   }
 
   function fineScroll(state) {
-    if (scrollToState(state)) return;
-    requestAnimationFrame(function() { scrollToState(state); });
-    setTimeout(function() { scrollToState(state); }, 80);
+    // 인앱 브라우저(네이버 등)·지연 레이아웃·경쟁 스크롤 때문에 한 번만으로는
+    // 끝까지 못 가고 중간에 멈추는 경우가 있어 여러 번 재시도한다.
+    // 단, 사용자가 직접 스크롤(터치/휠/키)하면 즉시 중단해 끌려가지 않게 한다.
+    var cancelled = false;
+    function cancel() { cancelled = true; }
+    window.addEventListener('touchstart', cancel, { passive: true, once: true });
+    window.addEventListener('wheel', cancel, { passive: true, once: true });
+    window.addEventListener('keydown', cancel, { once: true });
+    [0, 60, 140, 280, 500, 800, 1200].forEach(function(delay) {
+      setTimeout(function() {
+        if (cancelled) return;
+        scrollToState(state);
+      }, delay);
+    });
   }
 
   function restoreEqListState() {

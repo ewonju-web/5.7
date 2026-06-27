@@ -8,16 +8,18 @@
     <meta name="google" content="notranslate">
     <meta http-equiv="Content-Language" content="{{ LANG|default:'ko' }}">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-    <meta name="description" content="{% block meta_description %}굴삭기나라: 중고 굴삭기·지게차·덤프트럭 매물 거래, 구인구직, 정비 유튜브, 부품 A/S 정보를 한곳에서 확인하세요.{% endblock %}">
+    <meta name="description" content="{% block meta_description %}굴삭기나라에서 중고 굴삭기 매매와 직거래를 쉽고 빠르게 이용하세요. 굴삭기 판매·구매는 물론 지게차, 덤프트럭 거래, 구인구직, 정비 유튜브, 부품 A/S까지 건설장비에 필요한 정보를 한곳에서 안전하게 제공합니다.{% endblock %}">
     <meta name="robots" content="{% block meta_robots %}index,follow{% endblock %}">
     <link rel="canonical" href="{% block canonical_url %}https://{{ request.get_host }}{{ request.path }}{% endblock %}">
     <meta property="og:type" content="website">
     <meta property="og:site_name" content="굴삭기나라">
-    <meta property="og:title" content="{% block og_title %}굴삭기나라 - 중고 굴삭기·지게차·덤프트럭 매물 거래{% endblock %}">
-    <meta property="og:description" content="{% block og_description %}중고 굴삭기·지게차·덤프트럭 매물과 구인구직, 정비 유튜브, 부품 A/S를 굴삭기나라에서 확인하세요.{% endblock %}">
+    <meta property="og:title" content="{% block og_title %}굴삭기나라 | 중고 굴삭기 매매·판매·구매·직거래 플랫폼{% endblock %}">
+    <meta property="og:description" content="{% block og_description %}굴삭기나라에서 중고 굴삭기 매매와 직거래를 쉽고 빠르게 이용하세요. 굴삭기 판매·구매는 물론 지게차, 덤프트럭 거래, 구인구직, 정비 유튜브, 부품 A/S까지 건설장비에 필요한 정보를 한곳에서 안전하게 제공합니다.{% endblock %}">
     <meta property="og:url" content="https://{{ request.get_host }}{{ request.path }}">
     {% block meta_extra %}{% endblock %}
-    <meta name="twitter:card" content="summary">
+    <meta name="twitter:card" content="{% block twitter_card %}summary{% endblock %}">
+    <meta name="twitter:title" content="{% block twitter_title %}굴삭기나라 | 중고 굴삭기 매매·판매·구매·직거래 플랫폼{% endblock %}">
+    <meta name="twitter:description" content="{% block twitter_description %}굴삭기나라에서 중고 굴삭기 매매와 직거래를 쉽고 빠르게 이용하세요. 굴삭기 판매·구매는 물론 지게차, 덤프트럭 거래, 구인구직, 정비 유튜브, 부품 A/S까지 건설장비에 필요한 정보를 한곳에서 안전하게 제공합니다.{% endblock %}">
     <meta name="theme-color" content="#DADCE0">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
@@ -29,7 +31,7 @@
     <link rel="manifest" href="{% static 'manifest.webmanifest' %}?v=20260611">
     <link rel="icon" type="image/png" sizes="192x192" href="{% static 'img/icon-192.png' %}?v=20260611">
     <link rel="apple-touch-icon" sizes="180x180" href="{% static 'img/apple-touch-icon.png' %}?v=20260611">
-    <title>{% block title %}굴삭기나라 - 중고 굴삭기·지게차·덤프트럭 매물 거래{% endblock %}</title>
+    <title>{% block title %}굴삭기나라 | 중고 굴삭기 매매·판매·구매·직거래 플랫폼{% endblock %}</title>
     <link rel="preload" href="{% static 'vendor/bootstrap/css/bootstrap.min.css' %}?v=20260616" as="style">
     <link href="{% static 'vendor/bootstrap/css/bootstrap.min.css' %}?v=20260616" rel="stylesheet">
     <link rel="stylesheet" href="{% static 'vendor/bootstrap-icons/font/bootstrap-icons.css' %}?v=20260616">
