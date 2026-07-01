@@ -43,9 +43,10 @@
                             {% if form.phone.errors %}<div class="text-danger small">{{ form.phone.errors.0 }}</div>{% endif %}
                         </div>
                         {% include "registration/partials/signup_agreements.html" %}
-                        <button type="submit" id="signup-submit-btn" class="btn w-100 fw-bold py-2 text-dark mb-3" style="background: var(--gn-accent); border-radius: 10px;">가입하기</button>
+                        <button type="submit" id="signup-submit-btn" class="btn w-100 fw-bold py-2 text-dark mb-2" style="background: var(--gn-accent); border-radius: 10px;">가입하기</button>
                     </form>
-                    <p class="text-center text-muted small mb-0">이미 계정이 있으신가요? <a href="{% url 'login' %}" class="fw-bold" style="color: var(--gn-accent);">로그인</a> · <a href="{% url 'join_choice' %}" class="text-muted small">처음으로</a></p>
+                    <p class="text-center text-muted small mb-0">가입·로그인 후 <strong>마이페이지 → 소셜 계정 연결</strong>에서 카카오·네이버·구글 간편 로그인을 연결할 수 있습니다.</p>
+                    <p class="text-center text-muted small mt-2 mb-0">이미 계정이 있으신가요? <a href="{% url 'login' %}" class="fw-bold" style="color: var(--gn-accent);">로그인</a> · <a href="{% url 'join_choice' %}" class="text-muted small">처음으로</a></p>
                 </div>
             </div>
         </div>

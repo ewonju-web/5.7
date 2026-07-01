@@ -755,6 +755,19 @@ def signup_soon(request):
     return render(request, 'registration/signup_soon.html')
 
 
+def social_connect_guide(request):
+    """소셜만으로 가입·연결 시도 시 안내 (회원가입 → 로그인 → 마이페이지 연결)."""
+    if request.user.is_authenticated:
+        return redirect('/accounts/3rdparty/')
+    if 'socialaccount_sociallogin' in request.session:
+        del request.session['socialaccount_sociallogin']
+        request.session.modified = True
+    reason = (request.GET.get('reason') or 'login').strip().lower()
+    if reason not in ('login', 'connect'):
+        reason = 'login'
+    return render(request, 'registration/social_connect_guide.html', {'reason': reason})
+
+
 def join_choice(request):
     """회원가입 진입: 휴대폰 입력 → 기존 회원인지 확인 → 기존 전환 또는 신규 가입 안내."""
     if request.user.is_authenticated:
@@ -763,13 +776,7 @@ def join_choice(request):
     if 'legacy_convert_name' in request.session:
         del request.session['legacy_convert_name']
         request.session.modified = True
-    from urllib.parse import quote
-    _base = '/accounts/{}/login/'
-    context = {
-        'kakao_signup_url': _base.format('kakao'),
-        'naver_signup_url': _base.format('naver'),
-    }
-    return render(request, 'registration/join_choice.html', context)
+    return render(request, 'registration/join_choice.html')
 
 
 def phone_send(request):
@@ -913,21 +920,13 @@ def legacy_convert_intro(request):
 
 
 def signup_choices(request):
-    """신규 회원가입: 카카오/네이버/일반 선택 (필요 시점에만 휴대폰 인증·사업자·유료)."""
+    """신규 회원가입: 일반(아이디·비밀번호)만 안내."""
     blocked = _signup_open_required(request)
     if blocked:
         return blocked
     if request.user.is_authenticated:
         return redirect('my_page')
-    from urllib.parse import quote
-    next_url = request.GET.get('next', '') or ''
-    _base = '/accounts/{}/login/'
-    kakao_signup_url = _base.format('kakao') + ('?next=' + quote(next_url) if next_url else '')
-    naver_signup_url = _base.format('naver') + ('?next=' + quote(next_url) if next_url else '')
-    return render(request, 'registration/signup_choices.html', {
-        'kakao_signup_url': kakao_signup_url,
-        'naver_signup_url': naver_signup_url,
-    })
+    return render(request, 'registration/signup_choices.html')
 
 
 def signup(request):
@@ -1128,6 +1127,8 @@ def my_page(request):
         'premium_expert_avatar_bg': premium_avatar['avatar_bg'],
         'premium_expert_avatar_fg': premium_avatar['avatar_fg'],
         'claimable_listing_count': claimable_listing_count,
+        'needs_password_setup': not request.user.has_usable_password(),
+        'has_social_account': _user_has_social_account(request.user),
     })
 
 
@@ -1349,6 +1350,47 @@ def legacy_convert(request):
         return redirect('my_page')
 
     return render(request, 'registration/legacy_convert.html', {})
+
+
+@login_required(login_url='/login/')
+def account_set_password(request):
+    """소셜-only 등 비밀번호 미설정 회원: 로그인 상태에서 비밀번호 최초 설정."""
+    user = request.user
+    if user.username.startswith('legacy_'):
+        messages.info(request, '기존 회원 전환 메뉴에서 아이디·비밀번호를 설정해 주세요.')
+        return redirect('legacy_convert')
+    if user.has_usable_password():
+        messages.info(request, '이미 비밀번호가 설정되어 있습니다. 변경은 비밀번호 재설정을 이용해 주세요.')
+        return redirect('my_page')
+
+    if request.method == 'POST':
+        password1 = request.POST.get('password1') or ''
+        password2 = request.POST.get('password2') or ''
+        errors = []
+        if len(password1) < 8:
+            errors.append('비밀번호는 8자 이상이어야 합니다.')
+        elif password1 != password2:
+            errors.append('비밀번호가 일치하지 않습니다.')
+        if errors:
+            for msg in errors:
+                messages.error(request, msg)
+            return render(request, 'registration/account_set_password.html', {
+                'has_social_account': _user_has_social_account(user),
+            })
+
+        user.set_password(password1)
+        user.save(update_fields=['password'])
+        from django.contrib.auth import update_session_auth_hash
+        update_session_auth_hash(request, user)
+        messages.success(
+            request,
+            f'비밀번호가 설정되었습니다. 아이디({user.username})와 비밀번호로도 로그인할 수 있습니다.',
+        )
+        return redirect('my_page')
+
+    return render(request, 'registration/account_set_password.html', {
+        'has_social_account': _user_has_social_account(user),
+    })
 
 
 @login_required(login_url='/login/')

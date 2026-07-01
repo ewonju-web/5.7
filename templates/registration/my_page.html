@@ -355,10 +355,19 @@
         <div class="gn-section-head">
             <h5 class="gn-section-title">계정 설정</h5>
         </div>
+        {% if needs_password_setup %}
+        <div class="alert alert-warning border-0 py-2 small mb-3" role="status">
+            아이디·비밀번호 로그인을 쓰려면 비밀번호를 설정해 주세요. 소셜 로그인은 설정 후에도 계속 이용할 수 있습니다.
+        </div>
+        {% endif %}
         <div class="d-flex flex-wrap gap-2">
             <a href="{% url 'phone_verify' %}" class="btn btn-outline-secondary">휴대폰 인증 관리</a>
             <a href="/accounts/3rdparty/" class="btn btn-outline-secondary">소셜 계정 연결</a>
+            {% if needs_password_setup %}
+            <a href="{% url 'account_set_password' %}" class="btn fw-bold text-dark" style="background: var(--gn-accent);">비밀번호 설정</a>
+            {% else %}
             <a href="/password-reset/" class="btn btn-outline-secondary">비밀번호 재설정</a>
+            {% endif %}
         </div>
     </section>
 

@@ -191,6 +191,7 @@ ACCOUNT_USERNAME_REQUIRED = True
 ACCOUNT_EMAIL_VERIFICATION = 'none'
 ACCOUNT_AUTHENTICATION_METHOD = 'username'
 SOCIALACCOUNT_AUTO_SIGNUP = False
+SOCIALACCOUNT_ADAPTER = 'equipment.adapters.DirectNaraSocialAccountAdapter'
 SOCIALACCOUNT_FORMS = {
     'signup': 'equipment.social_forms.RequiredSocialSignupForm',
 }
