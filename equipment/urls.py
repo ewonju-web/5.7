@@ -81,6 +81,7 @@ urlpatterns = [
     path('account/convert/', views.legacy_convert, name='legacy_convert'),
     path('account/verify-phone/', views.verify_phone_page, name='phone_verify'),
     path('account/set-password/', views.account_set_password, name='account_set_password'),
+    path('account/set-password-by-phone/', views.set_password_by_phone, name='set_password_by_phone'),
     path('account/delete/', views.account_delete, name='account_delete'),
     path('equipment/<int:pk>/edit/', views.equipment_edit, name='equipment_edit'),
     path('equipment/<int:pk>/delete/', views.equipment_delete, name='equipment_delete'),

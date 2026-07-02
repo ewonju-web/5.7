@@ -223,6 +223,17 @@ def _user_has_social_account(user):
         return False
 
 
+def _member_needs_password_setup(user):
+    """이관 등으로 비밀번호·소셜 로그인 수단이 없는 활성 회원."""
+    if not user or not user.is_active:
+        return False
+    if user.has_usable_password():
+        return False
+    if _user_has_social_account(user):
+        return False
+    return True
+
+
 def _require_phone_verified(request, next_url=None):
     """
     매물 등록·유료 결제 등 전 휴대폰 인증 필수.
@@ -868,11 +879,15 @@ def join_check(request):
     if existing_profile:
         request.session.pop('pending_listing_count', None)
         request.session.modified = True
+        user = existing_profile.user
+        needs_password_setup = _member_needs_password_setup(user)
         return JsonResponse({
             'ok': True,
             'found': True,
             'member_status': 'existing_account',
             'listing_count': 0,
+            'needs_password_setup': needs_password_setup,
+            'username': user.username if needs_password_setup else '',
         })
 
     legacy_profile = legacy_member_for_phone(phone_norm)
@@ -1350,6 +1365,77 @@ def legacy_convert(request):
         return redirect('my_page')
 
     return render(request, 'registration/legacy_convert.html', {})
+
+
+def set_password_by_phone(request):
+    """
+    휴대폰 인증(session) 후 비밀번호 미설정 이관 회원: 비밀번호 설정 + 자동 로그인.
+    회원가입(join) 흐름·독립 페이지 모두 지원.
+    """
+    from equipment.claim_utils import active_member_for_phone
+
+    if request.method == 'GET':
+        return render(request, 'registration/set_password_by_phone.html', {
+            'phone_value': request.session.get('verified_phone', ''),
+        })
+
+    wants_json = (
+        request.headers.get('X-Requested-With') == 'XMLHttpRequest'
+        or request.content_type == 'application/json'
+    )
+    phone_norm = request.session.get('verified_phone')
+    if not phone_norm:
+        msg = '휴대폰 인증을 먼저 완료해 주세요.'
+        if wants_json:
+            return JsonResponse({'ok': False, 'error': msg}, status=400)
+        messages.error(request, msg)
+        return redirect('join_choice')
+
+    profile = active_member_for_phone(phone_norm)
+    if not profile:
+        msg = '해당 번호로 가입된 회원을 찾을 수 없습니다.'
+        if wants_json:
+            return JsonResponse({'ok': False, 'error': msg}, status=404)
+        messages.error(request, msg)
+        return redirect('join_choice')
+
+    user = profile.user
+    if not _member_needs_password_setup(user):
+        msg = '이미 로그인 수단이 설정된 계정입니다. 로그인해 주세요.'
+        if wants_json:
+            return JsonResponse({'ok': False, 'error': msg}, status=400)
+        messages.info(request, msg)
+        return redirect('login')
+
+    password1 = request.POST.get('password1') or ''
+    password2 = request.POST.get('password2') or ''
+    errors = []
+    if len(password1) < 8:
+        errors.append('비밀번호는 8자 이상이어야 합니다.')
+    elif password1 != password2:
+        errors.append('비밀번호가 일치하지 않습니다.')
+    if errors:
+        if wants_json:
+            return JsonResponse({'ok': False, 'error': errors[0]}, status=400)
+        for msg in errors:
+            messages.error(request, msg)
+        return render(request, 'registration/set_password_by_phone.html', {
+            'phone_value': phone_norm,
+        })
+
+    user.set_password(password1)
+    user.save(update_fields=['password'])
+    user.backend = 'django.contrib.auth.backends.ModelBackend'
+    login(request, user)
+    request.session.pop('verified_phone', None)
+    request.session.modified = True
+    messages.success(
+        request,
+        f'비밀번호가 설정되었습니다. 아이디({user.username})로 로그인할 수 있습니다.',
+    )
+    if wants_json:
+        return JsonResponse({'ok': True, 'redirect': reverse('my_page')})
+    return redirect('my_page')
 
 
 @login_required(login_url='/login/')

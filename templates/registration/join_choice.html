@@ -55,6 +55,29 @@
         </div>
     </div>
 
+    <!-- 4-b) 가입은 되어 있으나 비밀번호 미설정 (이관 회원) -->
+    <div id="join-step-member-setup" class="card border-0 shadow-sm rounded-3 d-none">
+        <div class="card-body p-4">
+            <p class="fw-bold mb-2 text-center" style="color: var(--gn-text); font-size: 1.05rem;">이미 가입된 회원입니다.</p>
+            <p class="text-muted small text-center mb-3">휴대폰 인증이 완료되었어요.<br>비밀번호를 설정하면 바로 마이페이지를 이용할 수 있습니다.</p>
+            <p class="text-center small mb-3">로그인 아이디: <strong id="join-setup-username"></strong></p>
+            <form id="join-setup-form">
+                {% csrf_token %}
+                <div class="mb-3">
+                    <label class="form-label small fw-bold text-secondary">새 비밀번호 (8자 이상)</label>
+                    <input type="password" name="password1" id="join-setup-password1" class="form-control" placeholder="새 비밀번호" required minlength="8" autocomplete="new-password" style="border-radius: 10px;">
+                </div>
+                <div class="mb-3">
+                    <label class="form-label small fw-bold text-secondary">새 비밀번호 확인</label>
+                    <input type="password" name="password2" id="join-setup-password2" class="form-control" placeholder="새 비밀번호 확인" required minlength="8" autocomplete="new-password" style="border-radius: 10px;">
+                </div>
+                <div id="join-setup-err" class="alert alert-warning py-2 small d-none mb-2"></div>
+                <button type="submit" id="join-setup-btn" class="btn w-100 fw-bold py-2 text-dark mb-2" style="background: var(--gn-accent); border-radius: 10px;">비밀번호 설정하고 시작하기</button>
+            </form>
+            <button type="button" id="join-member-setup-back" class="btn btn-link w-100 mt-1 text-muted small">다른 번호로 확인</button>
+        </div>
+    </div>
+
     <!-- 5) 기존 이관 회원 -->
     <div id="join-step-legacy" class="card border-0 shadow-sm rounded-3 d-none">
         <div class="card-body p-4 text-center">
@@ -107,6 +130,7 @@
     var stepCode = document.getElementById('join-step-code');
     var stepLoading = document.getElementById('join-step-loading');
     var stepMember = document.getElementById('join-step-member');
+    var stepMemberSetup = document.getElementById('join-step-member-setup');
     var stepLegacy = document.getElementById('join-step-legacy');
     var stepExisting = document.getElementById('join-step-existing');
     var stepNew = document.getElementById('join-step-new');
@@ -119,12 +143,13 @@
     function show(el) { el.classList.remove('d-none'); }
     function hide(el) { el.classList.add('d-none'); }
     function showStep(step) {
-        hide(stepPhone); hide(stepCode); hide(stepLoading); hide(stepMember); hide(stepLegacy); hide(stepExisting); hide(stepNew);
+        hide(stepPhone); hide(stepCode); hide(stepLoading); hide(stepMember); hide(stepMemberSetup); hide(stepLegacy); hide(stepExisting); hide(stepNew);
         sendErr.classList.add('d-none'); verifyErr.classList.add('d-none');
         if (step === 'phone') show(stepPhone);
         else if (step === 'code') show(stepCode);
         else if (step === 'loading') show(stepLoading);
         else if (step === 'member') show(stepMember);
+        else if (step === 'member-setup') show(stepMemberSetup);
         else if (step === 'legacy') show(stepLegacy);
         else if (step === 'existing') show(stepExisting);
         else if (step === 'new') show(stepNew);
@@ -198,7 +223,14 @@
                         .then(function(d) {
                             setTimeout(function() {
                                 if (d.ok && d.member_status === 'existing_account') {
-                                    showStep('member');
+                                    if (d.needs_password_setup) {
+                                        document.getElementById('join-setup-username').textContent = d.username || '';
+                                        document.getElementById('join-setup-password1').value = '';
+                                        document.getElementById('join-setup-password2').value = '';
+                                        showStep('member-setup');
+                                    } else {
+                                        showStep('member');
+                                    }
                                 } else if (d.ok && d.member_status === 'legacy_account') {
                                     showStep('legacy');
                                 } else if (d.ok && d.found && d.listing_count > 0) {
@@ -232,8 +264,35 @@
 
     document.getElementById('join-another-phone').onclick = function() { showStep('phone'); document.getElementById('join-phone').value = ''; };
     document.getElementById('join-member-back').onclick = function() { showStep('phone'); document.getElementById('join-phone').value = ''; };
+    document.getElementById('join-member-setup-back').onclick = function() { showStep('phone'); document.getElementById('join-phone').value = ''; };
     document.getElementById('join-legacy-back').onclick = function() { showStep('phone'); document.getElementById('join-phone').value = ''; };
     document.getElementById('join-new-back').onclick = function() { showStep('phone'); document.getElementById('join-phone').value = ''; };
+
+    document.getElementById('join-setup-form').addEventListener('submit', function(e) {
+        e.preventDefault();
+        var errEl = document.getElementById('join-setup-err');
+        var p1 = document.getElementById('join-setup-password1').value;
+        var p2 = document.getElementById('join-setup-password2').value;
+        errEl.classList.add('d-none');
+        if (p1.length < 8) { errEl.textContent = '비밀번호는 8자 이상이어야 합니다.'; errEl.classList.remove('d-none'); return; }
+        if (p1 !== p2) { errEl.textContent = '비밀번호가 일치하지 않습니다.'; errEl.classList.remove('d-none'); return; }
+        var fd = new FormData(this);
+        var btn = document.getElementById('join-setup-btn');
+        btn.disabled = true;
+        fetch('{% url "set_password_by_phone" %}', { method: 'POST', body: fd, headers: { 'X-Requested-With': 'XMLHttpRequest' } })
+            .then(function(r) { return r.json(); })
+            .then(function(data) {
+                if (data.ok && data.redirect) { window.location.href = data.redirect; return; }
+                errEl.textContent = data.error || '비밀번호 설정에 실패했습니다.';
+                errEl.classList.remove('d-none');
+                btn.disabled = false;
+            })
+            .catch(function() {
+                errEl.textContent = '요청 실패. 잠시 후 다시 시도해 주세요.';
+                errEl.classList.remove('d-none');
+                btn.disabled = false;
+            });
+    });
 })();
 </script>
 {% endblock %}
