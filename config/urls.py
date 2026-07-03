@@ -140,8 +140,26 @@ _LEGACY_HTML_REDIRECTS = {
 def _build_legacy_redirects():
     patterns = []
     for prefix in ('m/', ''):
+        # 구형 매물 목록/다이렉트 매물보기 등 viewsale/*.html 일괄 처리
         patterns.append(
-            path(prefix + 'viewsale/viewsale_010100.html', legacy_redirect_viewsale_list)
+            re_path(
+                rf'^{prefix}viewsale/[a-zA-Z0-9_]+\.html$',
+                legacy_redirect_viewsale_list,
+            )
+        )
+        # 구형 PHP 매물 상세 (네이버 색인: view/sale_view.php?idx=)
+        patterns.append(
+            re_path(
+                rf'^{prefix}view/sale_view\.php$',
+                legacy_redirect_viewsale_list,
+            )
+        )
+        # 구형 이용안내/이용약관 (네이버 색인: info/info_010100.html)
+        patterns.append(
+            re_path(
+                rf'^{prefix}info/[a-zA-Z0-9_]+\.html$',
+                RedirectView.as_view(url='/terms/', permanent=True),
+            )
         )
         for old_path, new_url in _LEGACY_HTML_REDIRECTS.items():
             patterns.append(

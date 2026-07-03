@@ -6,6 +6,7 @@ from django.conf import settings
 from django.core.management.base import BaseCommand, CommandError
 
 from equipment.models import PartsShop
+from equipment.partsshop_filters import detect_manufacturers
 
 
 def _to_float(value):
@@ -105,6 +106,7 @@ class Command(BaseCommand):
                 "shop_kind": shop_kind,
                 "region": (row.get("지역") or "").strip(),
                 "equipment_types": _detect_equipment_types(keyword_text),
+                "manufacturers": detect_manufacturers(name, keyword_text),
                 "address": (row.get("주소") or "").strip(),
                 "lat": _to_float(row.get("위도")),
                 "lng": _to_float(row.get("경도")),

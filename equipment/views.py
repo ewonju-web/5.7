@@ -362,14 +362,17 @@ def legacy_redirect_job_uid(request, uid):
 
 
 def legacy_redirect_viewsale_list(request):
-    """구형 매물 목록 URL(viewsale_010100.html) → 신버전 301.
+    """구형 매물 목록 URL(viewsale_*.html, sale_view.php) → 신버전 301.
 
-    ?uid=<숫자> 가 신버전 매물(legacy_listing_id)로 매핑되면 해당 상세로 보내고,
+    ?uid= 또는 ?idx= 가 신버전 매물(legacy_listing_id)로 매핑되면 해당 상세로 보내고,
     매핑이 불가능하면 굴삭기 카테고리 목록(/?category=excavator)으로 보낸다.
     """
-    uid = (request.GET.get('uid') or '').strip()
+    uid = (request.GET.get("uid") or request.GET.get("idx") or "").strip()
     if uid.isdigit():
         eq = Equipment.objects.filter(legacy_listing_id=int(uid)).first()
+        if eq:
+            return redirect("equipment_detail", pk=eq.pk, permanent=True)
+        eq = Equipment.objects.filter(pk=int(uid)).first()
         if eq:
             return redirect("equipment_detail", pk=eq.pk, permanent=True)
     return redirect("/?category=excavator", permanent=True)
@@ -2843,6 +2846,21 @@ def _match_equipment_type(equipment_type, equipment_tokens):
     return any(token in aliases for token in equipment_tokens)
 
 
+def _match_manufacturers(manufacturers, center):
+    from equipment.partsshop_filters import detect_manufacturers, match_manufacturers
+
+    return match_manufacturers(manufacturers, center)
+
+
+def _center_manufacturers(center):
+    from equipment.partsshop_filters import detect_manufacturers
+
+    stored = list(center.manufacturers or center.manufacturer or [])
+    if stored:
+        return stored
+    return detect_manufacturers(center.name, center.note)
+
+
 def _normalize_type_filter(request):
     """type(신규) 또는 center_type(기존) 파라미터를 통합."""
     raw = (request.GET.get("type") or request.GET.get("center_type") or "all").strip().lower()
@@ -2918,13 +2936,13 @@ def service_centers_api(request):
             centers_qs = centers_qs.filter(region__icontains=region)
 
         for center in centers_qs:
-            center_manufacturers = list(center.manufacturers or center.manufacturer or [])
+            center_manufacturers = _center_manufacturers(center)
             center_ton_ranges = list(center.ton_ranges or [])
             center_repair_types = list(center.repair_types or [])
             center_equipment_types = [str(x).strip().lower() for x in (center.equipment_types or []) if str(x).strip()]
             if not _match_equipment_type(equipment_type, center_equipment_types):
                 continue
-            if manufacturers and not any(x in center_manufacturers for x in manufacturers):
+            if not _match_manufacturers(manufacturers, center):
                 continue
             if ton_ranges and not any(x in center_ton_ranges for x in ton_ranges):
                 continue
