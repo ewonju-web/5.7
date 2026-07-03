@@ -4,6 +4,7 @@ from __future__ import annotations
 import re
 
 from django.contrib import messages
+from django.contrib.messages.api import MessageFailure
 from django.http import JsonResponse
 from django.shortcuts import redirect
 from django.utils.http import url_has_allowed_host_and_scheme
@@ -83,8 +84,14 @@ class ContentSecurityMiddleware:
             status = 403 if blocked else 429
             return JsonResponse({'ok': False, 'message': message}, status=status)
 
-        messages.error(request, message)
+        self._safe_error_message(request, message)
         referer = request.META.get('HTTP_REFERER') or ''
         if referer and url_has_allowed_host_and_scheme(referer, allowed_hosts={request.get_host()}):
             return redirect(referer)
         return redirect('/')
+
+    def _safe_error_message(self, request, message: str) -> None:
+        try:
+            messages.error(request, message)
+        except MessageFailure:
+            pass

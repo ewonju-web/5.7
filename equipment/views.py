@@ -2598,6 +2598,7 @@ def parts_as_register(request):
     shop_kind_options = [
         ("parts", "부품점"),
         ("as", "AS센터"),
+        ("other", "기타"),
     ]
 
     if request.method == "POST":
@@ -2620,7 +2621,7 @@ def parts_as_register(request):
         ):
             messages.error(request, validation_error)
         else:
-            if shop_kind not in ("parts", "as"):
+            if shop_kind not in ("parts", "as", "other"):
                 shop_kind = "parts"
             if not selected_equipment_types:
                 selected_equipment_types = ["excavator"]
@@ -2839,6 +2840,14 @@ def _equipment_label_by_key():
     }
 
 
+def _partsshop_api_type(shop_kind):
+    if shop_kind == "as":
+        return "as_center"
+    if shop_kind == "other":
+        return "other"
+    return "parts"
+
+
 def _match_equipment_type(equipment_type, equipment_tokens):
     if not equipment_type or equipment_type == "all":
         return True
@@ -2949,7 +2958,7 @@ def service_centers_api(request):
             if repair_types and not any(x in center_repair_types for x in repair_types):
                 continue
 
-            shop_type = "as_center" if center.shop_kind == "as" else "parts"
+            shop_type = _partsshop_api_type(center.shop_kind)
             centers.append({
                 "id": center.pk,
                 "uid": f"{shop_type}-{center.pk}",

@@ -87,6 +87,7 @@
   .gn-badge { border-radius:999px; padding:.2rem .55rem; font-size:.75rem; font-weight:700; }
   .gn-badge.as { background:#dbeafe; color:#1d4ed8; }
   .gn-badge.parts { background:#dcfce7; color:#166534; }
+  .gn-badge.other { background:#f4f4f5; color:#52525b; }
   .gn-badge.rental_company,
   .gn-badge.rental_kakao { background:#dcfce7; color:#15803d; }
   .gn-badge.regional_heavy { background:#dbeafe; color:#1d4ed8; }
@@ -244,6 +245,7 @@
         <div class="gn-map-legend">
           <span><i class="gn-dot" style="background:#f97316"></i>부품점</span>
           <span><i class="gn-dot" style="background:#2563eb"></i>AS센터</span>
+          <span><i class="gn-dot" style="background:#6b7280"></i>기타</span>
           <span><i class="gn-dot" style="background:#16a34a"></i>임대</span>
           <span><i class="gn-dot" style="background:#2563eb"></i>지역중기</span>
         </div>
@@ -340,6 +342,7 @@
       const styles = {
         as: { text: "AS", fill: "rgba(37, 99, 235, 0.75)", color: "#2563eb" },
         parts: { text: "부", fill: "rgba(249, 115, 22, 0.75)", color: "#f97316" },
+        other: { text: "기", fill: "rgba(107, 114, 128, 0.78)", color: "#6b7280" },
         rental_company: { text: "임", fill: "rgba(22, 163, 74, 0.78)", color: "#16a34a" },
         rental_kakao: { text: "임", fill: "rgba(22, 163, 74, 0.78)", color: "#16a34a" },
         regional_heavy: { text: "중", fill: "rgba(37, 99, 235, 0.82)", color: "#1d4ed8" },
@@ -353,13 +356,18 @@
     }
     function markerKind(c) {
       if (c.type === "rental_company" || c.type === "rental_kakao" || c.type === "regional_heavy" || c.type === "rental_user" || c.type === "call_kakao" || c.type === "call_driver") return c.type;
-      return c.center_type_key === "as" ? "as" : "parts";
+      if (c.center_type_key === "as") return "as";
+      if (c.center_type_key === "other") return "other";
+      return "parts";
+    }
+    function isPartsShopType(c) {
+      return c.type === "as_center" || c.type === "parts" || c.type === "other";
     }
     function matchesKindFilter(c) {
       if (state.listKindFilter === "all") return true;
       if (state.listKindFilter === "as") return c.type === "as_center";
       if (state.listKindFilter === "parts") return c.type === "parts";
-      if (state.listKindFilter === "as_parts") return c.type === "as_center" || c.type === "parts";
+      if (state.listKindFilter === "as_parts") return isPartsShopType(c);
       if (state.listKindFilter === "rental") return c.type === "rental_company" || c.type === "rental_kakao" || c.type === "regional_heavy" || c.type === "rental_user" || c.type === "call_kakao" || c.type === "call_driver";
       return c.center_type_key === state.listKindFilter;
     }
@@ -375,7 +383,7 @@
     function updateCounts() {
       const all = centers.length;
       // "부품 A·S" 탭 = AS센터 + 부품점 합산
-      const asPartsCount = centers.filter((x) => x.type === "as_center" || x.type === "parts").length;
+      const asPartsCount = centers.filter((x) => isPartsShopType(x)).length;
       const rentalCount = centers.filter((x) => x.type === "rental_company" || x.type === "rental_kakao" || x.type === "regional_heavy" || x.type === "rental_user" || x.type === "call_kakao" || x.type === "call_driver").length;
       resultCountEl.textContent = String(all);
       countAllEl.textContent = String(all);
@@ -514,7 +522,7 @@
         kakao.maps.event.addListener(marker, "click", () => selectCenter(c.uid, false));
         marker.setMap(map);
         if (kind === "as") asMarkers.push(marker);
-        else if (kind === "parts") partsMarkers.push(marker);
+        else if (kind === "parts" || kind === "other") partsMarkers.push(marker);
         else if (kind === "rental_company" || kind === "rental_kakao" || kind === "regional_heavy") rentalCompanyMarkers.push(marker);
         else if (kind === "rental_user") rentalUserMarkers.push(marker);
         else if (kind === "call_kakao") callKakaoMarkers.push(marker);
@@ -692,7 +700,7 @@
       renderMarkers();
       setLoading(false);
       const focusUid = initialFocusShopId
-        ? (centers.find((c) => c.id === initialFocusShopId && (c.type === "as_center" || c.type === "parts"))?.uid || null)
+        ? (centers.find((c) => c.id === initialFocusShopId && isPartsShopType(c))?.uid || null)
         : null;
       if (focusUid && markersByUid.has(focusUid)) {
         selectCenter(focusUid, true);

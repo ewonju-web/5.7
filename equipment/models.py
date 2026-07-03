@@ -686,6 +686,7 @@ class PartsShop(models.Model):
     SHOP_KIND_CHOICES = [
         ('as', 'AS센터'),
         ('parts', '부품점'),
+        ('other', '기타'),
     ]
     EQUIPMENT_TYPE_CHOICES = [
         '굴삭기', '지게차', '덤프트럭', '스키로더', '크레인', '어태치먼트', '기타',

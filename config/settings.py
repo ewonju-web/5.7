@@ -67,11 +67,11 @@ MIDDLEWARE = [
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
+    'django.contrib.messages.middleware.MessageMiddleware',
     'equipment.middleware.bot_block_middleware.BotBlockMiddleware',
     'equipment.middleware.content_security_middleware.ContentSecurityMiddleware',
     'equipment.middleware.visit_analytics_middleware.VisitAnalyticsMiddleware',
     'equipment.middleware.admin_session_isolation.AdminSessionIsolationMiddleware',
-    'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
     'allauth.account.middleware.AccountMiddleware',
 ]
