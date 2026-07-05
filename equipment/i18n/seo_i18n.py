@@ -510,6 +510,28 @@ EQUIPMENT_SEO_PHRASES = {
 }
 
 
+
+# JSON-LD additionalProperty "name" labels (schema.org PropertyValue).
+# TODO: native speaker review pending for all non-Korean entries.
+SCHEMA_PROPERTY_LABELS = {
+    "ko": {"year": "연식", "hours": "가동시간", "location": "위치"},
+    "en": {"year": "Year", "hours": "Operating Hours", "location": "Location"},
+    "ru": {"year": "Год выпуска", "hours": "Наработка", "location": "Местоположение"},
+    "vi": {"year": "Năm sản xuất", "hours": "Giờ vận hành", "location": "Vị trí"},
+    "mn": {"year": "Он", "hours": "Ажлын цаг", "location": "Байршил"},
+    "ky": {"year": "Чыгарылган жылы", "hours": "Иш сааты", "location": "Жайгашкан жери"},
+    "uz": {"year": "Ishlab chiqarilgan yili", "hours": "Ish soati", "location": "Joylashuv"},
+    "kk": {"year": "Шығарылған жылы", "hours": "Жұмыс уақыты", "location": "Орналасуы"},
+    "ur": {"year": "سال", "hours": "چلنے کے گھنٹے", "location": "مقام"},
+    "es": {"year": "Año", "hours": "Horas de uso", "location": "Ubicación"},
+}
+
+
+def get_schema_property_labels(lang_code: str) -> dict:
+    code = normalize_seo_lang(lang_code)
+    return dict(SCHEMA_PROPERTY_LABELS.get(code, SCHEMA_PROPERTY_LABELS["ko"]))
+
+
 def normalize_seo_lang(lang_code: str) -> str:
     code = (lang_code or "ko").strip().lower()
     if code not in SUPPORTED_LANGS:

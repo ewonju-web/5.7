@@ -5,7 +5,8 @@ import json
 
 from django.utils.safestring import mark_safe
 
-from equipment.seo_meta import _equipment_type_label, equipment_seo_description
+from equipment.i18n.seo_i18n import get_equipment_seo_phrases, get_schema_property_labels, normalize_seo_lang
+from equipment.seo_meta import _equipment_type_label, _manufacturer_label, equipment_seo_description
 
 SCHEMA_ORG = "https://schema.org"
 USED_CONDITION = f"{SCHEMA_ORG}/UsedCondition"
@@ -16,10 +17,10 @@ MERCHANT_RETURN_NOT_PERMITTED = f"{SCHEMA_ORG}/MerchantReturnNotPermitted"
 SITE_HOME = "https://www.direct-nara.co.kr/"
 
 
-def _product_name(equipment) -> str:
-    manufacturer = (equipment.manufacturer or "").strip()
+def _product_name(equipment, lang: str = "ko") -> str:
+    manufacturer = _manufacturer_label(equipment, lang)
     model = (equipment.model_name or "").strip()
-    type_label = _equipment_type_label(equipment)
+    type_label = _equipment_type_label(equipment, lang)
     name_parts = [p for p in (manufacturer, model) if p]
     if name_parts:
         name = " ".join(name_parts)
@@ -27,6 +28,36 @@ def _product_name(equipment) -> str:
             return f"{name} {type_label}"
         return name
     return type_label
+
+
+def _year_property_value(equipment, lang: str) -> str:
+    """additionalProperty 연식 value (ko는 기존 'YYYY년 [M월]' 형식 유지)."""
+    if not equipment.year_manufactured:
+        return ""
+    if normalize_seo_lang(lang) == "ko":
+        year_text = f"{equipment.year_manufactured}년"
+        month = equipment.month_manufactured
+        if month and 1 <= int(month) <= 12:
+            year_text = f"{equipment.year_manufactured}년 {int(month)}월"
+        return year_text
+    month = equipment.month_manufactured
+    if month and 1 <= int(month) <= 12:
+        return f"{equipment.year_manufactured}-{int(month):02d}"
+    return str(equipment.year_manufactured)
+
+
+def _hours_property_value(equipment, lang: str) -> str:
+    if not equipment.operating_hours:
+        return ""
+    try:
+        hours_val = int(equipment.operating_hours)
+    except (TypeError, ValueError):
+        return ""
+    phrases = get_equipment_seo_phrases(lang)
+    if normalize_seo_lang(lang) == "ko":
+        return f"{hours_val:,}시간"
+    unit = phrases.get("hours_unit", "")
+    return f"{hours_val:,}{unit}"
 
 
 def _price_krw(listing_price) -> int | None:
@@ -79,15 +110,21 @@ def build_equipment_schema_graph(
     page_url: str,
     image_urls: list[str],
     category_url: str,
+    lang: str = "ko",
 ) -> dict:
-    name = _product_name(equipment)
-    type_label = _equipment_type_label(equipment)
+    lang = normalize_seo_lang(lang)
+    phrases = get_equipment_seo_phrases(lang)
+    prop_labels = get_schema_property_labels(lang)
+    brand_name = phrases["brand_suffix"]
+
+    name = _product_name(equipment, lang)
+    type_label = _equipment_type_label(equipment, lang)
 
     product: dict = {
         "@type": "Product",
         "@id": f"{page_url}#product",
         "name": name,
-        "description": equipment_seo_description(equipment),
+        "description": equipment_seo_description(equipment, lang),
         "sku": str(equipment.pk),
         "productID": str(equipment.pk),
         "category": type_label,
@@ -98,30 +135,29 @@ def build_equipment_schema_graph(
     if image_urls:
         product["image"] = image_urls
 
-    manufacturer = (equipment.manufacturer or "").strip()
+    manufacturer = _manufacturer_label(equipment, lang)
     if manufacturer:
         product["brand"] = {"@type": "Brand", "name": manufacturer}
 
     additional: list[dict] = []
-    if equipment.year_manufactured:
-        year_text = f"{equipment.year_manufactured}년"
-        month = equipment.month_manufactured
-        if month and 1 <= int(month) <= 12:
-            year_text = f"{equipment.year_manufactured}년 {int(month)}월"
+    year_text = _year_property_value(equipment, lang)
+    if year_text:
         additional.append(
-            {"@type": "PropertyValue", "name": "연식", "value": year_text}
+            {
+                "@type": "PropertyValue",
+                "name": prop_labels["year"],
+                "value": year_text,
+            }
         )
-    if equipment.operating_hours:
-        try:
-            additional.append(
-                {
-                    "@type": "PropertyValue",
-                    "name": "가동시간",
-                    "value": f"{int(equipment.operating_hours):,}시간",
-                }
-            )
-        except (TypeError, ValueError):
-            pass
+    hours_text = _hours_property_value(equipment, lang)
+    if hours_text:
+        additional.append(
+            {
+                "@type": "PropertyValue",
+                "name": prop_labels["hours"],
+                "value": hours_text,
+            }
+        )
     location = (equipment.current_location or "").strip()
     if not location and equipment.region_sido:
         location = equipment.region_sido.strip()
@@ -129,7 +165,11 @@ def build_equipment_schema_graph(
             location = f"{location} {equipment.region_sigungu}".strip()
     if location:
         additional.append(
-            {"@type": "PropertyValue", "name": "위치", "value": location}
+            {
+                "@type": "PropertyValue",
+                "name": prop_labels["location"],
+                "value": location,
+            }
         )
     if additional:
         product["additionalProperty"] = additional
@@ -143,7 +183,7 @@ def build_equipment_schema_graph(
         "itemCondition": USED_CONDITION,
         "seller": {
             "@type": "Organization",
-            "name": "굴삭기나라",
+            "name": brand_name,
             "url": SITE_HOME,
         },
         # 운송은 판매자·구매자 직접 협의(플랫폼 별도 배송비 없음). 구조화 데이터 필수 필드 충족용 최소값.
@@ -179,7 +219,7 @@ def build_equipment_schema_graph(
             {
                 "@type": "ListItem",
                 "position": 1,
-                "name": "굴삭기나라",
+                "name": brand_name,
                 "item": SITE_HOME,
             },
             {
@@ -203,7 +243,7 @@ def build_equipment_schema_graph(
     }
 
 
-def render_equipment_schema_script(equipment, request, detail_images) -> str:
+def render_equipment_schema_script(equipment, request, detail_images, lang: str = "ko") -> str:
     page_url = _canonical_absolute_url(request)
     equipment_type = (equipment.equipment_type or "").strip()
     if equipment_type:
@@ -216,6 +256,7 @@ def render_equipment_schema_script(equipment, request, detail_images) -> str:
         page_url=page_url,
         image_urls=_image_urls(request, detail_images),
         category_url=category_url,
+        lang=lang,
     )
     payload = json.dumps(data, ensure_ascii=False, separators=(",", ":"))
     return mark_safe(f'<script type="application/ld+json">{payload}</script>')

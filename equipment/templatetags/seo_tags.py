@@ -24,6 +24,9 @@ def equipment_seo_description(context, equipment):
     return build_equipment_seo_description(equipment, lang=lang)
 
 
-@register.simple_tag
-def equipment_schema_ld_json(equipment, request, detail_images=None):
-    return render_equipment_schema_script(equipment, request, detail_images or [])
+@register.simple_tag(takes_context=True)
+def equipment_schema_ld_json(context, equipment, request, detail_images=None):
+    lang = (context.get("LANG") or "ko").strip().lower()
+    if lang not in SUPPORTED_LANGS:
+        lang = "ko"
+    return render_equipment_schema_script(equipment, request, detail_images or [], lang=lang)
