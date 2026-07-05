@@ -431,6 +431,7 @@ class EquipmentTypeProxyAdmin(EquipmentAdmin):
 @admin.register(ExcavatorEquipment)
 class ExcavatorEquipmentAdmin(EquipmentTypeProxyAdmin):
     equipment_type_value = EquipmentType.EXCAVATOR
+    ordering = ('-created_at', '-id')
     change_list_template = "admin/equipment/excavatorequipment/change_list.html"
     list_display = [
         "id",
