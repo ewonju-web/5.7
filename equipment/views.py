@@ -74,6 +74,7 @@ from .index_listing import (
     build_index_list_back_url,
     sanitize_index_list_back_url,
     filter_similar_equipment_listings,
+    interleave_index_equipment_slice,
     INDEX_INITIAL_COUNT,
     INDEX_FILTER_MAX,
     INDEX_ROW_MODE_START,
@@ -500,10 +501,10 @@ def index_load_more(request):
         fetch_count = min(per_page, INDEX_ROW_MODE_START - offset)
 
     qs = build_index_equipment_queryset(request, params)
-    total_count = qs.count()
-    chunk = list(qs[offset:offset + fetch_count])
-
     premium_author_ids = list(get_premium_user_ids())
+    chunk, total_count = interleave_index_equipment_slice(
+        qs, offset, fetch_count, premium_author_ids, params
+    )
     favorited_ids = set()
     if request.user.is_authenticated:
         favorited_ids = set(
@@ -576,13 +577,11 @@ def index(request):
     premium_only = params['premium_only']
 
     qs = build_index_equipment_queryset(request, params)
-    total_count = qs.count()
-    if hide_advanced_filters:
-        equipment_list = list(qs[:INDEX_FILTER_MAX])
-    else:
-        equipment_list = list(qs[:INDEX_INITIAL_COUNT])
-
     premium_author_ids = list(get_premium_user_ids())
+    initial_limit = INDEX_FILTER_MAX if hide_advanced_filters else INDEX_INITIAL_COUNT
+    equipment_list, total_count = interleave_index_equipment_slice(
+        qs, 0, initial_limit, premium_author_ids, params
+    )
     favorited_ids = set()
     if request.user.is_authenticated:
         favorited_ids = set(

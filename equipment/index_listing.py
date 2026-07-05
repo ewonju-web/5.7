@@ -1,8 +1,11 @@
 """메인 매물 목록(index) 필터·정렬 공통 로직."""
 from __future__ import annotations
 
+import hashlib
+import json
 from urllib.parse import urlencode, urlparse
 
+from django.core.cache import cache
 from django.db.models import Q, F, Case, When, IntegerField, Value
 from django.db.models.functions import Coalesce
 from django.http import QueryDict
@@ -91,6 +94,9 @@ INDEX_INITIAL_COUNT = 20
 INDEX_FILTER_MAX = 120  # 상세필터 시 한 번에 로드 상한
 INDEX_ROW_MODE_START = 100  # 누적 이 개수를 넘어가면 더보기를 카드 대신 한줄형(row)으로
 INDEX_ROW_CHUNK = 50  # 한줄형 단계에서 더보기 한 번당 로드 개수
+MIN_ITEMS_FOR_INTERLEAVE = 4
+INDEX_INTERLEAVE_CACHE_TTL = 90
+INDEX_INTERLEAVE_CACHE_KEY_PREFIX = 'index_interleave_v1'
 
 # 어드민 changelist는 모델 필드명과 같은 GET(sub_type 등)을 거부하므로 xsf_ 접두사 사용.
 EXCAVATOR_ADMIN_QUERY_KEYS = frozenset({
@@ -474,3 +480,117 @@ def build_index_equipment_queryset(request, params: dict):
             equipment_list = equipment_list.order_by('-effective_order')
 
     return equipment_list.select_related('author__profile').prefetch_related('images')
+
+
+def _premium_sort_active(params: dict, premium_author_ids) -> bool:
+    """build_index_equipment_queryset() sort=new 프리미엄 우선 정렬 조건과 동일."""
+    return (
+        not params['hide_advanced_filters']
+        and not (params.get('query') or '').strip()
+        and params.get('filter_category') in VALID_CATEGORIES
+        and bool(premium_author_ids)
+    )
+
+
+def should_apply_index_interleave(params: dict, total_count: int) -> bool:
+    return params.get('sort') == 'new' and total_count >= MIN_ITEMS_FOR_INTERLEAVE
+
+
+def _build_interleave_cache_key(params: dict, premium_author_ids) -> str:
+    payload = {
+        'sort': params.get('sort'),
+        'query': params.get('query'),
+        'filter_category': params.get('filter_category'),
+        'maker': params.get('maker'),
+        'sub_type': params.get('sub_type'),
+        'weight_class': params.get('weight_class'),
+        'model': params.get('model'),
+        'year_min': params.get('year_min'),
+        'year_max': params.get('year_max'),
+        'region_sido': params.get('region_sido'),
+        'region_sigungu': params.get('region_sigungu'),
+        'mast_type': params.get('mast_type'),
+        'premium_only': params.get('premium_only'),
+        'hide_advanced_filters': params.get('hide_advanced_filters'),
+        'premium_sort': _premium_sort_active(params, premium_author_ids),
+        'premium_ids': sorted(set(premium_author_ids)),
+    }
+    digest = hashlib.md5(
+        json.dumps(payload, sort_keys=True, separators=(',', ':')).encode()
+    ).hexdigest()
+    return f'{INDEX_INTERLEAVE_CACHE_KEY_PREFIX}:{digest}'
+
+
+def get_interleave_groups(qs, params: dict, premium_author_ids):
+    """
+    Group A/B pk 목록과 total_count 반환.
+    interleave 미적용 시 group_a_ids, group_b_ids 는 None.
+    """
+    premium_author_ids = set(premium_author_ids)
+    cache_key = _build_interleave_cache_key(params, premium_author_ids)
+    cached = cache.get(cache_key)
+    if cached is not None:
+        return cached
+
+    total = qs.count()
+    if not should_apply_index_interleave(params, total):
+        return total, None, None
+
+    n_b = total // 2
+    group_b_ids = list(
+        qs.order_by('-effective_order').values_list('pk', flat=True)[:n_b]
+    )
+    group_b_set = set(group_b_ids)
+    group_a_ids = [
+        pk for pk in qs.values_list('pk', flat=True)
+        if pk not in group_b_set
+    ]
+
+    result = (total, group_a_ids, group_b_ids)
+    cache.set(cache_key, result, INDEX_INTERLEAVE_CACHE_TTL)
+    return result
+
+
+def interleave_index_equipment_slice(
+    qs,
+    offset: int,
+    limit: int,
+    premium_author_ids,
+    params: dict,
+) -> tuple[list, int]:
+    """
+    index % 2 alternating interleave 슬라이스.
+    짝수 index → Group A(프리미엄 우선), 홀수 index → Group B(순수 최신순).
+    """
+    total, group_a_ids, group_b_ids = get_interleave_groups(qs, params, premium_author_ids)
+    if group_a_ids is None:
+        return list(qs[offset:offset + limit]), total
+
+    a_cursor = (offset + 1) // 2
+    b_cursor = offset // 2
+    result_pks = []
+
+    for pos in range(offset, offset + limit):
+        if pos % 2 == 0:
+            if a_cursor < len(group_a_ids):
+                result_pks.append(group_a_ids[a_cursor])
+                a_cursor += 1
+            elif b_cursor < len(group_b_ids):
+                result_pks.append(group_b_ids[b_cursor])
+                b_cursor += 1
+            else:
+                break
+        elif b_cursor < len(group_b_ids):
+            result_pks.append(group_b_ids[b_cursor])
+            b_cursor += 1
+        elif a_cursor < len(group_a_ids):
+            result_pks.append(group_a_ids[a_cursor])
+            a_cursor += 1
+        else:
+            break
+
+    if not result_pks:
+        return [], total
+
+    by_pk = {eq.pk: eq for eq in qs.filter(pk__in=result_pks)}
+    return [by_pk[pk] for pk in result_pks if pk in by_pk], total
