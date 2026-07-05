@@ -81,7 +81,8 @@ from .index_listing import (
     INDEX_ROW_CHUNK,
     VALID_CATEGORIES,
 )
-from .seo_meta import category_seo
+from equipment.templatetags.i18n_extras import SUPPORTED_LANGS
+from .seo_meta import get_category_seo
 from .ratelimit_utils import listing_ratelimit
 
 
@@ -611,7 +612,10 @@ def index(request):
     # 그래야 맨 홈(/)·검색 페이지는 기존 범용 문구·canonical(/) 을 그대로 유지한다.
     url_category = (request.GET.get('category') or '').strip().lower()
     seo_category = url_category if url_category in VALID_CATEGORIES else ''
-    cat_seo = category_seo(seo_category) if seo_category else None
+    lang_code = (request.session.get('lang') or 'ko').strip().lower()
+    if lang_code not in SUPPORTED_LANGS:
+        lang_code = 'ko'
+    cat_seo = get_category_seo(seo_category, lang_code) if seo_category else None
 
     response = render(request, 'equipment/index.html', {
         'equipment_list': equipment_list,

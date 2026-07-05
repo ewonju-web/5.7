@@ -1,7 +1,11 @@
 """페이지별 SEO title·description 생성."""
 from __future__ import annotations
 
+from equipment.i18n.seo_i18n import CATEGORY_SEO_I18N
+from equipment.templatetags.i18n_extras import SUPPORTED_LANGS
 
+
+# Deprecated: Korean-only legacy. Use CATEGORY_SEO_I18N via get_category_seo() instead.
 # 카테고리(기종) 목록 페이지 SEO. 키는 Equipment.equipment_type(EquipmentType) 코드.
 # 과장 없이 실제 제공 기능(실시간 등록 매물·시세 비교·직거래)을 반영한 문구.
 CATEGORY_SEO = {
@@ -36,8 +40,30 @@ CATEGORY_SEO = {
 }
 
 
-def category_seo(filter_category):
-    """카테고리 코드에 맞는 (title, description) 반환. 없으면 None(홈/전체 = 기본 문구 유지)."""
+def get_category_seo(category_key, lang="ko"):
+    """카테고리·언어별 (title, description) 반환. 없으면 None."""
+    key = (category_key or "").strip()
+    if not key or key not in CATEGORY_SEO_I18N:
+        return None
+    code = (lang or "ko").strip().lower()
+    if code not in SUPPORTED_LANGS:
+        code = "ko"
+    cat = CATEGORY_SEO_I18N[key]
+    entry = cat.get(code) or cat.get("ko")
+    if not entry:
+        return None
+    return entry["title"], entry["description"]
+
+
+def category_seo(filter_category, lang="ko"):
+    """카테고리 코드에 맞는 (title, description) 반환. 없으면 None(홈/전체 = 기본 문구 유지).
+
+    Prefer get_category_seo(). CATEGORY_SEO dict below is deprecated (Korean-only legacy).
+    """
+    result = get_category_seo(filter_category, lang)
+    if result:
+        return result
+    # Deprecated fallback — kept for backward compatibility if i18n data is missing.
     return CATEGORY_SEO.get((filter_category or "").strip())
 
 
