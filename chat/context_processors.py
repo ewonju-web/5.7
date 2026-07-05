@@ -2,6 +2,7 @@ from django.db.models import Q
 
 from equipment.templatetags.i18n_extras import SUPPORTED_LANGS
 from equipment.i18n.page_messages import get_page_dict
+from equipment.i18n.seo_i18n import SEO_HREFLANG_CODES, get_og_locale, get_seo_meta
 from .models import ChatMessage
 
 
@@ -13,6 +14,9 @@ def lang(request):
     return {
         'LANG': code,
         'I18N_PAGE': get_page_dict(code),
+        'SEO_META': get_seo_meta(code),
+        'OG_LOCALE': get_og_locale(code),
+        'SEO_HREFLANG_CODES': SEO_HREFLANG_CODES,
     }
 
 
