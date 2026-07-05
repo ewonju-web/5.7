@@ -336,6 +336,213 @@ CATEGORY_SEO_I18N = {
     },
 }
 
+
+# Equipment detail page SEO: manufacturer romanization + phrase templates.
+# TODO: native speaker review pending for all non-Korean entries.
+
+MANUFACTURER_ROMANIZATION = {
+    "두산": "Doosan",
+    "볼보": "Volvo",
+    "얀마": "Yanmar",
+    "HD 현대": "HD Hyundai",
+    "현대": "Hyundai",
+    "SK": "Kobelco",
+    "구보다": "Kubota",
+    "구보": "Kubota",
+    "히타치": "Hitachi",
+    "코벨코": "Kobelco",
+    "솔라": "Doosan Solar",
+    "캐타필라": "Caterpillar",
+    "케터피라": "Caterpillar",
+    "밥캣": "Bobcat",
+    "밥켓": "Bobcat",
+    "바브캣": "Bobcat",
+    "바브켓": "Bobcat",
+    ",바브캣": "Bobcat",
+    "코맥스": "Komax",
+    "기타": "Other",
+    "두산정품": "Doosan",
+    "갤": "Gehl",
+    "GEHL": "GEHL",
+}
+
+EQUIPMENT_SEO_PHRASES = {
+    "ko": {
+        "used": "중고",
+        "sale": "매매",
+        "listing": "매물입니다.",
+        "year_suffix": "년식",
+        "hours_label": "가동시간",
+        "hours_unit": "시간",
+        "sold_notice": "현재 판매가 완료된 매물입니다.",
+        "cta": "판매가격과 상세사진을 확인하고 판매자에게 직접 문의하세요.",
+        "tail_template": "굴삭기나라에서 다양한 {used} {type} 매물을 만나보세요.",
+        "brand_suffix": "굴삭기나라",
+        "spec_bridge": "{specs} 매물로, ",
+        "type_fallback": "중장비",
+    },
+    "en": {
+        "used": "Used",
+        "sale": "for Sale",
+        "listing": "for sale.",
+        "year_suffix": "",
+        "hours_label": "Operating hours",
+        "hours_unit": " hrs",
+        "sold_notice": "This listing has been sold.",
+        "cta": "View price and photos, then contact the seller directly.",
+        "tail_template": "Find more used {type} listings on Gulsakginara.",
+        "brand_suffix": "Gulsakginara",
+        "spec_bridge": "{specs}. ",
+        "type_fallback": "heavy equipment",
+    },
+    "ru": {
+        "used": "Б/у",
+        "sale": "продажа",
+        "listing": "в продаже.",
+        "year_suffix": " г.",
+        "hours_label": "Наработка",
+        "hours_unit": " ч",
+        "sold_notice": "Этот объект уже продан.",
+        "cta": "Смотрите цену и фото и свяжитесь с продавцом напрямую.",
+        "tail_template": "Больше объявлений о б/у {type} на Gulsakginara.",
+        "brand_suffix": "Gulsakginara",
+        "spec_bridge": "{specs}. ",
+        "type_fallback": "спецтехника",
+    },
+    "vi": {
+        "used": "Máy cũ",
+        "sale": "bán",
+        "listing": "đang rao bán.",
+        "year_suffix": "",
+        "hours_label": "Giờ vận hành",
+        "hours_unit": " giờ",
+        "sold_notice": "Tin đăng này đã bán xong.",
+        "cta": "Xem giá và ảnh chi tiết, liên hệ trực tiếp người bán.",
+        "tail_template": "Xem thêm tin {used} {type} trên Gulsakginara.",
+        "brand_suffix": "Gulsakginara",
+        "spec_bridge": "{specs}. ",
+        "type_fallback": "thiết bị hạng nặng",
+    },
+    "mn": {
+        "used": "Хэрэглэсэн",
+        "sale": "худалдаа",
+        "listing": "зар мэдээлэл.",
+        "year_suffix": " он",
+        "hours_label": "Ажлын цаг",
+        "hours_unit": " цаг",
+        "sold_notice": "Энэ зар одоогоор зарагдсан.",
+        "cta": "Үнэ, зургийг үзээд борлуулагчтай шууд холбогдоно уу.",
+        "tail_template": "Gulsakginara дээр илүү олон {used} {type} зар үзнэ үү.",
+        "brand_suffix": "Gulsakginara",
+        "spec_bridge": "{specs}. ",
+        "type_fallback": "хүнд техник",
+    },
+    "ky": {
+        "used": "Колдонулган",
+        "sale": "сатуу",
+        "listing": "жарыя.",
+        "year_suffix": " жыл",
+        "hours_label": "Иш сааты",
+        "hours_unit": " саат",
+        "sold_notice": "Бул жарыя сатылып бүткөн.",
+        "cta": "Баасын жана сүрөттөрдү көрүп, сатуучуга түз кайрылыңыз.",
+        "tail_template": "Gulsakginaraда көбүрөөк {used} {type} жарыяларын көрүңүз.",
+        "brand_suffix": "Gulsakginara",
+        "spec_bridge": "{specs}. ",
+        "type_fallback": "оор техника",
+    },
+    "uz": {
+        "used": "Ishlatilgan",
+        "sale": "sotuv",
+        "listing": "e'lon.",
+        "year_suffix": " yil",
+        "hours_label": "Ish soati",
+        "hours_unit": " soat",
+        "sold_notice": "Bu e'lon sotilgan.",
+        "cta": "Narx va rasmlarni ko'rib, sotuvchi bilan to'g'ridan-to'g'ri bog'laning.",
+        "tail_template": "Gulsakginarada ko'proq {used} {type} e'lonlarini ko'ring.",
+        "brand_suffix": "Gulsakginara",
+        "spec_bridge": "{specs}. ",
+        "type_fallback": "og'ir texnika",
+    },
+    "kk": {
+        "used": "Қолданылған",
+        "sale": "сату",
+        "listing": "хабарландыру.",
+        "year_suffix": " ж.",
+        "hours_label": "Жұмыс уақыты",
+        "hours_unit": " сағ",
+        "sold_notice": "Бұл хабарландыру сатылған.",
+        "cta": "Баға мен фотосуреттерді қарап, сатушыға тікелей хабарласыңыз.",
+        "tail_template": "Gulsakginaraда көбірек {used} {type} хабарландыруларын қараңыз.",
+        "brand_suffix": "Gulsakginara",
+        "spec_bridge": "{specs}. ",
+        "type_fallback": "ауыр техника",
+    },
+    "ur": {
+        "used": "استعمال شدہ",
+        "sale": "فروخت",
+        "listing": "لسٹنگ ہے۔",
+        "year_suffix": " ماڈل",
+        "hours_label": "چلنے کے گھنٹے",
+        "hours_unit": "",
+        "sold_notice": "یہ لسٹنگ فروخت ہو چکی ہے۔",
+        "cta": "قیمت اور تفصیلی تصاویر دیکھیں اور فروخت کنندہ سے براہِ راست رابطہ کریں۔",
+        "tail_template": "Gulsakginara پر مزید {used} {type} لسٹنگز دیکھیں۔",
+        "brand_suffix": "Gulsakginara",
+        "spec_bridge": "{specs}۔ ",
+        "type_fallback": "بھاری مشینری",
+    },
+    "es": {
+        "used": "Usado",
+        "sale": "en venta",
+        "listing": "en venta.",
+        "year_suffix": "",
+        "hours_label": "Horas de uso",
+        "hours_unit": " h",
+        "sold_notice": "Este anuncio ya se vendió.",
+        "cta": "Consulte el precio y las fotos y contacte al vendedor directamente.",
+        "tail_template": "Encuentre más anuncios de {type} usados en Gulsakginara.",
+        "brand_suffix": "Gulsakginara",
+        "spec_bridge": "{specs}. ",
+        "type_fallback": "maquinaria pesada",
+    },
+}
+
+
+def normalize_seo_lang(lang_code: str) -> str:
+    code = (lang_code or "ko").strip().lower()
+    if code not in SUPPORTED_LANGS:
+        return "ko"
+    return code
+
+
+def get_equipment_seo_phrases(lang_code: str) -> dict:
+    code = normalize_seo_lang(lang_code)
+    return dict(EQUIPMENT_SEO_PHRASES.get(code, EQUIPMENT_SEO_PHRASES["ko"]))
+
+
+def get_manufacturer_label(manufacturer: str, lang_code: str) -> str:
+    raw = (manufacturer or "").strip()
+    if not raw:
+        return ""
+    if normalize_seo_lang(lang_code) == "ko":
+        return raw
+    return MANUFACTURER_ROMANIZATION.get(raw, raw)
+
+
+def get_category_type_label(equipment_type_code: str, lang_code: str, fallback_display: str = "") -> str:
+    code = normalize_seo_lang(lang_code)
+    cat = (equipment_type_code or "").strip()
+    if cat in CATEGORY_DISPLAY_NAMES:
+        label = CATEGORY_DISPLAY_NAMES[cat].get(code) or CATEGORY_DISPLAY_NAMES[cat].get("ko")
+        if label:
+            return label
+    if fallback_display:
+        return fallback_display
+    return get_equipment_seo_phrases(code).get("type_fallback", "중장비")
+
+
 SEO_HREFLANG_CODES = tuple(LANGUAGE_ORDER)
 
 

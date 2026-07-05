@@ -1,7 +1,13 @@
 """페이지별 SEO title·description 생성."""
 from __future__ import annotations
 
-from equipment.i18n.seo_i18n import CATEGORY_SEO_I18N
+from equipment.i18n.seo_i18n import (
+    CATEGORY_SEO_I18N,
+    get_category_type_label,
+    get_equipment_seo_phrases,
+    get_manufacturer_label,
+    normalize_seo_lang,
+)
 from equipment.templatetags.i18n_extras import SUPPORTED_LANGS
 
 
@@ -45,9 +51,7 @@ def get_category_seo(category_key, lang="ko"):
     key = (category_key or "").strip()
     if not key or key not in CATEGORY_SEO_I18N:
         return None
-    code = (lang or "ko").strip().lower()
-    if code not in SUPPORTED_LANGS:
-        code = "ko"
+    code = normalize_seo_lang(lang)
     cat = CATEGORY_SEO_I18N[key]
     entry = cat.get(code) or cat.get("ko")
     if not entry:
@@ -79,15 +83,28 @@ def _format_price_manwon(listing_price) -> str:
     return f"{val:,}만원"
 
 
-def _equipment_type_label(equipment) -> str:
-    return equipment.get_equipment_type_display() or "중장비"
+def _equipment_type_label(equipment, lang="ko") -> str:
+    fallback = equipment.get_equipment_type_display() or ""
+    return get_category_type_label(
+        equipment.equipment_type,
+        lang,
+        fallback_display=fallback,
+    )
 
 
-def _equipment_year_label(equipment) -> str:
-    """연식 표기: '2023년식' (월은 데이터상 기본값 비중이 커 연도만 사용)."""
+def _manufacturer_label(equipment, lang="ko") -> str:
+    return get_manufacturer_label(equipment.manufacturer, lang)
+
+
+def _equipment_year_label(equipment, lang="ko") -> str:
+    """연식 표기. ko: '2023년식', en: '2023' 등."""
     if not equipment.year_manufactured:
         return ""
-    return f"{equipment.year_manufactured}년식"
+    phrases = get_equipment_seo_phrases(lang)
+    suffix = phrases.get("year_suffix", "")
+    if suffix:
+        return f"{equipment.year_manufactured}{suffix}"
+    return str(equipment.year_manufactured)
 
 
 def _equipment_location_label(equipment) -> str:
@@ -99,61 +116,102 @@ def _equipment_location_label(equipment) -> str:
     return location
 
 
-def equipment_seo_title(equipment) -> str:
-    """예: 두산 DX55 중고 굴삭기 매매 | 2023년식 | 굴삭기나라
-    (제조사·모델명·장비종류·연식 활용, 없는 정보는 자연스럽게 생략)"""
-    manufacturer = (equipment.manufacturer or "").strip()
+def _name_includes_type(name: str, type_label: str) -> bool:
+    if not name or not type_label:
+        return False
+    return type_label in name
+
+
+def _build_title_core(name: str, type_label: str, lang: str, phrases: dict) -> str:
+    used = phrases["used"]
+    sale = phrases["sale"]
+    if name and type_label and not _name_includes_type(name, type_label):
+        if lang == "ko":
+            return f"{name} {used} {type_label} {sale}"
+        if lang in ("en", "es", "vi"):
+            return f"{used} {name} {type_label} {sale}"
+        if lang == "ru":
+            return f"{used} {type_label} {name} — {sale}"
+        if lang == "ur":
+            return f"{used} {name} {type_label} {sale}"
+        return f"{used} {name} {type_label} {sale}"
+    if name:
+        if lang == "ko":
+            return f"{name} {used} {sale}"
+        return f"{used} {name} {sale}"
+    if lang == "ko":
+        return f"{used} {type_label} {sale}"
+    return f"{used} {type_label} {sale}"
+
+
+def _build_description_lead(name: str, type_label: str, lang: str, phrases: dict) -> str:
+    used = phrases["used"]
+    listing = phrases["listing"]
+    if name:
+        if lang == "ko":
+            return f"{name} {used} {type_label} {listing}"
+        return f"{name} — {used} {type_label} {listing}"
+    if lang == "ko":
+        return f"{used} {type_label} {listing}"
+    return f"{used} {type_label} {listing}"
+
+
+def equipment_seo_title(equipment, lang="ko") -> str:
+    """제조사·모델명·장비종류·연식 활용, 없는 정보는 자연스럽게 생략."""
+    lang = normalize_seo_lang(lang)
+    phrases = get_equipment_seo_phrases(lang)
+    manufacturer = _manufacturer_label(equipment, lang)
     model = (equipment.model_name or "").strip()
-    type_label = _equipment_type_label(equipment)
+    type_label = _equipment_type_label(equipment, lang)
     name = " ".join(p for p in (manufacturer, model) if p)
 
-    if name and type_label and type_label not in name:
-        core = f"{name} 중고 {type_label} 매매"
-    elif name:
-        core = f"{name} 중고 매매"
-    else:
-        core = f"중고 {type_label} 매매"
-
+    core = _build_title_core(name, type_label, lang, phrases)
     parts = [core]
-    year_text = _equipment_year_label(equipment)
+    year_text = _equipment_year_label(equipment, lang)
     if year_text:
         parts.append(year_text)
-    parts.append("굴삭기나라")
+    parts.append(phrases["brand_suffix"])
     return " | ".join(parts)
 
 
-def equipment_seo_description(equipment) -> str:
-    """예: 두산 DX55 중고 굴삭기 매물입니다. 2023년식, 판매가격 및 상세사진을 확인하고
-    판매자에게 직접 문의하세요. 굴삭기나라에서 다양한 중고 굴삭기 매물을 만나보세요."""
-    type_label = _equipment_type_label(equipment)
-    manufacturer = (equipment.manufacturer or "").strip()
+def equipment_seo_description(equipment, lang="ko") -> str:
+    lang = normalize_seo_lang(lang)
+    phrases = get_equipment_seo_phrases(lang)
+    type_label = _equipment_type_label(equipment, lang)
+    manufacturer = _manufacturer_label(equipment, lang)
     model = (equipment.model_name or "").strip()
     name = " ".join(p for p in (manufacturer, model) if p)
 
-    lead = f"{name} 중고 {type_label} 매물입니다." if name else f"중고 {type_label} 매물입니다."
+    lead = _build_description_lead(name, type_label, lang, phrases)
 
-    # 연식·가동시간·지역을 자연스러운 한 구절로 묶는다.
     specs: list[str] = []
-    year_text = _equipment_year_label(equipment)
+    year_text = _equipment_year_label(equipment, lang)
     if year_text:
         specs.append(year_text)
     hours = equipment.operating_hours
     if hours:
         try:
-            specs.append(f"가동시간 {int(hours):,}시간")
+            hours_val = int(hours)
+            specs.append(
+                f"{phrases['hours_label']} {hours_val:,}{phrases['hours_unit']}"
+            )
         except (TypeError, ValueError):
             pass
     location = _equipment_location_label(equipment)
     if location:
         specs.append(location)
-    spec_prefix = (", ".join(specs) + " 매물로, ") if specs else ""
+
+    if specs:
+        spec_prefix = phrases["spec_bridge"].format(specs=", ".join(specs))
+    else:
+        spec_prefix = ""
 
     if equipment.is_sold:
-        mid = f"{spec_prefix}현재 판매가 완료된 매물입니다."
+        mid = f"{spec_prefix}{phrases['sold_notice']}"
     else:
-        mid = f"{spec_prefix}판매가격과 상세사진을 확인하고 판매자에게 직접 문의하세요."
+        mid = f"{spec_prefix}{phrases['cta']}"
 
-    tail = f"굴삭기나라에서 다양한 중고 {type_label} 매물을 만나보세요."
+    tail = phrases["tail_template"].format(used=phrases["used"], type=type_label)
     text = f"{lead} {mid} {tail}"
     if len(text) > 160:
         text = text[:157].rstrip(" .,·") + "…"
