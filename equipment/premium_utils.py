@@ -57,7 +57,9 @@ def _premium_user_ids():
 
 
 def get_premium_equipment_rotation(limit=18, equipment_type: str | None = None):
-    """첫 화면 로테이션용: 유료 회원 매물 중 노출 중인 것, 최신순 후 limit개 (캐러셀 슬라이드 여러 장)."""
+    """첫 화면 로테이션용: 유료 회원 매물 중 노출 중인 것, 최신순 후 판매자 다양성 보정."""
+    from .diversity_utils import diversify_by_author
+
     uids = _premium_user_ids()
     if not uids:
         return []
@@ -67,7 +69,10 @@ def get_premium_equipment_rotation(limit=18, equipment_type: str | None = None):
     )
     if equipment_type:
         qs = qs.filter(equipment_type=equipment_type)
-    return list(qs.order_by("-created_at")[:limit])
+    # 후보를 넉넉히 가져온 뒤 diversify → limit (특정 판매자 독점 완화)
+    fetch_n = max(limit * 5, limit)
+    candidates = list(qs.order_by("-created_at")[:fetch_n])
+    return diversify_by_author(candidates)[:limit]
 
 
 def get_premium_user_ids():

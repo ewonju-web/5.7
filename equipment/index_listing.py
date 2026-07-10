@@ -15,11 +15,22 @@ from django.utils.http import url_has_allowed_host_and_scheme
 
 from .models import Equipment
 from .premium_utils import get_premium_user_ids
+from .diversity_utils import diversify_by_author
 from .listing_filters import (
     exclude_excavator_misclassified_for_non_excavator_tabs,
     exclude_attachment_like_from_non_attachment_tabs,
     filter_attachment_tab,
 )
+
+
+class _AuthorPk:
+    """diversify_by_author용 경량 래퍼 (pk + author_id만)."""
+
+    __slots__ = ("pk", "author_id")
+
+    def __init__(self, pk, author_id):
+        self.pk = pk
+        self.author_id = author_id
 
 
 def _is_excavator_tire_5_6_filter(sub_type: str, weight_class: str) -> bool:
@@ -514,6 +525,7 @@ def _build_interleave_cache_key(params: dict, premium_author_ids) -> str:
         'hide_advanced_filters': params.get('hide_advanced_filters'),
         'premium_sort': _premium_sort_active(params, premium_author_ids),
         'premium_ids': sorted(set(premium_author_ids)),
+        'diversity': 2,  # diversify_by_author 적용 버전 (캐시 무효화)
     }
     digest = hashlib.md5(
         json.dumps(payload, sort_keys=True, separators=(',', ':')).encode()
@@ -537,14 +549,34 @@ def get_interleave_groups(qs, params: dict, premium_author_ids):
         return total, None, None
 
     n_b = total // 2
-    group_b_ids = list(
-        qs.order_by('-effective_order').values_list('pk', flat=True)[:n_b]
-    )
-    group_b_set = set(group_b_ids)
-    group_a_ids = [
-        pk for pk in qs.values_list('pk', flat=True)
-        if pk not in group_b_set
-    ]
+    n_a = total - n_b
+    # qs 기본 정렬 순서 (기종 탭: premium_rank, -effective_order)
+    ordered_rows = list(qs.values_list('pk', 'author_id'))
+
+    if _premium_sort_active(params, premium_author_ids):
+        # 프리미엄 전체(premium_rank=0)만 라운드로빈 → Group A 앞쪽에 배치.
+        # (날짜 절반 분할만 쓰면 타 유료 판매자가 전부 B로 가 A가 1인 독점이 됨)
+        premium_items = []
+        free_ids = []
+        for pk, aid in ordered_rows:
+            if aid is not None and aid in premium_author_ids:
+                premium_items.append(_AuthorPk(pk, aid))
+            else:
+                free_ids.append(pk)
+        diversified = diversify_by_author(premium_items)
+        group_a_ids = [item.pk for item in diversified] + free_ids
+        group_a_ids = group_a_ids[:n_a]
+        a_set = set(group_a_ids)
+        latest_ids = list(
+            qs.order_by('-effective_order').values_list('pk', flat=True)
+        )
+        group_b_ids = [pk for pk in latest_ids if pk not in a_set]
+    else:
+        group_b_ids = list(
+            qs.order_by('-effective_order').values_list('pk', flat=True)[:n_b]
+        )
+        group_b_set = set(group_b_ids)
+        group_a_ids = [pk for pk, _ in ordered_rows if pk not in group_b_set]
 
     result = (total, group_a_ids, group_b_ids)
     cache.set(cache_key, result, INDEX_INTERLEAVE_CACHE_TTL)
