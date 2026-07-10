@@ -182,6 +182,46 @@
     btn.addEventListener('click', function(){ loadTo(loaded + parseInt(this.dataset.add,10)); });
   });
 
+  // 상단 기본 검색(form#changelist-search) 제출 시에도 상세검색(xsf_*) 값을 함께 전송한다.
+  // 사용자가 상세검색 값을 고른 뒤 상단 검색 버튼/엔터를 눌러도 필터가 유지되게 한다.
+  function attachHidden(form, name, value){
+    if(!form || !name || !value) return;
+    var input = form.querySelector('input[type="hidden"][name="' + name + '"]');
+    if(!input){
+      input = document.createElement('input');
+      input.type = 'hidden';
+      input.name = name;
+      form.appendChild(input);
+    }
+    input.value = value;
+  }
+
+  function syncExcavatorFiltersToSearchForm(){
+    var searchForm = document.getElementById('changelist-search');
+    if(!searchForm) return;
+    var pairs = [
+      ['xsf_maker', document.getElementById('gn-af-maker')],
+      ['xsf_sub_type', document.getElementById('gn-af-sub-type')],
+      ['xsf_weight_class', document.getElementById('gn-af-weight')],
+      ['xsf_year_min', document.getElementById('gn-af-year-min')],
+      ['xsf_year_max', document.getElementById('gn-af-year-max')]
+    ];
+    pairs.forEach(function(pair){
+      var key = pair[0];
+      var el = pair[1];
+      if(!el) return;
+      var val = (el.value || '').trim();
+      if(val){
+        attachHidden(searchForm, key, val);
+      }
+    });
+  }
+
+  var changelistSearch = document.getElementById('changelist-search');
+  if(changelistSearch){
+    changelistSearch.addEventListener('submit', syncExcavatorFiltersToSearchForm);
+  }
+
   // 페이지 번호 클릭 → 그 페이지까지 한 화면에 이어붙이기(위로 안 올라가게)
   if(accumulateOk){
     document.querySelectorAll('.paginator a').forEach(function(a){

@@ -453,8 +453,8 @@ _UI_EXTRA = {
         "chat_send_ph": "Билдирүү жазыңыз...", "chat_send": "Жөнөтүү", "chat_send_hint": "Билдирүү жөнөтүңүз.",
         "soil_write": "Жазуу", "soil_empty": "Жазуу жок.", "soil_delete_confirm": "Бул жазууну өчүрөсүзбү?",
         "btn_edit": "Оңдоо", "btn_delete": "Өчүрүү", "btn_cancel": "Жокко чыгаруу", "username_suffix": "",
-        "cat_excavator": "Ekskavator", "cat_forklift": "Yuk ko'targich", "cat_dump": "Samosval",
-        "cat_loader": "Pogruzchik", "cat_crane": "Kran", "cat_other": "Boshqa og'ir texnika",
+        "cat_excavator": "Экскаватор", "cat_forklift": "Айры көтөргүч", "cat_dump": "Самосвал",
+        "cat_loader": "Стайд рулду / Жүктөгүч", "cat_crane": "Кран", "cat_other": "Башка оор техника",
     },
     "uz": {
         "chat_title": "Chatlarim", "chat_me": "Men", "chat_seller": "Sotuvchi", "chat_buyer": "Xaridor",
