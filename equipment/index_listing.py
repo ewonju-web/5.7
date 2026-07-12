@@ -525,7 +525,7 @@ def _build_interleave_cache_key(params: dict, premium_author_ids) -> str:
         'hide_advanced_filters': params.get('hide_advanced_filters'),
         'premium_sort': _premium_sort_active(params, premium_author_ids),
         'premium_ids': sorted(set(premium_author_ids)),
-        'diversity': 2,  # diversify_by_author 적용 버전 (캐시 무효화)
+        'diversity': 4,  # A=전체 유료 RR(명함식), B=중복 제외 최신 절반
     }
     digest = hashlib.md5(
         json.dumps(payload, sort_keys=True, separators=(',', ':')).encode()
@@ -549,34 +549,33 @@ def get_interleave_groups(qs, params: dict, premium_author_ids):
         return total, None, None
 
     n_b = total // 2
-    n_a = total - n_b
     # qs 기본 정렬 순서 (기종 탭: premium_rank, -effective_order)
     ordered_rows = list(qs.values_list('pk', 'author_id'))
+    latest_ids = list(
+        qs.order_by('-effective_order').values_list('pk', flat=True)
+    )
 
     if _premium_sort_active(params, premium_author_ids):
-        # 프리미엄 전체(premium_rank=0)만 라운드로빈 → Group A 앞쪽에 배치.
-        # (날짜 절반 분할만 쓰면 타 유료 판매자가 전부 B로 가 A가 1인 독점이 됨)
+        # 유료 전체(명함처럼 회원 1명당 1건씩) 라운드로빈 → Group A 앞쪽
         premium_items = []
-        free_ids = []
+        free_ids_all = []
         for pk, aid in ordered_rows:
             if aid is not None and aid in premium_author_ids:
                 premium_items.append(_AuthorPk(pk, aid))
             else:
-                free_ids.append(pk)
-        diversified = diversify_by_author(premium_items)
-        group_a_ids = [item.pk for item in diversified] + free_ids
-        group_a_ids = group_a_ids[:n_a]
-        a_set = set(group_a_ids)
-        latest_ids = list(
-            qs.order_by('-effective_order').values_list('pk', flat=True)
-        )
-        group_b_ids = [pk for pk in latest_ids if pk not in a_set]
+                free_ids_all.append(pk)
+        a_prem_ids = [item.pk for item in diversify_by_author(premium_items)]
+        a_prem_set = set(a_prem_ids)
+        # Group B: 순수 최신 절반 (A 유료와 중복 제거)
+        group_b_ids = [pk for pk in latest_ids if pk not in a_prem_set][:n_b]
+        b_set = set(group_b_ids)
+        # Group A: 다양화 유료 + B에 안 들어간 무료
+        free_in_a = [pk for pk in free_ids_all if pk not in b_set]
+        group_a_ids = a_prem_ids + free_in_a
     else:
-        group_b_ids = list(
-            qs.order_by('-effective_order').values_list('pk', flat=True)[:n_b]
-        )
-        group_b_set = set(group_b_ids)
-        group_a_ids = [pk for pk, _ in ordered_rows if pk not in group_b_set]
+        group_b_ids = latest_ids[:n_b]
+        b_set = set(group_b_ids)
+        group_a_ids = [pk for pk, _ in ordered_rows if pk not in b_set]
 
     result = (total, group_a_ids, group_b_ids)
     cache.set(cache_key, result, INDEX_INTERLEAVE_CACHE_TTL)
