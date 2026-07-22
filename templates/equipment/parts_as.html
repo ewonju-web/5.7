@@ -257,6 +257,8 @@
 
 {% block extra_js %}
 {% if kakao_map_js_key %}
+<link rel="preconnect" href="https://dapi.kakao.com" crossorigin>
+<link rel="dns-prefetch" href="https://dapi.kakao.com">
 <script src="https://dapi.kakao.com/v2/maps/sdk.js?appkey={{ kakao_map_js_key }}&autoload=false&libraries=clusterer"></script>
 <script>
   (function () {
@@ -266,7 +268,7 @@
     const state = {
       equipmentType: "{{ selected_equipment_type|default:'all' }}",
       region: document.getElementById("regionInput").value || "",
-      // 업체 유형 필터는 하단 탭(listKindFilter)이 단일 소스. API 는 항상 전체를 받아 클라에서 필터링.
+      // 하단 탭(listKindFilter)이 API type 단일 소스. 탭에 맞는 데이터만 받아 첫 로딩을 가볍게 한다.
       centerType: "all",
       manufacturers: new Set(),
       repairTypes: new Set(),
@@ -332,13 +334,21 @@
       const params = new URLSearchParams();
       params.set("equipment_type", state.equipmentType);
       params.set("region", state.region);
-      const apiType = state.centerType === "as" ? "as_center" : state.centerType;
-      params.set("type", apiType);
+      params.set("type", apiTypeForKind(state.listKindFilter));
       if (state.manufacturers.size) params.set("manufacturers", Array.from(state.manufacturers).join(","));
       if (state.repairTypes.size) params.set("repair_types", Array.from(state.repairTypes).join(","));
       return `/api/service-centers/?${params.toString()}`;
     }
+    function apiTypeForKind(kind) {
+      if (kind === "as") return "as_center";
+      if (kind === "parts") return "parts";
+      if (kind === "as_parts") return "as_parts";
+      if (kind === "rental") return "rental";
+      return "all";
+    }
+    const markerImageCache = {};
     function markerImage(kind) {
+      if (markerImageCache[kind]) return markerImageCache[kind];
       const styles = {
         as: { text: "AS", fill: "rgba(37, 99, 235, 0.75)", color: "#2563eb" },
         parts: { text: "부", fill: "rgba(249, 115, 22, 0.75)", color: "#f97316" },
@@ -352,7 +362,8 @@
       };
       const pin = styles[kind] || styles.parts;
       const svg = encodeURIComponent(`<svg xmlns='http://www.w3.org/2000/svg' width='46' height='56'><path d='M23 2C12 2 3 11 3 22c0 14 18 30 20 32 2-2 20-18 20-32C43 11 34 2 23 2z' fill='${pin.fill}' stroke='white' stroke-width='1.2'/><circle cx='23' cy='22' r='13' fill='white'/><text x='23' y='26' font-size='11' font-family='Arial' font-weight='700' text-anchor='middle' fill='${pin.color}'>${pin.text}</text></svg>`);
-      return new kakao.maps.MarkerImage(`data:image/svg+xml;charset=UTF-8,${svg}`, new kakao.maps.Size(34, 42), { offset: new kakao.maps.Point(17, 42) });
+      markerImageCache[kind] = new kakao.maps.MarkerImage(`data:image/svg+xml;charset=UTF-8,${svg}`, new kakao.maps.Size(34, 42), { offset: new kakao.maps.Point(17, 42) });
+      return markerImageCache[kind];
     }
     function markerKind(c) {
       if (c.type === "rental_company" || c.type === "rental_kakao" || c.type === "regional_heavy" || c.type === "rental_user" || c.type === "call_kakao" || c.type === "call_driver") return c.type;
@@ -506,6 +517,7 @@
     }
     function renderMarkers() {
       clearMapObjects();
+      if (!mapReady) return;
       const bounds = new kakao.maps.LatLngBounds();
       const asMarkers = [];
       const partsMarkers = [];
@@ -513,14 +525,15 @@
       const rentalUserMarkers = [];
       const callKakaoMarkers = [];
       const callDriverMarkers = [];
+      const imgByKind = {};
       visibleCenters().forEach((c) => {
         if (typeof c.lat !== "number" || typeof c.lng !== "number") return;
         const pos = new kakao.maps.LatLng(c.lat, c.lng);
         const kind = markerKind(c);
-        const marker = new kakao.maps.Marker({ position: pos, title: c.name, image: markerImage(kind) });
-        const info = new kakao.maps.InfoWindow({ content: infoWindowHtml(c) });
+        if (!imgByKind[kind]) imgByKind[kind] = markerImage(kind);
+        // 클러스터러가 표시를 담당하므로 setMap 하지 않음(이중 렌더·느림 방지)
+        const marker = new kakao.maps.Marker({ position: pos, title: c.name, image: imgByKind[kind] });
         kakao.maps.event.addListener(marker, "click", () => selectCenter(c.uid, false));
-        marker.setMap(map);
         if (kind === "as") asMarkers.push(marker);
         else if (kind === "parts" || kind === "other") partsMarkers.push(marker);
         else if (kind === "rental_company" || kind === "rental_kakao" || kind === "regional_heavy") rentalCompanyMarkers.push(marker);
@@ -528,9 +541,6 @@
         else if (kind === "call_kakao") callKakaoMarkers.push(marker);
         else if (kind === "call_driver") callDriverMarkers.push(marker);
         markersByUid.set(c.uid, marker);
-        infoByUid.set(c.uid, info);
-        // 마커는 모두 표시하되, 화면 범위 계산은 대한민국 영역 내 좌표만 사용해
-        // 좌표 이상치 때문에 중국/일본까지 줌아웃되는 것을 방지한다.
         if (inKorea(c.lat, c.lng)) bounds.extend(pos);
       });
       if (asMarkers.length) asClusterer.addMarkers(asMarkers);
@@ -541,7 +551,6 @@
       if (callDriverMarkers.length) callDriverClusterer.addMarkers(callDriverMarkers);
       if (!bounds.isEmpty()) {
         map.setBounds(bounds);
-        // 전국 단위로 퍼져 있어도 한반도 영역 위주로 보이도록 줌 상한 적용.
         if (map.getLevel() > 13) {
           map.setLevel(13);
           map.setCenter(new kakao.maps.LatLng(36.5, 127.8));
@@ -553,8 +562,13 @@
       renderList();
       infoByUid.forEach((iw) => iw.close());
       const marker = markersByUid.get(uid);
-      const info = infoByUid.get(uid);
-      if (marker && info) {
+      const center = centers.find((c) => c.uid === uid);
+      if (marker && center) {
+        let info = infoByUid.get(uid);
+        if (!info) {
+          info = new kakao.maps.InfoWindow({ content: infoWindowHtml(center) });
+          infoByUid.set(uid, info);
+        }
         info.open(map, marker);
         if (pan) map.panTo(marker.getPosition());
       }
@@ -616,13 +630,11 @@
         renderMarkers();
       });
       document.querySelectorAll(".gn-kind-btn").forEach((btn) => {
-        btn.addEventListener("click", function () {
+        btn.addEventListener("click", async function () {
           document.querySelectorAll(".gn-kind-btn").forEach((el) => el.classList.remove("active"));
           this.classList.add("active");
           state.listKindFilter = this.dataset.kindFilter;
-          resetSelection();
-          renderList();
-          renderMarkers();
+          await fetchCenters({ showLoading: false });
         });
       });
       const layoutEl = document.querySelector(".gn-layout");
@@ -665,6 +677,8 @@
     const centersPromise = loadCentersData();
     kakao.maps.load(async function () {
       map = new kakao.maps.Map(document.getElementById("partsAsMap"), { center: new kakao.maps.LatLng(36.5, 127.8), level: 13 });
+      // 지도 타일은 먼저 그리고, 마커는 데이터 도착 후 올린다(체감 로딩 단축).
+      if (layoutEl) layoutEl.classList.remove("is-loading");
       // 드래그/줌이 대한민국 영역을 벗어나지 않도록 제한 (공통 유틸)
       if (window.GNKakaoKorea) GNKakaoKorea.restrictMapToKorea(map, { maxLevel: 13 });
       asClusterer = new kakao.maps.MarkerClusterer({
@@ -691,10 +705,10 @@
         map, averageCenter: true, minLevel: 8,
         styles: [{ width:"46px", height:"46px", background:"rgba(236, 72, 153, 0.8)", border:"1px solid rgba(255,255,255,0.95)", borderRadius:"23px", color:"#fff", textAlign:"center", fontWeight:"700", lineHeight:"46px", fontSize:"14px" }],
       });
+      mapReady = true;
       updateExcavatorBox();
       bindEvents();
       await centersPromise;
-      mapReady = true;
       updateCounts();
       renderList();
       renderMarkers();
@@ -704,11 +718,11 @@
         : null;
       if (focusUid && markersByUid.has(focusUid)) {
         selectCenter(focusUid, true);
-        const layoutEl = document.querySelector(".gn-layout");
+        const layoutElFocus = document.querySelector(".gn-layout");
         const mobileTabsEl = document.getElementById("mobileViewTabs");
-        if (layoutEl && mobileTabsEl && window.innerWidth <= 991) {
-          layoutEl.classList.add("mobile-map");
-          layoutEl.classList.remove("mobile-list");
+        if (layoutElFocus && mobileTabsEl && window.innerWidth <= 991) {
+          layoutElFocus.classList.add("mobile-map");
+          layoutElFocus.classList.remove("mobile-list");
           mobileTabsEl.querySelectorAll(".gn-mobile-tab-btn").forEach((btn) => {
             btn.classList.toggle("active", btn.dataset.mobileView === "map");
           });

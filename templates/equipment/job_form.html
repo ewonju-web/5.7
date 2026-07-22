@@ -258,7 +258,7 @@ function getSelectedEquipmentLabel() {
 
 function buildAutoTitle(mode) {
     var equipmentLabel = getSelectedEquipmentLabel();
-    if (!equipmentLabel || equipmentLabel === '전체') {
+    if (!equipmentLabel || equipmentLabel === '전체' || equipmentLabel === '선택 안 함') {
         return mode === 'seek' ? '기사 일자리 구합니다.' : '기사 모십니다.';
     }
     if (mode === 'seek') {

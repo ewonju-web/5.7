@@ -483,11 +483,9 @@ def _index_list_card_context(request, params, equipment_chunk, premium_author_id
 def index_load_more(request):
     """더보기: offset부터 per_page개 카드 HTML(JSON) 반환."""
     params = parse_index_params(request)
-    if params['hide_advanced_filters']:
-        return JsonResponse({'error': 'not_available'}, status=400)
 
     try:
-        offset = max(INDEX_INITIAL_COUNT, int(request.GET.get('offset', str(INDEX_INITIAL_COUNT))))
+        offset = max(0, int(request.GET.get('offset', str(INDEX_INITIAL_COUNT))))
     except (TypeError, ValueError):
         offset = INDEX_INITIAL_COUNT
 
@@ -604,8 +602,8 @@ def index(request):
         get_copy.pop('sort')
     index_query_base = get_copy.urlencode()
 
-    list_offset = INDEX_INITIAL_COUNT if not hide_advanced_filters else total_count
-    has_more_list = (not hide_advanced_filters) and (total_count > INDEX_INITIAL_COUNT)
+    list_offset = len(equipment_list)
+    has_more_list = total_count > list_offset
 
     # 카테고리(기종) 목록 페이지 SEO 메타.
     # URL 의 ?category= 파라미터가 명시된 경우에만 적용(세션 기억/기본값 'excavator' 는 제외).
@@ -1822,6 +1820,7 @@ def job_detail(request, pk):
     return render(request, 'equipment/job_detail.html', {
         'job': job,
         'job_list_back_url': _resolve_job_detail_back_url(request, job),
+        'can_view_job_contact': request.user.is_authenticated,
     })
 
 
@@ -2880,9 +2879,11 @@ def _normalize_type_filter(request):
         "as": "as_center",
         "as_center": "as_center",
         "parts": "parts",
+        "as_parts": "as_parts",  # AS센터 + 부품점(+기타)만 — 지도 첫 로딩 경량화
         "rental": "rental",
         "rental_company": "rental",
         "rental_user": "rental",
+        "local_rental": "rental",
         "call": "call",
         "call_kakao": "call",
         "call_driver": "call",
@@ -2936,14 +2937,28 @@ def service_centers_api(request):
     equipment_label_by_key = _equipment_label_by_key()
     region_scope = region or "전국"
 
+    # 동일 필터 반복 요청(지도 재진입·탭 전환) 응답 캐시 — 카카오 수집 포함 시 체감 크게 개선
+    mfr_key = ",".join(sorted(manufacturers))
+    ton_key = ",".join(sorted(ton_ranges))
+    repair_key = ",".join(sorted(repair_types))
+    api_cache_key = (
+        f"svc_centers:v2:{type_filter}:{equipment_type}:{region or '전국'}:"
+        f"{mfr_key}:{ton_key}:{repair_key}"
+    )
+    cached_payload = cache.get(api_cache_key)
+    if cached_payload is not None:
+        return JsonResponse(cached_payload)
+
     centers = []
 
-    if type_filter in ("all", "as_center", "parts"):
+    if type_filter in ("all", "as_center", "parts", "as_parts"):
         centers_qs = PartsShop.objects.all()
         if type_filter == "as_center":
             centers_qs = centers_qs.filter(shop_kind="as")
         elif type_filter == "parts":
             centers_qs = centers_qs.filter(shop_kind="parts")
+        elif type_filter == "as_parts":
+            centers_qs = centers_qs.filter(shop_kind__in=("as", "parts", "other"))
         if region:
             centers_qs = centers_qs.filter(region__icontains=region)
 
@@ -3145,7 +3160,9 @@ def service_centers_api(request):
                 "day_rate": driver.day_rate or 0,
             })
 
-    return JsonResponse({"centers": centers})
+    payload = {"centers": centers}
+    cache.set(api_cache_key, payload, 120)
+    return JsonResponse(payload)
 
 
 def _resolve_equipment_detail_back_url(request, equipment):

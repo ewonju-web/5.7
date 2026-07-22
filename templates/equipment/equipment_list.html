@@ -937,6 +937,7 @@
         </div>
         {% endfor %}
         </div>
+        {% endif %}
         {% if has_more_list %}
         <div class="gn-more-list-wrap gn-more-list-wrap-pc">
         <div class="row g-3 g-lg-4 mb-0 gn-index-more-pc" id="gnMoreListPc"></div>
@@ -959,7 +960,6 @@
         </div>
         <p class="text-center small text-muted mb-4 gn-more-status gn-more-status-pc d-none" aria-live="polite"></p>
         </div>
-        {% endif %}
         {% endif %}
     </div>
 
@@ -2598,7 +2598,7 @@
 
     var CRAWLER_OPTIONS = [
       { value: '', text: '전체' },
-      { value: 'EXC_CR_LE_3_5', text: '미니굴삭기 1~3ton' },
+      { value: 'EXC_CR_LE_3_5', text: '미니굴삭기 ~3.5톤' },
       { value: 'EXC_CR_LE_6_5', text: '02급 5~6ton' },
       { value: 'EXC_CR_LE_16', text: '06급 14~16ton' },
       { value: 'EXC_CR_EQ_20', text: '08급 20~22ton' },

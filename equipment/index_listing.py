@@ -66,6 +66,13 @@ _ATT_TO_CR_WEIGHT_MAP = {
     'EXC_ATT_GE_30': 'EXC_CR_GE_30',
 }
 
+# 검색 UI「미니굴삭기 1~3ton」(EXC_CR_LE_3_5)에는 등록폼의 더 작은 구간(1t 미만·2t 미만)도 포함.
+# 등록은 EXC_CR_LE_2 등으로 세분되는데, 검색 드롭다운에는 미니만 있어 안 보이던 문제 보정.
+_WEIGHT_FILTER_INCLUDE_SMALLER = {
+    'EXC_CR_LE_3_5': ('EXC_CR_LE_3_5', 'EXC_CR_LE_2', 'EXC_CR_LT_1'),
+    'EXC_ATT_LE_3_5': ('EXC_ATT_LE_3_5', 'EXC_ATT_LE_2', 'EXC_ATT_LT_1', 'EXC_CR_LE_3_5', 'EXC_CR_LE_2', 'EXC_CR_LT_1'),
+}
+
 
 def equivalent_weight_classes(weight_class: str) -> list[str]:
     """같은 톤수 구간으로 취급하는 중량 코드(어태치↔크롤러 매핑 포함)."""
@@ -79,6 +86,16 @@ def equivalent_weight_classes(weight_class: str) -> list[str]:
     if code in cr_to_att:
         classes.add(cr_to_att[code])
     return list(classes)
+
+
+def weight_classes_for_filter(weight_class: str) -> list[str]:
+    """목록 검색용 중량 코드. 미니(1~3t) 선택 시 하위 톤수 구간까지 포함."""
+    code = (weight_class or '').strip()
+    if not code:
+        return []
+    if code in _WEIGHT_FILTER_INCLUDE_SMALLER:
+        return list(_WEIGHT_FILTER_INCLUDE_SMALLER[code])
+    return equivalent_weight_classes(code)
 
 
 def filter_similar_equipment_listings(queryset, equipment):
@@ -116,6 +133,16 @@ EXCAVATOR_ADMIN_QUERY_KEYS = frozenset({
 EXCAVATOR_ADMIN_SKIP_PRESERVE_KEYS = EXCAVATOR_ADMIN_QUERY_KEYS | frozenset({'e'})
 
 
+def _wheeled_excavator_model_q() -> Q:
+    """타이어식(휠) 모델명이 크롤러로 잘못 저장된 매물 제외용."""
+    return (
+        Q(model_name__iregex=r"(?i)(?:^|[^A-Za-z0-9])(?:EW|HW)\s*\d{2,3}")
+        | Q(model_name__iregex=r"(?i)(?:DX|EC|HX|SK|PC|ZX)\s*\d{2,3}\s*W(?:\b|-)")
+        | Q(model_name__icontains="휠")
+        | Q(model_name__icontains="타이어식")
+    )
+
+
 def apply_excavator_sub_type_weight_filters(equipment_list, sub_type: str, weight_class: str):
     """굴삭기 종류·중량 상세 필터 (사이트·어드민 공통)."""
     if (
@@ -133,36 +160,23 @@ def apply_excavator_sub_type_weight_filters(equipment_list, sub_type: str, weigh
         )
         equipment_list = equipment_list.filter(exact_tire_56 | legacy_tire_56)
     else:
-        att_to_cr_map = _ATT_TO_CR_WEIGHT_MAP
         if sub_type == 'EXC_CRAWLER':
             equipment_list = equipment_list.filter(
                 Q(sub_type='EXC_CRAWLER')
                 | (Q(sub_type='') & Q(weight_class__startswith='EXC_CR_'))
-            )
+            ).exclude(_wheeled_excavator_model_q())
         elif sub_type:
             equipment_list = equipment_list.filter(sub_type=sub_type)
 
         if weight_class:
             if sub_type == 'EXC_ATTACHMENT':
-                cr_code = att_to_cr_map.get(weight_class)
-                if cr_code:
-                    equipment_list = equipment_list.filter(
-                        Q(weight_class=weight_class)
-                        | Q(weight_class=cr_code)
-                        | Q(weight_class='')
-                    )
-                else:
-                    equipment_list = equipment_list.filter(
-                        Q(weight_class=weight_class) | Q(weight_class='')
-                    )
+                filter_codes = weight_classes_for_filter(weight_class)
+                equipment_list = equipment_list.filter(
+                    Q(weight_class__in=filter_codes) | Q(weight_class='')
+                )
             else:
-                cr_code = att_to_cr_map.get(weight_class)
-                if cr_code:
-                    equipment_list = equipment_list.filter(
-                        Q(weight_class=weight_class) | Q(weight_class=cr_code)
-                    )
-                else:
-                    equipment_list = equipment_list.filter(weight_class=weight_class)
+                filter_codes = weight_classes_for_filter(weight_class)
+                equipment_list = equipment_list.filter(weight_class__in=filter_codes)
     mislabeled_q = _exclude_mislabeled_mini_crawler_in_tire_heavy_search(sub_type, weight_class)
     if mislabeled_q is not None:
         equipment_list = equipment_list.exclude(mislabeled_q)

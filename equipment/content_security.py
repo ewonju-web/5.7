@@ -92,6 +92,22 @@ def max_len_for_field(field_name: str) -> int:
     return DEFAULT_FIELD_MAX
 
 
+def _token_matches_normalized(token: str, normalized: str) -> bool:
+    """SQL 키워드/토큰 매칭. strip()으로 ' or '→'or'가 되면 excavator 등 정상 영어도 오탐한다."""
+    if not token:
+        return False
+    # 공백으로 감싼 토큰(' or ', ' xor ')은 부분문자열이 아니라 구분자 포함 매칭
+    if token[0].isspace() or token[-1].isspace():
+        return token in f' {normalized} '
+    # sleep/select 등은 단어 경계로만 매칭 (operator·excavator 오탐 방지)
+    return bool(
+        re.search(
+            rf'(?<![a-z0-9_]){re.escape(token)}(?![a-z0-9_])',
+            normalized,
+        )
+    )
+
+
 def text_has_attack_payload(*parts: str) -> bool:
     for part in parts:
         text = (part or '').strip()
@@ -104,7 +120,7 @@ def text_has_attack_payload(*parts: str) -> bool:
         lowered = text.lower()
         normalized = lowered.replace('(', ' ').replace(')', ' ')
         for token in ATTACK_TOKENS:
-            if token.strip() in normalized:
+            if _token_matches_normalized(token, normalized):
                 return True
         if text.startswith('@@') or text.startswith('-1 OR'):
             return True
