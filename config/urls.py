@@ -172,6 +172,16 @@ def _build_legacy_redirects():
 
 admin.site.site_url = "/admin/view-site/"
 
+
+def _admin_index_to_excavator(request, extra_context=None):
+    """어드민 로그인/홈(/admin/) 진입 시 굴삭기 매물 관리로 바로 이동."""
+    from django.shortcuts import redirect
+
+    return redirect("admin:equipment_excavatorequipment_changelist")
+
+
+admin.site.index = _admin_index_to_excavator
+
 urlpatterns = [
     path('googledb8cba55fc2c39e4.html', _google_site_verification, name='google_site_verification'),
     path(
