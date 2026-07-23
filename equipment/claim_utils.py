@@ -68,18 +68,54 @@ def legacy_author_ids_for_phone(phone_norm: str) -> list[int]:
     return ids
 
 
-def claimable_listings_q(phone_norm: str) -> Q:
-    """전화번호로 연결 가능한 매물 조건 (미연결 + legacy 이관 계정 소유)."""
+def duplicate_author_ids_for_phone(phone_norm: str, *, exclude_user_id=None) -> list[int]:
+    """
+    아이디가 전화번호인 예전 이관 계정 작성자 ID.
+
+    이관 시 username 을 legacy_ 접두사 대신 010… 형태로 만든 케이스를 포함한다.
+    (강량관·문정식·차상현 등: 아이디=전화번호, 신규 가입은 별도 계정)
+    활성/비활성 모두 포함 — 비활성 이관 계정에 매물이 남아 있는 경우가 있다.
+    """
+    if not phone_norm or len(phone_norm) < 10:
+        return []
+    from django.contrib.auth import get_user_model
+
+    User = get_user_model()
+    ids: list[int] = []
+    qs = User.objects.all().only("id", "username")
+    if exclude_user_id:
+        qs = qs.exclude(pk=exclude_user_id)
+    for user in qs.iterator(chunk_size=500):
+        uname = (user.username or "").strip()
+        if not uname:
+            continue
+        # legacy_ 는 legacy_author_ids_for_phone 에서 처리
+        if uname.startswith("legacy_"):
+            continue
+        if normalize_phone_digits(uname) == phone_norm:
+            ids.append(user.id)
+    return ids
+
+
+def claimable_listings_q(phone_norm: str, *, exclude_user_id=None) -> Q:
+    """전화번호로 연결 가능한 매물 조건 (미연결 + legacy/전화번호-아이디 이관 계정 소유)."""
     q = Q(author__isnull=True, unclaimed_phone_norm=phone_norm)
-    legacy_ids = legacy_author_ids_for_phone(phone_norm)
-    if legacy_ids:
-        q |= Q(author_id__in=legacy_ids)
+    author_ids = set(legacy_author_ids_for_phone(phone_norm))
+    author_ids.update(
+        duplicate_author_ids_for_phone(phone_norm, exclude_user_id=exclude_user_id)
+    )
+    if exclude_user_id:
+        author_ids.discard(exclude_user_id)
+    if author_ids:
+        q |= Q(author_id__in=list(author_ids))
     return q
 
 
-def claimable_listings_queryset(phone_norm: str):
+def claimable_listings_queryset(phone_norm: str, *, exclude_user_id=None):
     from equipment.models import Equipment
 
     if not phone_norm:
         return Equipment.objects.none()
-    return Equipment.objects.filter(claimable_listings_q(phone_norm)).distinct()
+    return Equipment.objects.filter(
+        claimable_listings_q(phone_norm, exclude_user_id=exclude_user_id)
+    ).distinct()

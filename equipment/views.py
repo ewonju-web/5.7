@@ -1128,7 +1128,9 @@ def my_page(request):
     claimable_listing_count = 0
     phone_norm = normalize_phone_digits(profile.phone)
     if phone_norm:
-        claimable_listing_count = claimable_listings_queryset(phone_norm).count()
+        claimable_listing_count = claimable_listings_queryset(
+            phone_norm, exclude_user_id=request.user.id
+        ).count()
     premium_avatar = _premium_expert_avatar_colors(request.user.id)
     return render(request, 'registration/my_page.html', {
         'profile': profile,
@@ -1207,7 +1209,9 @@ def find_my_listings(request):
         )
         return redirect('my_page')
 
-    candidates = claimable_listings_queryset(norm).order_by('-created_at')
+    candidates = claimable_listings_queryset(
+        norm, exclude_user_id=request.user.id
+    ).order_by('-created_at')
 
     if request.method == 'POST':
         from django.db import transaction
@@ -1223,7 +1227,7 @@ def find_my_listings(request):
             messages.warning(request, '연결할 매물을 선택해 주세요.')
             return redirect('find_my_listings')
 
-        claimable_q = claimable_listings_q(norm)
+        claimable_q = claimable_listings_q(norm, exclude_user_id=request.user.id)
         claimed = 0
         with transaction.atomic():
             for eid in id_list:
