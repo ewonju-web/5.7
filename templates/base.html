@@ -81,6 +81,47 @@
         @media (min-width: 1200px) { main .container-fluid { max-width: 1140px; } }
         @media (min-width: 1400px) { main .container-fluid { max-width: 1320px; } }
 
+        /* 목록 복귀 보조 버튼 — CTA(주황/초록)보다 낮은 위계, 흰 배경에서도 잘 보이게 */
+        .gn-back-to-list {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.35rem;
+            min-height: 2.5rem;
+            padding: 0.45rem 1.15rem;
+            border: 1.5px solid #9CA3AF;
+            border-radius: 10px;
+            background: #F3F4F6;
+            color: #333333 !important;
+            font-weight: 600;
+            font-size: 0.9375rem;
+            line-height: 1.3;
+            text-decoration: none !important;
+            box-shadow: none;
+            transition: background-color 0.18s ease, color 0.18s ease, border-color 0.18s ease;
+            cursor: pointer;
+        }
+        .gn-back-to-list:hover,
+        .gn-back-to-list:focus {
+            background: #E5E7EB;
+            border-color: #6B7280;
+            color: #1f2937 !important;
+        }
+        .gn-back-to-list:active {
+            background: #D1D5DB;
+            border-color: #4B5563;
+        }
+        .gn-back-to-list i {
+            color: inherit;
+            font-size: 1.05em;
+            line-height: 1;
+        }
+        .gn-back-to-list.gn-back-to-list--sm {
+            min-height: 2.15rem;
+            padding: 0.35rem 0.95rem;
+            font-size: 0.875rem;
+        }
+
         /* Navbar */
         .navbar-gn {
             background: var(--gn-nav) !important;

@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 {% load static humanize i18n_extras %}
 {% block extra_css %}
-<link rel="stylesheet" href="{% static 'css/jobs.css' %}?v=20260610c">
+<link rel="stylesheet" href="{% static 'css/jobs.css' %}?v=20260811a">
 {% endblock %}
 {% block content %}
 <div class="container py-5 pb-5 pb-md-4 gn-job-detail-page">
@@ -96,7 +96,9 @@
                 <div class="card-body">
                     <div class="gn-job-actions-inner">
                         <div class="d-flex flex-column align-items-start gap-2">
-                            <a href="{{ job_list_back_url }}" class="gn-job-cta-btn gn-job-cta-list"><i class="bi bi-list-ul me-2"></i>목록</a>
+                            <a href="{{ job_list_back_url }}" class="gn-back-to-list">
+                                <i class="bi bi-arrow-left" aria-hidden="true"></i>목록으로 가기
+                            </a>
                         </div>
                         {% if user.is_authenticated and job.author_id == user.id %}
                         <div class="d-flex flex-wrap gap-2">

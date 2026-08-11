@@ -347,14 +347,11 @@ h1.job-title,
   background: #E5E7EB;
   color: #374151;
 }
-.gn-job-detail-page .gn-job-cta-list {
-  background: #fff;
-  color: #374151;
-  border: 2px solid #E5E7EB;
-}
-.gn-job-detail-page .gn-job-cta-list:hover {
-  border-color: #D1D5DB;
-  background: #F9FAFB;
+/* 목록 복귀는 공통 .gn-back-to-list 사용 (base.html) */
+.gn-job-detail-page .gn-back-to-list {
+  min-height: 46px;
+  padding-left: 1.35rem;
+  padding-right: 1.35rem;
 }
 .gn-job-detail-page .gn-job-cta-edit {
   background: #2563EB;
@@ -496,7 +493,7 @@ h1.job-title,
     background: #fff;
     border: 1px solid rgba(0, 0, 0, 0.08);
   }
-  .gn-job-detail-page .gn-job-cta-list {
+  .gn-job-detail-page .gn-back-to-list {
     width: 100%;
   }
 }

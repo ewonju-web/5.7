@@ -22,8 +22,8 @@
 {% block content %}
 <div class="container-fluid px-md-5 py-4 gn-detail-page">
   <div class="mb-3">
-    <a href="{{ detail_back_url }}" class="btn btn-outline-secondary btn-sm">
-      <i class="bi bi-arrow-left me-1"></i>{{ detail_back_label }}
+    <a href="{{ detail_back_url }}" class="gn-back-to-list gn-back-to-list--sm">
+      <i class="bi bi-arrow-left" aria-hidden="true"></i>{{ detail_back_label }}
     </a>
   </div>
   <h1 class="visually-hidden">{% if equipment.manufacturer %}{{ equipment.manufacturer }} {% endif %}{% if equipment.model_name %}{{ equipment.model_name }} {% endif %}{{ equipment.get_equipment_type_display|default:"중장비" }}</h1>
@@ -325,8 +325,8 @@
 
   <!-- 하단: 마이페이지에서 온 경우 뒤로가기, 그 외 목록으로 -->
   <div class="mt-4 mb-3 text-center">
-    <a href="{{ detail_back_url }}" class="btn btn-outline-secondary">
-      <i class="bi bi-arrow-left me-1"></i>{{ detail_back_label }}
+    <a href="{{ detail_back_url }}" class="gn-back-to-list">
+      <i class="bi bi-arrow-left" aria-hidden="true"></i>{{ detail_back_label }}
     </a>
   </div>
     </div><!-- /.gn-detail-main-col -->
