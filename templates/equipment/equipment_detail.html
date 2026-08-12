@@ -40,10 +40,11 @@
                  src="{{ detail_images.0.image|cache_bust }}"
                  class="w-100 h-100 cursor-pointer gn-detail-main-img"
                  style="cursor: zoom-in;"
-                 data-bs-toggle="modal" data-bs-target="#lightboxModal"
                  data-lightbox-index="0"
                  data-lightbox-src="{{ detail_images.0.image|cache_bust }}"
-                 alt="{{ equipment.model_name }}">
+                 alt="{{ equipment.model_name }}"
+                 role="button"
+                 tabindex="0">
             {% if detail_images|length > 1 %}
             <button type="button" class="gn-detail-main-nav gn-detail-main-prev d-md-none" id="detailMainPrev" aria-label="이전 사진"><i class="bi bi-chevron-left"></i></button>
             <button type="button" class="gn-detail-main-nav gn-detail-main-next d-md-none" id="detailMainNext" aria-label="다음 사진"><i class="bi bi-chevron-right"></i></button>
@@ -238,7 +239,6 @@
         {% for image in detail_images %}
         <button type="button"
                 class="d-block w-100 text-start p-0 border-0 bg-transparent gn-detail-photo-item gn-detail-photo-stack-open gn-card-sharp rounded overflow-hidden"
-                data-bs-toggle="modal" data-bs-target="#lightboxModal"
                 data-lightbox-index="{{ forloop.counter0 }}"
                 data-lightbox-src="{{ image.image|cache_bust }}"
                 aria-label="사진 {{ forloop.counter }} 크게 보기">
@@ -641,8 +641,83 @@
     if (mobileImg.complete && mobileImg.naturalWidth) layoutMobilePhoto({ center: true });
   }
 
+  var suppressOpenUntil = 0;
+  var clickThroughBlocker = null;
+  var clickThroughTimer = null;
+
+  function forceClearBootstrapModal() {
+    if (modalEl && typeof bootstrap !== 'undefined' && bootstrap.Modal) {
+      try {
+        var inst = bootstrap.Modal.getInstance(modalEl);
+        if (inst) inst.hide();
+      } catch (err) {}
+      modalEl.classList.remove('show');
+      modalEl.style.display = 'none';
+      modalEl.setAttribute('aria-hidden', 'true');
+      modalEl.removeAttribute('aria-modal');
+      modalEl.removeAttribute('role');
+    }
+    document.querySelectorAll('.modal-backdrop').forEach(function(b) { b.remove(); });
+    document.body.classList.remove('modal-open');
+    document.body.style.removeProperty('overflow');
+    document.body.style.removeProperty('padding-right');
+  }
+
+  function armClickThroughGuard() {
+    // 닫기 직후 같은 터치의 합성 click이 뒤 사진에 닿아 뷰어가 다시 열리는 것을 막음
+    suppressOpenUntil = Date.now() + 450;
+    if (clickThroughTimer) {
+      clearTimeout(clickThroughTimer);
+      clickThroughTimer = null;
+    }
+    if (clickThroughBlocker && clickThroughBlocker.parentNode) {
+      clickThroughBlocker.parentNode.removeChild(clickThroughBlocker);
+    }
+    clickThroughBlocker = document.createElement('div');
+    clickThroughBlocker.setAttribute('aria-hidden', 'true');
+    clickThroughBlocker.className = 'gn-mobile-photo-clickguard';
+    clickThroughBlocker.style.cssText = [
+      'position:fixed', 'inset:0', 'z-index:20000',
+      'background:transparent', 'touch-action:none', 'pointer-events:auto'
+    ].join(';');
+    function eat(e) {
+      e.preventDefault();
+      e.stopPropagation();
+      if (typeof e.stopImmediatePropagation === 'function') e.stopImmediatePropagation();
+    }
+    ['click', 'touchstart', 'touchend', 'pointerdown', 'pointerup', 'mousedown', 'mouseup'].forEach(function(type) {
+      clickThroughBlocker.addEventListener(type, eat, true);
+    });
+    document.body.appendChild(clickThroughBlocker);
+    clickThroughTimer = setTimeout(function() {
+      if (clickThroughBlocker && clickThroughBlocker.parentNode) {
+        clickThroughBlocker.parentNode.removeChild(clickThroughBlocker);
+      }
+      clickThroughBlocker = null;
+      clickThroughTimer = null;
+    }, 450);
+  }
+
+  function hideDesktopLightbox() {
+    forceClearBootstrapModal();
+  }
+
+  function openDesktopLightbox(index) {
+    if (!modalEl || typeof bootstrap === 'undefined' || !bootstrap.Modal) return;
+    if (isMobilePhotoMode()) {
+      openMobileViewer(index);
+      return;
+    }
+    lastClickedIndex = index;
+    currentIndex = index;
+    showLightbox(index);
+    bootstrap.Modal.getOrCreateInstance(modalEl).show();
+  }
+
   function openMobileViewer(index) {
     if (!mobileViewer) return;
+    if (Date.now() < suppressOpenUntil) return;
+    forceClearBootstrapModal();
     lastClickedIndex = index;
     showMobilePhoto(index);
     mobileViewer.hidden = false;
@@ -652,12 +727,17 @@
   }
 
   function closeMobileViewer() {
-    if (!mobileViewer) return;
+    if (!mobileViewer || mobileViewer.hidden) {
+      forceClearBootstrapModal();
+      return;
+    }
     mobileViewer.hidden = true;
     mobileViewer.setAttribute('aria-hidden', 'true');
     document.body.classList.remove('gn-mobile-photo-viewer-open');
     if (mobileImg) mobileImg.removeAttribute('src');
     mobilePhotoZoom = 1;
+    forceClearBootstrapModal();
+    armClickThroughGuard();
   }
 
   function bumpMobileZoom(factor) {
@@ -666,25 +746,45 @@
     layoutMobilePhoto();
   }
 
+  // data-bs-toggle 없이 JS로만 연다.
   document.querySelectorAll('[data-lightbox-index]').forEach(function(el) {
     el.addEventListener('click', function(e) {
       var idx = parseInt(el.getAttribute('data-lightbox-index'), 10);
       if (isNaN(idx)) return;
+      e.preventDefault();
+      e.stopPropagation();
+      if (Date.now() < suppressOpenUntil) return;
       lastClickedIndex = idx;
-      if (isMobilePhotoMode()) {
-        e.preventDefault();
-        e.stopPropagation();
-        openMobileViewer(idx);
-      }
-    }, true);
+      if (isMobilePhotoMode()) openMobileViewer(idx);
+      else openDesktopLightbox(idx);
+    });
+    el.addEventListener('keydown', function(e) {
+      if (e.key !== 'Enter' && e.key !== ' ') return;
+      var idx = parseInt(el.getAttribute('data-lightbox-index'), 10);
+      if (isNaN(idx)) return;
+      e.preventDefault();
+      lastClickedIndex = idx;
+      if (isMobilePhotoMode()) openMobileViewer(idx);
+      else openDesktopLightbox(idx);
+    });
   });
 
   if (modalEl) {
-    modalEl.addEventListener('show.bs.modal', function() {
+    modalEl.addEventListener('show.bs.modal', function(e) {
+      // 모바일에서는 PC 모달을 절대 띄우지 않음
+      if (isMobilePhotoMode()) {
+        e.preventDefault();
+        forceClearBootstrapModal();
+        return;
+      }
       currentIndex = lastClickedIndex;
       showLightbox(currentIndex);
     });
     modalEl.addEventListener('shown.bs.modal', function() {
+      if (isMobilePhotoMode()) {
+        forceClearBootstrapModal();
+        return;
+      }
       layoutLightboxImage({ center: true });
     });
     modalEl.addEventListener('hidden.bs.modal', function() {
@@ -802,7 +902,20 @@
   if (prevBtn) prevBtn.addEventListener('click', function(e) { e.preventDefault(); showLightbox(currentIndex - 1); });
   if (nextBtn) nextBtn.addEventListener('click', function(e) { e.preventDefault(); showLightbox(currentIndex + 1); });
 
-  if (mobileCloseBtn) mobileCloseBtn.addEventListener('click', function(e) { e.preventDefault(); closeMobileViewer(); });
+  if (mobileCloseBtn) {
+    mobileCloseBtn.addEventListener('click', function(e) {
+      e.preventDefault();
+      e.stopPropagation();
+      closeMobileViewer();
+    });
+    // 일부 모바일 브라우저는 click 전에 뷰어가 사라져 뒤 요소로 터치가 새어 나감
+    mobileCloseBtn.addEventListener('pointerup', function(e) {
+      if (e.pointerType === 'mouse') return;
+      e.preventDefault();
+      e.stopPropagation();
+      closeMobileViewer();
+    });
+  }
   if (mobilePrevBtn) mobilePrevBtn.addEventListener('click', function(e) { e.preventDefault(); showMobilePhoto(currentIndex - 1); });
   if (mobileNextBtn) mobileNextBtn.addEventListener('click', function(e) { e.preventDefault(); showMobilePhoto(currentIndex + 1); });
   if (mobileZoomInBtn) mobileZoomInBtn.addEventListener('click', function(e) { e.preventDefault(); bumpMobileZoom(1.25); });
@@ -1717,6 +1830,21 @@
   }
   .gn-mobile-photo-viewer[hidden] {
     display: none !important;
+  }
+  .gn-mobile-photo-clickguard {
+    position: fixed;
+    inset: 0;
+    z-index: 20000;
+    background: transparent;
+    touch-action: none;
+  }
+  /* 모바일에서는 PC 라이트박스 모달을 아예 쓰지 않음 */
+  @media (max-width: 767.98px) {
+    #lightboxModal,
+    #lightboxModal.show {
+      display: none !important;
+      pointer-events: none !important;
+    }
   }
   .gn-mobile-photo-viewer-top {
     display: flex;
