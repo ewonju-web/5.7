@@ -272,6 +272,21 @@ class EquipmentImage(models.Model):
         ordering = ['sort_order', 'id']
 
     def save(self, *args, **kwargs):
+        # 새 업로드: HEIC→JPEG + 과대 이미지 웹용 압축(워터마크 전).
+        if self.image and not getattr(self.image, "_committed", True):
+            try:
+                from .heic_utils import normalize_uploaded_image
+
+                self.image = normalize_uploaded_image(self.image)
+            except Exception:
+                import logging
+
+                logging.getLogger(__name__).exception(
+                    "이미지 정규화 실패 (EquipmentImage pk=%s name=%s)",
+                    getattr(self, "pk", None),
+                    getattr(getattr(self, "image", None), "name", None),
+                )
+
         super().save(*args, **kwargs)
         # 업로드 직후 워터마크를 1회 삽입(원본 덮어쓰기). 중복 적용은 플래그로 방지.
         if self.image and not self.watermarked:
@@ -633,6 +648,20 @@ class PartImage(models.Model):
     class Meta:
         verbose_name = "부품 사진"
         verbose_name_plural = "부품 사진"
+
+    def save(self, *args, **kwargs):
+        if self.image and not getattr(self.image, "_committed", True):
+            try:
+                from .heic_utils import normalize_uploaded_image
+
+                self.image = normalize_uploaded_image(self.image)
+            except Exception:
+                import logging
+
+                logging.getLogger(__name__).exception(
+                    "이미지 정규화 실패 (PartImage pk=%s)", getattr(self, "pk", None)
+                )
+        super().save(*args, **kwargs)
 
 
 class YoutubeContent(models.Model):

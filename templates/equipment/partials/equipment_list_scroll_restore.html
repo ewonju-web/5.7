@@ -10,6 +10,14 @@
     'sort', 'premium_only'
   ];
 
+  function prefersReducedMotion() {
+    try {
+      return window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    } catch (e) {
+      return false;
+    }
+  }
+
   function canonicalQuery(search) {
     var raw = new URLSearchParams(search || '');
     var pairs = [];
@@ -43,6 +51,12 @@
     return nodes[0] || null;
   }
 
+  function cardCenterDelta(card) {
+    var rect = card.getBoundingClientRect();
+    var mid = rect.top + rect.height / 2;
+    return mid - (window.innerHeight / 2);
+  }
+
   function saveEqListState(link) {
     try {
       var url = new URL(link.href, window.location.origin);
@@ -61,38 +75,72 @@
     } catch (e) {}
   }
 
-  function scrollToState(state) {
-    if (!state) return false;
-    if (state.equipmentId) {
-      var card = findEquipmentCard(state.equipmentId);
-      if (card) {
-        card.scrollIntoView({ block: 'center', behavior: 'auto' });
-        return true;
-      }
+  function scrollCardIntoView(card, smooth) {
+    if (!card) return;
+    var useSmooth = !!smooth && !prefersReducedMotion();
+    try {
+      card.scrollIntoView({
+        block: 'center',
+        behavior: useSmooth ? 'smooth' : 'auto'
+      });
+    } catch (e) {
+      var delta = cardCenterDelta(card);
+      window.scrollTo(0, Math.max(0, (window.scrollY || 0) + delta));
     }
-    var y = parseInt(state.scrollY, 10);
-    if (!isNaN(y) && y >= 0) {
-      window.scrollTo(0, y);
-      return true;
-    }
-    return false;
   }
 
   function fineScroll(state) {
-    // 인앱 브라우저(네이버 등)·지연 레이아웃·경쟁 스크롤 때문에 한 번만으로는
-    // 끝까지 못 가고 중간에 멈추는 경우가 있어 여러 번 재시도한다.
-    // 단, 사용자가 직접 스크롤(터치/휠/키)하면 즉시 중단해 끌려가지 않게 한다.
+    // 1) 저장해 둔 위치로 먼저 맞춰 두고
+    // 2) 카드가 보이면 한두 번만 smooth로 가운데 정렬
+    // 인앱·지연 레이아웃 때문에 재시도는 하되, 짧은 간격의 순간이동은 하지 않는다.
     var cancelled = false;
+    var smoothDone = 0;
+    var maxSmooth = 2;
+
     function cancel() { cancelled = true; }
     window.addEventListener('touchstart', cancel, { passive: true, once: true });
     window.addEventListener('wheel', cancel, { passive: true, once: true });
     window.addEventListener('keydown', cancel, { once: true });
-    [0, 60, 140, 280, 500, 800, 1200].forEach(function(delay) {
-      setTimeout(function() {
-        if (cancelled) return;
-        scrollToState(state);
-      }, delay);
-    });
+
+    function tryAlign(allowSmooth) {
+      if (cancelled || !state) return false;
+      if (state.equipmentId) {
+        var card = findEquipmentCard(state.equipmentId);
+        if (card) {
+          var delta = Math.abs(cardCenterDelta(card));
+          // 이미 거의 가운데면 건드리지 않음
+          if (delta < 48) return true;
+          if (allowSmooth && smoothDone < maxSmooth && !prefersReducedMotion()) {
+            scrollCardIntoView(card, true);
+            smoothDone += 1;
+          } else {
+            // reduced-motion이거나 마지막 보정: 한 번만 정확히 맞춤
+            scrollCardIntoView(card, false);
+          }
+          return true;
+        }
+      }
+      var y = parseInt(state.scrollY, 10);
+      if (!isNaN(y) && y >= 0) {
+        window.scrollTo(0, y);
+        return true;
+      }
+      return false;
+    }
+
+    // 짧은 대기 후 smooth 1회, 이후 레이아웃 안정화용 늦은 재시도만
+    setTimeout(function() { tryAlign(true); }, 40);
+    setTimeout(function() { tryAlign(true); }, 320);
+    setTimeout(function() {
+      if (cancelled) return;
+      // 이미지 로드 등으로 위치가 어긋난 경우만 최종 보정
+      if (state.equipmentId) {
+        var card = findEquipmentCard(state.equipmentId);
+        if (card && Math.abs(cardCenterDelta(card)) > 80) {
+          tryAlign(smoothDone < maxSmooth);
+        }
+      }
+    }, 900);
   }
 
   function restoreEqListState() {
@@ -105,6 +153,7 @@
 
     sessionStorage.removeItem(PENDING_KEY);
 
+    // 대략 위치만 즉시 복원 → 이어서 카드로 부드럽게 맞춤
     var y = parseInt(state.scrollY, 10);
     if (!isNaN(y) && y > 0) {
       window.scrollTo(0, y);
