@@ -17,6 +17,7 @@ from decimal import Decimal, ROUND_HALF_UP
 from datetime import timedelta
 from urllib.parse import parse_qs, quote, urlencode, urlparse
 import json
+import logging
 
 from django.contrib.contenttypes.models import ContentType
 from django.core.cache import cache
@@ -110,6 +111,7 @@ def _image_hash_from_equipment(equipment):
 
 
 MAX_LISTING_IMAGES = 10  # 매물 1건당 첨부 사진 최대 장수
+logger = logging.getLogger(__name__)
 
 
 def _apply_equipment_image_order(equipment, image_files, delete_ids, primary_token=''):
@@ -3538,6 +3540,11 @@ def equipment_create(request):
             # 허위 매물 방지: 사진 최소 1장 필수 / 최대 10장 제한
             image_files = request.FILES.getlist('images')[:MAX_LISTING_IMAGES]
             if not image_files or len(image_files) < 1:
+                logger.warning(
+                    'equipment_create no images user=%s files=%s',
+                    request.user.pk,
+                    list(request.FILES.keys()),
+                )
                 form.add_error(None, ValidationError('허위 매물 방지를 위해 사진을 최소 1장 이상 등록해주세요.'))
             else:
                 # 도배 방지: 삭제 후 7일 이내 동일 매물(기종+연식+가격) 재등록 차단
@@ -3601,6 +3608,12 @@ def equipment_create(request):
                     import traceback
                     traceback.print_exc()
                     form.add_error(None, ValidationError('등록 처리 중 오류가 발생했습니다. 사진 용량/형식을 확인한 뒤 다시 시도해 주세요.'))
+        else:
+            logger.warning(
+                'equipment_create invalid user=%s errors=%s',
+                request.user.pk,
+                form.errors.as_json(),
+            )
     else:
         form = EquipmentForm(initial={'equipment_type': 'excavator'})
 

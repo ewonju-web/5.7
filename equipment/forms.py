@@ -1,6 +1,19 @@
+import re
+
 from django import forms
 from django.contrib.auth.forms import PasswordResetForm, _unicode_ci_compare
 from .models import Equipment, Profile, Part
+
+
+def normalize_listing_price_value(value):
+    """가격 입력에서 콤마·만원 등을 제거하고 숫자만 남긴다."""
+    if value is None:
+        return value
+    s = str(value).strip()
+    if not s:
+        return ''
+    s = s.replace(',', '').replace('만원', '').replace('만', '').replace('원', '')
+    return re.sub(r'[^\d]', '', s)
 
 class EquipmentForm(forms.ModelForm):
     class Meta:
@@ -47,7 +60,11 @@ class EquipmentForm(forms.ModelForm):
                 "autocomplete": "off",
                 "onfocus": "if(!this.dataset.firstClearDone){this.value='';this.dataset.firstClearDone='1';}"
             }),
-            "listing_price": forms.NumberInput(attrs={"class": "form-control", "min": 0, "placeholder": "예) 3500 (만원)"}),
+            "listing_price": forms.TextInput(attrs={
+                "class": "form-control",
+                "inputmode": "numeric",
+                "placeholder": "예) 3500 (만원)",
+            }),
             "region_sido": forms.HiddenInput(),
             "region_sigungu": forms.HiddenInput(),
             "vehicle_number": forms.TextInput(attrs={"class": "form-control", "placeholder": "예) 12가3456 (모르면 비워도 됨)"}),
@@ -55,6 +72,13 @@ class EquipmentForm(forms.ModelForm):
         }
 
     def __init__(self, *args, **kwargs):
+        if args:
+            data = args[0]
+            if data is not None and hasattr(data, "copy"):
+                data = data.copy()
+                if "listing_price" in data:
+                    data["listing_price"] = normalize_listing_price_value(data.get("listing_price")) or ""
+                args = (data,) + args[1:]
         super().__init__(*args, **kwargs)
         if not getattr(self.instance, "pk", None) and not self.is_bound:
             self.initial.setdefault("month_manufactured", "")
@@ -70,6 +94,10 @@ class EquipmentForm(forms.ModelForm):
         self.fields["equipment_type"].required = True
         self.fields["equipment_type"].choices = [("", "---------")] + list(self.fields["equipment_type"].choices)
         self.fields["listing_price"].required = True
+        self.fields["listing_price"].error_messages.update({
+            "required": "가격(만원)을 입력해 주세요.",
+            "invalid": "가격은 숫자만 입력해 주세요.",
+        })
 
         # equipment_type: instance → initial → POST 순
         eq_type = None
@@ -149,10 +177,9 @@ class EquipmentForm(forms.ModelForm):
         return cleaned
 
 
-class EquipmentEditForm(forms.ModelForm):
+class EquipmentEditForm(EquipmentForm):
     """작성자(로그인 유저)만 수정 가능 → 비밀번호 필드 없음"""
-    class Meta(EquipmentForm.Meta):
-        fields = EquipmentForm.Meta.fields
+    pass
 
 
 class PartForm(forms.ModelForm):

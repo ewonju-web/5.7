@@ -21,7 +21,20 @@
             <form id="equipment-form" method="post" enctype="multipart/form-data" autocomplete="off" data-mode="{{ mode }}" data-edit-existing-images="{% if mode == 'edit' and equipment %}{{ equipment.images.count }}{% else %}0{% endif %}">
                 {% csrf_token %}
                 {% if form.errors %}
-                <div class="alert alert-danger small">입력값을 다시 확인해 주세요.</div>
+                <div class="alert alert-danger small">
+                    {% if form.non_field_errors %}
+                        {{ form.non_field_errors.0 }}
+                    {% else %}
+                        입력값을 다시 확인해 주세요.
+                    {% endif %}
+                    <ul class="mb-0 mt-2 ps-3">
+                        {% for field in form %}
+                            {% for err in field.errors %}
+                            <li>{{ field.label }}: {{ err }}</li>
+                            {% endfor %}
+                        {% endfor %}
+                    </ul>
+                </div>
                 {% endif %}
 
                 {{ form.sub_type }}{{ form.weight_class }}{{ form.mast_type }}{{ form.region_sido }}{{ form.region_sigungu }}
@@ -163,6 +176,7 @@
                         <div class="col-12 col-md-4" id="price-field-wrapper">
                             <label class="form-label fw-bold">가격(만원) <span class="text-danger">(필수)</span></label>
                             {{ form.listing_price }}
+                            {% if form.listing_price.errors %}<p class="text-danger small mt-1 mb-0">{{ form.listing_price.errors.0 }}</p>{% endif %}
                         </div>
                         <div class="col-12 col-md-4 d-none" id="exc-sub-type-wrapper">
                             <label class="form-label fw-bold">종류</label>
@@ -294,7 +308,7 @@
                                 <i class="bi bi-camera-fill me-1"></i> 사진 촬영
                             </label>
                             <input id="photo_camera" type="file" accept="image/*" capture="environment" multiple hidden>
-                            <input id="id_images" type="file" name="images" multiple hidden>
+                            <input id="id_images" type="file" name="images" accept="image/*" multiple class="gn-visually-hidden-file" tabindex="-1" aria-hidden="true">
                         </div>
                         <div id="preview-container" class="d-flex flex-wrap gap-2 mt-3"></div>
                         <p class="form-text small mb-0 mt-2 gn-form-notice-strong">모바일: 갤러리에서 선택은 앨범, 사진 촬영은 카메라가 열려요. 「대표로」로 썸네일을 정하고, X로 제거할 수 있습니다.</p>
@@ -335,6 +349,20 @@
   .gn-equipment-submit-btn[disabled] {
     opacity: 0.82;
     cursor: wait;
+  }
+  .gn-visually-hidden-file {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+  }
+  .gn-equipment-form-page .alert-danger ul:not(:has(li)) {
+    display: none;
   }
   .gn-equipment-submit-btn .gn-submit-loading {
     min-height: 1.25rem;
@@ -1533,7 +1561,6 @@
   if (form) {
     form.addEventListener('submit', function(e) {
       syncUiToHiddenValues();
-      var mode = form.getAttribute('data-mode') || '';
       var existingCount = parseInt(form.getAttribute('data-edit-existing-images') || '0', 10);
       var toDelete = 0;
       form.querySelectorAll('input[name="delete_image_ids"]:checked').forEach(function() {
@@ -1544,6 +1571,45 @@
       if (remainingExisting + newCount < 1) {
         e.preventDefault();
         alert('허위 매물 방지를 위해 사진을 최소 1장 이상 남기거나, 삭제한 만큼 새 사진을 추가해 주세요.');
+        return false;
+      }
+      // 네이버 인앱/모바일 WebView는 hidden file + DataTransfer 가 비어 POST 되는 경우가 있다.
+      // 선택한 사진은 FormData로 직접 붙여 전송한다.
+      if (selectedFiles.length > 0) {
+        e.preventDefault();
+        setSubmitLoading(true);
+        var fd = new FormData(form);
+        fd.delete('images');
+        selectedFiles.forEach(function(file) {
+          fd.append('images', file, file.name || 'photo.jpg');
+        });
+        var action = form.getAttribute('action') || window.location.href;
+        fetch(action, {
+          method: 'POST',
+          body: fd,
+          credentials: 'same-origin',
+          redirect: 'follow',
+          headers: { 'X-Requested-With': 'XMLHttpRequest' }
+        }).then(function(res) {
+          var url = res.url || '';
+          var stillOnForm = /\/equipment\/(?:create|edit)\//.test(url) || /\/equipment\/create\/?$/.test(url);
+          if (res.redirected && url && !stillOnForm) {
+            window.location.replace(url);
+            return;
+          }
+          if (res.ok && url && url.indexOf('/equipment/') !== -1 && !stillOnForm) {
+            window.location.replace(url);
+            return;
+          }
+          return res.text().then(function(html) {
+            document.open();
+            document.write(html);
+            document.close();
+          });
+        }).catch(function() {
+          setSubmitLoading(false);
+          alert('등록 중 네트워크 오류가 발생했습니다. 사진 용량을 줄인 뒤 다시 시도해 주세요.');
+        });
         return false;
       }
       setSubmitLoading(true);
