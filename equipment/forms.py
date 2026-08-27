@@ -68,7 +68,13 @@ class EquipmentForm(forms.ModelForm):
             "region_sido": forms.HiddenInput(),
             "region_sigungu": forms.HiddenInput(),
             "vehicle_number": forms.TextInput(attrs={"class": "form-control", "placeholder": "예) 12가3456 (모르면 비워도 됨)"}),
-            "description": forms.Textarea(attrs={"class": "form-control", "rows": 3, "maxlength": 50, "placeholder": "최대 50자 (선택)"}),
+            "description": forms.Textarea(attrs={
+                "class": "form-control",
+                "rows": 3,
+                "maxlength": 50,
+                "placeholder": "최대 50자 (선택)",
+                "id": "id_description",
+            }),
         }
 
     def __init__(self, *args, **kwargs):

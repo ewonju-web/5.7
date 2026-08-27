@@ -261,8 +261,13 @@
                         <p class="form-text small mb-0 mt-1 gn-form-notice-strong">추후 차량번호 조회로 연식/모델 자동 입력 예정</p>
                     </div>
                     <div class="col-12">
-                        <label class="form-label">상세 설명 <span class="text-muted small">(최대 50자)</span></label>
+                        <label class="form-label" for="id_description">상세 설명 <span class="text-muted small">(최대 50자)</span></label>
                         {{ form.description }}
+                        <div class="d-flex justify-content-between align-items-center mt-1">
+                            <p class="text-danger small mb-0 d-none" id="gn-desc-limit-msg">최대 50자까지 입력할 수 있습니다.</p>
+                            <p class="text-muted small mb-0 ms-auto" id="gn-desc-counter" aria-live="polite">0 / 50</p>
+                        </div>
+                        {% if form.description.errors %}<p class="text-danger small mt-1 mb-0">{{ form.description.errors.0 }}</p>{% endif %}
                     </div>
                     <div class="col-12">
                         <label class="form-label fw-bold">사진 (1장 이상 필수, 최대 10장)</label>
@@ -1792,6 +1797,72 @@
     });
   }
   syncUiToHiddenValuesLocal();
+})();
+</script>
+<script>
+(function() {
+  var MAX_DESC = 50;
+  var el = document.getElementById('id_description');
+  if (!el) return;
+  el.setAttribute('maxlength', String(MAX_DESC));
+  el.setAttribute('max', String(MAX_DESC));
+
+  var counter = document.getElementById('gn-desc-counter');
+  var limitMsg = document.getElementById('gn-desc-limit-msg');
+  var composing = false;
+
+  function updateUi() {
+    var len = (el.value || '').length;
+    if (len > MAX_DESC) {
+      el.value = el.value.slice(0, MAX_DESC);
+      len = MAX_DESC;
+    }
+    if (counter) {
+      counter.textContent = len + ' / ' + MAX_DESC;
+      counter.classList.toggle('text-danger', len >= MAX_DESC);
+      counter.classList.toggle('fw-bold', len >= MAX_DESC);
+      counter.classList.toggle('text-muted', len < MAX_DESC);
+    }
+    if (limitMsg) limitMsg.classList.toggle('d-none', len < MAX_DESC);
+  }
+
+  el.addEventListener('compositionstart', function() { composing = true; });
+  el.addEventListener('compositionend', function() {
+    composing = false;
+    updateUi();
+  });
+  el.addEventListener('input', function() {
+    if (composing) return;
+    updateUi();
+  });
+  el.addEventListener('paste', function(e) {
+    e.preventDefault();
+    var paste = (e.clipboardData || window.clipboardData).getData('text') || '';
+    var start = el.selectionStart || 0;
+    var end = el.selectionEnd || 0;
+    var cur = el.value || '';
+    var next = (cur.slice(0, start) + paste + cur.slice(end)).slice(0, MAX_DESC);
+    el.value = next;
+    var pos = Math.min(start + paste.length, MAX_DESC);
+    try { el.setSelectionRange(pos, pos); } catch (err) {}
+    updateUi();
+  });
+  el.addEventListener('keydown', function(e) {
+    if (composing) return;
+    var len = (el.value || '').length;
+    if (len < MAX_DESC) return;
+    // 50자 도달 시 추가 입력만 막고, 삭제·이동·수정은 허용
+    var allow = e.key === 'Backspace' || e.key === 'Delete' ||
+      e.key === 'ArrowLeft' || e.key === 'ArrowRight' || e.key === 'ArrowUp' || e.key === 'ArrowDown' ||
+      e.key === 'Home' || e.key === 'End' || e.key === 'Tab' ||
+      e.ctrlKey || e.metaKey || e.altKey;
+    var hasSelection = (el.selectionStart || 0) !== (el.selectionEnd || 0);
+    if (!allow && !hasSelection) {
+      e.preventDefault();
+      if (limitMsg) limitMsg.classList.remove('d-none');
+    }
+  });
+  updateUi();
 })();
 </script>
 <script>
