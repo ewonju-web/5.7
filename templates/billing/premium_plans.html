@@ -1,6 +1,16 @@
 {% extends "base.html" %}
 {% load humanize %}
 {% block content %}
+<style>
+  .gn-billing-plan-card,
+  .gn-billing-benefits-card {
+    border: 1px solid #aeb8c9 !important;
+    box-shadow: 0 2px 8px rgba(15, 23, 42, 0.07) !important;
+  }
+  .gn-billing-plan-card--yearly {
+    border: 2px solid #0d6efd !important;
+  }
+</style>
 <div class="container py-4 py-md-5" style="max-width: 860px;">
   <div class="text-center mb-4">
     <h2 class="fw-bold mb-2">프리미엄 유료회원 결제</h2>
@@ -10,7 +20,7 @@
   <div class="row g-3 g-md-4">
     <!-- 월 -->
     <div class="col-12 col-md-6">
-      <div class="card h-100 border-0 shadow-sm rounded-4">
+      <div class="card h-100 gn-billing-plan-card rounded-4">
         <div class="card-body p-4 d-flex flex-column">
           <div class="small text-muted mb-1">월간</div>
           <div class="display-6 fw-bold mb-1">{{ monthly_price|intcomma }}<span class="fs-5 fw-normal">원/월</span></div>
@@ -24,7 +34,7 @@
     </div>
     <!-- 연 -->
     <div class="col-12 col-md-6">
-      <div class="card h-100 border-0 shadow-sm rounded-4 border-primary" style="border-width:2px !important;">
+      <div class="card h-100 gn-billing-plan-card gn-billing-plan-card--yearly rounded-4">
         <div class="card-body p-4 d-flex flex-column position-relative">
           <span class="position-absolute top-0 end-0 m-3 badge bg-primary">약 2개월 무료</span>
           <div class="small text-muted mb-1">연간</div>
@@ -39,7 +49,7 @@
     </div>
   </div>
 
-  <div class="card border-0 shadow-sm rounded-4 mt-4">
+  <div class="card gn-billing-benefits-card rounded-4 mt-4">
     <div class="card-body p-4">
       <h5 class="fw-bold mb-3">유료회원 혜택</h5>
       <ul class="mb-0 text-muted" style="line-height: 1.9;">
